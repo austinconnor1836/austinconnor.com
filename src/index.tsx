@@ -1,7 +1,7 @@
 import React from "react";
 import ReactDOM from "react-dom";
 import { BrowserRouter as Router, Switch, Route } from "react-router-dom";
-import { ThemeProvider, createMuiTheme } from "@material-ui/core/styles";
+import { ThemeProvider } from "@material-ui/core/styles";
 import "./index.css";
 import App from "./App";
 import Resume from "./Resume";
@@ -9,12 +9,6 @@ import reportWebVitals from "./reportWebVitals";
 import Navbar from "./Navbar";
 import { DarkTheme } from "./darkTheme";
 import Footer from "./Footer";
-
-const theme = createMuiTheme({
-  typography: {
-    fontFamily: ["Dancing Script", "cursive"].join(","),
-  },
-});
 
 ReactDOM.render(
   <React.StrictMode>
