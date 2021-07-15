@@ -42,6 +42,9 @@ const StyledTypography = styled(Typography)(({ theme }) => ({
   backgroundColor: theme.palette.primary.dark,
 }));
 
+const educationTitle = "B.A. in Physics, Aug. 2018";
+const collegeText = "University of Nebraska at Lincoln";
+
 function getSteps() {
   return [
     {
@@ -157,6 +160,13 @@ const Resume = () => {
       <StyledTypography variant="h2">
         <u>Education</u>
       </StyledTypography>
+      <StyledStepper activeStep={activeStep} orientation="vertical">
+        <Step>
+          <StepLabel optional={<Typography>{educationTitle}</Typography>}>
+            {collegeText}
+          </StepLabel>
+        </Step>
+      </StyledStepper>
     </div>
   );
 };
