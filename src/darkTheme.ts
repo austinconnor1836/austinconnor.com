@@ -4,12 +4,13 @@ export const DarkTheme: ThemeOptions = createMuiTheme({
   palette: {
     type: 'dark',
     primary: {
-      main: '#057ab4',
-      light: '#36a8e0',
+      main: '#302C4A',
+      light: '#534D80',
       contrastText: '#fff',
     },
     secondary: {
-      main: '#057ab4',
+      main: '#3A27B8',
+      light: '#6857DB',
       contrastText: '#fff',
     },
     success: {
