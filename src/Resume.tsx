@@ -16,6 +16,7 @@ import Typography from "@material-ui/core/Typography";
 const useStyles = makeStyles((theme: Theme) =>
   createStyles({
     root: {
+      padding: "1rem",
       backgroundColor: theme.palette.primary.dark,
       width: "100%",
       height: "80vh",
@@ -38,7 +39,6 @@ const StyledStepper = styled(Stepper)(({ theme }) => ({
 }));
 
 const StyledTypography = styled(Typography)(({ theme }) => ({
-  margin: 0,
   backgroundColor: theme.palette.primary.dark,
 }));
 
