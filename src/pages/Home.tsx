@@ -1,5 +1,8 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { styled, Typography } from "@material-ui/core";
+import * as THREE from "three";
+import { Canvas } from "@react-three/fiber";
+import { OrbitControls } from "@react-three/drei";
 
 const AboutMeContainer = styled("div")({
   background: "hsl(204, 86%, 53%)",
@@ -23,6 +26,14 @@ const Home = () => {
     <div style={{ height: "100%" }}>
       <AboutMeContainer>
         <SmallerContainer>
+          <Canvas>
+            <mesh>
+              <OrbitControls />
+              <ambientLight intensity={0.5} />
+              <boxBufferGeometry attach="geometry" />
+              <meshLambertMaterial attach="material" color="hotpink" />
+            </mesh>
+          </Canvas>
           <Typography variant="h3">Hello, my name is Austin.</Typography>
         </SmallerContainer>
       </AboutMeContainer>
