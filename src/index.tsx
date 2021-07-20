@@ -9,6 +9,7 @@ import reportWebVitals from "./reportWebVitals";
 import Navbar from "./Navbar";
 import { DarkTheme } from "./darkTheme";
 import Footer from "./Footer";
+import MyDevLessons from "./pages/MyDevLessons";
 
 ReactDOM.render(
   <React.StrictMode>
@@ -21,6 +22,9 @@ ReactDOM.render(
           </Route>
           <Route path={"/resume"}>
             <Resume />
+          </Route>
+          <Route path={"load-data-on-initial-render"}>
+            <MyDevLessons />
           </Route>
         </Switch>
       </Router>

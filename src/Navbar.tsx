@@ -21,6 +21,9 @@ const Navbar = () => {
         Home
       </StyledLink>
       <StyledLink href="/resume">Resume</StyledLink>
+      {/* <StyledLink href="/load-data-on-initial-render"> */}
+      {/* My Dev Lessons */}
+      {/* </StyledLink> */}
     </FlexContainer>
   );
 };
