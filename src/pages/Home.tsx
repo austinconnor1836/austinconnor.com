@@ -1,12 +1,10 @@
-import React, { useEffect, useRef, useState } from "react";
-import { Button, Link, styled, Typography } from "@material-ui/core";
+import React from "react";
+import { Button, styled, Typography } from "@material-ui/core";
 import { useHistory } from "react-router-dom";
-import * as THREE from "three";
-import { Canvas, useFrame, useLoader } from "@react-three/fiber";
-import { OrbitControls } from "@react-three/drei";
-import { createBrowserHistory as history } from "history";
-import { TextureLoader } from "three/src/loaders/TextureLoader";
-import DescriptionIcon from "@material-ui/icons/Description";
+// import { useFrame } from "@react-three/fiber";
+// import { OrbitControls } from "@react-three/drei";
+// import { TextureLoader } from "three/src/loaders/TextureLoader";
+// import DescriptionIcon from "@material-ui/icons/Description";
 
 const AboutMeContainer = styled("div")({
   background: "hsl(204, 86%, 53%)",
@@ -27,30 +25,30 @@ const StyledTypography = styled(Typography)({
   paddingTop: "1rem",
 });
 
-function Box(props: any) {
-  // This reference will give us direct access to the THREE.Mesh object
-  const mesh = useRef();
-  // Set up state for the hovered and active state
-  const [hovered, setHover] = useState(false);
-  const [active, setActive] = useState(false);
-  // Subscribe this component to the render-loop, rotate the mesh every frame
-  // @ts-ignore
-  useFrame((state: any, delta: any) => (mesh.current.rotation.x += 0.01));
-  // Return the view, these are regular Threejs elements expressed in JSX
-  return (
-    <mesh
-      {...props}
-      ref={mesh}
-      scale={active ? 1.5 : 1}
-      onClick={(event) => setActive(!active)}
-      onPointerOver={(event) => setHover(true)}
-      onPointerOut={(event) => setHover(false)}
-    >
-      <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial color={hovered ? "hotpink" : "orange"} />
-    </mesh>
-  );
-}
+// function Box(props: any) {
+//   // This reference will give us direct access to the THREE.Mesh object
+//   const mesh = useRef();
+//   // Set up state for the hovered and active state
+//   const [hovered, setHover] = useState(false);
+//   const [active, setActive] = useState(false);
+//   // Subscribe this component to the render-loop, rotate the mesh every frame
+//   // @ts-ignore
+//   useFrame((state: any, delta: any) => (mesh.current.rotation.x += 0.01));
+//   // Return the view, these are regular Threejs elements expressed in JSX
+//   return (
+//     <mesh
+//       {...props}
+//       ref={mesh}
+//       scale={active ? 1.5 : 1}
+//       onClick={(event) => setActive(!active)}
+//       onPointerOver={(event) => setHover(true)}
+//       onPointerOut={(event) => setHover(false)}
+//     >
+//       <boxGeometry args={[1, 1, 1]} />
+//       <meshStandardMaterial color={hovered ? "hotpink" : "orange"} />
+//     </mesh>
+//   );
+// }
 
 const Home = () => {
   const history = useHistory();
