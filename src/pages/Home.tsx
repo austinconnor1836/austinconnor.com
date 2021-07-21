@@ -1,7 +1,9 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 import { Button, styled, Typography } from "@material-ui/core";
 import { useHistory } from "react-router-dom";
-// import { useFrame } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { a, useSpring } from "@react-spring/three";
+import Boxes from "./Boxes";
 // import { OrbitControls } from "@react-three/drei";
 // import { TextureLoader } from "three/src/loaders/TextureLoader";
 // import DescriptionIcon from "@material-ui/icons/Description";
@@ -51,11 +53,23 @@ const StyledTypography = styled(Typography)({
 // }
 
 const Home = () => {
+  const [hovered, setHovered] = useState(false);
+  const [active, setActive] = useState(false);
+  const props = useSpring({
+    scale: active ? [1.5, 1.5, 1.5] : [1, 1, 1],
+    color: hovered ? "hotpink" : "gray",
+  });
   const history = useHistory();
+  const meshRef = useRef<any>();
 
   const handleRoute = () => {
     history.push("/resume");
   };
+
+  // useFrame(({ clock }) => {
+  // const a = clock.getElapsedTime();
+  // meshRef.current.rotation.x = a;
+  // });
 
   return (
     <div style={{ height: "100%" }}>
@@ -78,6 +92,29 @@ const Home = () => {
           {/* <Box position={[-1.2, 0, 0]} /> */}
           {/* </Canvas> */}
           <Button onClick={handleRoute}>Resume</Button>
+          {/* <Canvas>
+            <mesh
+              // onPointerOver={() => setHovered(true)}
+              // onPointerOut={() => setHovered(false)}
+              // onClick={() => setActive(!active)}
+              // ref={meshRef}
+              // @ts-ignore
+              // scale={props.scale}
+              {...props}
+              ref={meshRef}
+              scale={active ? 1.5 : 1}
+              onClick={(e) => setActive(!active)}
+              onPointerOver={(e) => setHovered(true)}
+              onPointerOut={(e) => setHovered(false)}
+            >
+              <boxBufferGeometry attach="geometry" args={[1, 1, 1]} />
+              <meshBasicMaterial
+                attach=""
+                color={hovered ? "hotpink" : "gray"}
+              />
+            </mesh>
+          </Canvas> */}
+          <Boxes />
         </SmallerContainer>
       </AboutMeContainer>
     </div>
