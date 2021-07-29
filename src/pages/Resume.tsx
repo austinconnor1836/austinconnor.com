@@ -93,6 +93,10 @@ function getStepContent(step: number) {
             </a>{" "}
             to query API endpoints using GraphQL, AWS Lambda, and DynamboDb.
           </Typography>
+          <Typography variant="body2">
+            Used AWS lambda and DynamoDb to build serverless endpoints for the
+            frontend to query.
+          </Typography>
         </>
       );
     case 1:
