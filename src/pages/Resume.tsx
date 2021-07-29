@@ -83,6 +83,13 @@ function getStepContent(step: number) {
             Built applications using TypeScript, React, GraphQL, Go, Python,
             dynamoDB, AWS Lambda, and many other AWS utilities.
           </Typography>
+          <Typography variant="body2">
+            Used libraries such as{" "}
+            <a href="https://react-query.tanstack.com/" target="_blank">
+              react-query
+            </a>{" "}
+            to query API endpoints using GraphQL, AWS Lambda, and DynamboDb.
+          </Typography>
         </>
       );
     case 1:
