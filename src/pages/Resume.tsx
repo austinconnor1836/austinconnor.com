@@ -80,6 +80,9 @@ function getStepContent(step: number) {
       return (
         <>
           <Typography variant="body2">
+            <strong>Methodologies</strong>: Agile and Kanban
+          </Typography>
+          <Typography variant="body2">
             Built applications using TypeScript, React, GraphQL, Go, Python,
             dynamoDB, AWS Lambda, and many other AWS utilities.
           </Typography>
@@ -93,18 +96,69 @@ function getStepContent(step: number) {
         </>
       );
     case 1:
-      // return "An ad group contains one or more ads which target a shared set of keywords.";
-      return `Processed sales data using Python, SQL, C#, and Powershell.`;
+      return (
+        <>
+          <Typography variant="body2">
+            <strong>Methodologies</strong>: Agile
+          </Typography>
+          <Typography variant="body2">
+            Processed sales data using Python, SQL, C#, and Powershell.
+          </Typography>
+          <Typography variant="body2">
+            Built Python scripts to organize bulk SQL statements so that higher
+            throughput could be achieved.
+          </Typography>
+        </>
+      );
     case 2:
-      return `Transitioned legacy applications using React, GraphQL, Java-Spring, PCF, and agile methodologies.`;
+      return (
+        <>
+          <Typography variant="body2">
+            <strong>Methodologies</strong>: Agile
+          </Typography>
+          <Typography variant="body2">
+            Transitioned legacy applications using React, GraphQL, Java-Spring,
+            PCF, and agile methodologies.
+          </Typography>
+          <Typography variant="body2">
+            Constructed API using Java Spring, Querydsl, React, and GraphQL to
+            display internal operational data.
+          </Typography>
+        </>
+      );
     case 3:
-      return `Maintained sites for St. Baldrick's cancer research using Ruby on Rails, React, AWS, PHP, and agile methodologies.`;
+      return (
+        <>
+          <Typography variant="body2">
+            Maintained sites for St. Baldrick's cancer research using Ruby on
+            Rails, React, AWS, PHP, and agile methodologies.
+          </Typography>
+        </>
+      );
     case 4:
-      return `Constructed in-house website using >NET Core, C#, React, agile methodologies, and Microsoft TCF.`;
+      return (
+        <>
+          <Typography variant="body2">
+            Constructed in-house website using .NET Core, C#, React, agile
+            methodologies, and Microsoft TCF.
+          </Typography>
+        </>
+      );
     case 5:
-      return `Built centralized inventory application using .NET, Azure, SQL, C#, and agile methodologies.`;
+      return (
+        <>
+          <Typography variant="body2">
+            Built centralized inventory application using .NET, Azure, SQL, C#,
+            and agile methodologies.
+          </Typography>
+        </>
+      );
     default:
-      return "Unknown step";
+      return (
+        <>
+          <Typography variant="body2">Unknown step</Typography>
+        </>
+      );
   }
 }
 
