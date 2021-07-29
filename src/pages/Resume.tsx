@@ -77,7 +77,14 @@ function getSteps() {
 function getStepContent(step: number) {
   switch (step) {
     case 0:
-      return `Built applications using TypeScript, React, GraphQL, Go, Python, dynamoDB, AWS Lambda, and many other AWS utilities.`;
+      return (
+        <>
+          <Typography variant="body2">
+            Built applications using TypeScript, React, GraphQL, Go, Python,
+            dynamoDB, AWS Lambda, and many other AWS utilities.
+          </Typography>
+        </>
+      );
     case 1:
       // return "An ad group contains one or more ads which target a shared set of keywords.";
       return `Processed sales data using Python, SQL, C#, and Powershell.`;
