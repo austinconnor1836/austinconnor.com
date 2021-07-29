@@ -88,7 +88,11 @@ function getStepContent(step: number) {
           </Typography>
           <Typography variant="body2">
             Used libraries such as{" "}
-            <a href="https://react-query.tanstack.com/" target="_blank">
+            <a
+              href="https://react-query.tanstack.com/"
+              target="_blank"
+              rel="noreferrer"
+            >
               react-query
             </a>{" "}
             to query API endpoints using GraphQL, AWS Lambda, and DynamboDb.
