@@ -4,7 +4,7 @@ import { BrowserRouter as Router, Switch, Route } from "react-router-dom";
 import { ThemeProvider } from "@material-ui/core/styles";
 import "./index.css";
 import App from "./App";
-import Resume from "./Resume";
+import Resume from "./pages/Resume";
 import reportWebVitals from "./reportWebVitals";
 import Navbar from "./Navbar";
 import { DarkTheme } from "./darkTheme";
