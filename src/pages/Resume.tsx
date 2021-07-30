@@ -101,6 +101,10 @@ function getStepContent(step: number) {
             Used AWS lambda and DynamoDb to build serverless endpoints for the
             frontend to query.
           </Typography>
+          <Typography>
+            Built tables in DynamoDB, AWS Lambda functions as API endpoints,
+            used React/TypeScript for display, and AWS Incognito for security.
+          </Typography>
         </>
       );
     case 1:
