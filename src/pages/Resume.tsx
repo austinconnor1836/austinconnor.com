@@ -84,7 +84,7 @@ function getStepContent(step: number) {
           </Typography>
           <Typography variant="body2">
             Built applications using TypeScript, React, GraphQL, Go, Python,
-            dynamoDB, AWS Lambda, and many other AWS utilities.
+            DynamoDB, AWS Lambda, and many other AWS utilities.
           </Typography>
           <Typography variant="body2">
             Used libraries such as{" "}
@@ -95,10 +95,10 @@ function getStepContent(step: number) {
             >
               react-query
             </a>{" "}
-            to query API endpoints using GraphQL, AWS Lambda, and DynamboDb.
+            to query API endpoints using GraphQL, AWS Lambda, and DynamoDB.
           </Typography>
           <Typography variant="body2">
-            Used AWS lambda and DynamoDb to build serverless endpoints for the
+            Used AWS lambda and DynamoDB to build serverless endpoints for the
             frontend to query.
           </Typography>
           <Typography>
