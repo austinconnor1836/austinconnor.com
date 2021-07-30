@@ -126,7 +126,7 @@ function getStepContent(step: number) {
       return (
         <>
           <Typography variant="body2">
-            <strong>Methodologies</strong>: Agile
+            <strong>Methodologies</strong>: Agile/Scrum
           </Typography>
           <Typography variant="body2">
             Transitioned legacy applications using React, GraphQL, Java-Spring,
@@ -142,6 +142,9 @@ function getStepContent(step: number) {
       return (
         <>
           <Typography variant="body2">
+            <strong>Methodologies</strong>: Kanban
+          </Typography>
+          <Typography variant="body2">
             Maintained sites for St. Baldrick's cancer research using Ruby on
             Rails, React, AWS, PHP, and agile methodologies.
           </Typography>
@@ -151,6 +154,9 @@ function getStepContent(step: number) {
       return (
         <>
           <Typography variant="body2">
+            <strong>Methodologies</strong>: Agile
+          </Typography>
+          <Typography variant="body2">
             Constructed in-house website using .NET Core, C#, React, agile
             methodologies, and Microsoft TCF.
           </Typography>
@@ -159,6 +165,9 @@ function getStepContent(step: number) {
     case 5:
       return (
         <>
+          <Typography variant="body2">
+            <strong>Methodologies</strong>: Agile
+          </Typography>
           <Typography variant="body2">
             Built centralized inventory application using .NET, Azure, SQL, C#,
             and agile methodologies.
