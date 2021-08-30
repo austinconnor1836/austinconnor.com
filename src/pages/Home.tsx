@@ -2,6 +2,7 @@ import React from "react";
 import { Button, styled, Typography } from "@material-ui/core";
 import { useHistory } from "react-router-dom";
 import Boxes from "./Boxes";
+import SimpleDialog from "../components/SimpleDialog";
 
 const AboutMeContainer = styled("div")({
   background: "hsl(204, 86%, 53%)",
@@ -34,9 +35,16 @@ const Home = () => {
       <AboutMeContainer>
         <SmallerContainer>
           <StyledTypography variant="h3">
+            Profit will never outpace the Spirit of Innovation.
+          </StyledTypography>
+          <StyledTypography variant="h3">
             Hello, my name is Austin.
           </StyledTypography>
           <Button onClick={handleRoute}>Resume</Button>
+          <StyledTypography variant="h3">
+            {/* <u>Work with me?</u> */}
+            <SimpleDialog />
+          </StyledTypography>
           <Boxes />
         </SmallerContainer>
       </AboutMeContainer>

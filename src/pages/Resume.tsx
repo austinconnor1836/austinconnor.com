@@ -4,6 +4,7 @@ import {
   Theme,
   createStyles,
   styled,
+  useTheme,
 } from "@material-ui/core/styles";
 import Stepper from "@material-ui/core/Stepper";
 import Step from "@material-ui/core/Step";
@@ -187,6 +188,7 @@ const Resume = () => {
   const classes = useStyles();
   const [activeStep, setActiveStep] = React.useState(0);
   const steps = getSteps();
+  const { palette } = useTheme();
 
   const handleNext = () => {
     setActiveStep((prevActiveStep) => prevActiveStep + 1);
@@ -201,10 +203,13 @@ const Resume = () => {
   };
 
   return (
-    <div className={classes.root}>
-      <StyledTypography variant="h2">
-        <u>Experience</u>
-      </StyledTypography>
+    // <div className={classes.root}>
+    <div style={{ backgroundColor: palette.primary.dark }}>
+      {/* <StyledTypography variant="h2"> */}
+      <u style={{ fontSize: "2rem", color: "#fff", padding: "2rem" }}>
+        Experience
+      </u>
+      {/* </StyledTypography> */}
       <StyledStepper activeStep={activeStep} orientation="vertical">
         {steps.map((label, index) => {
           return (
@@ -246,9 +251,9 @@ const Resume = () => {
           </Button>
         </Paper>
       )}
-      <StyledTypography variant="h2">
-        <u>Education</u>
-      </StyledTypography>
+      <u style={{ fontSize: "2rem", color: "#fff", padding: "2rem" }}>
+        Education
+      </u>
       <StyledStepper activeStep={activeStep} orientation="vertical">
         <Step>
           <StepLabel optional={<Typography>{educationTitle}</Typography>}>
