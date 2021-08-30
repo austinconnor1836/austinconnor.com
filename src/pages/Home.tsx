@@ -41,10 +41,10 @@ const Home = () => {
             Hello, my name is Austin.
           </StyledTypography>
           <Button onClick={handleRoute}>Resume</Button>
-          <StyledTypography variant="h3">
-            {/* <u>Work with me?</u> */}
-            <SimpleDialog />
-          </StyledTypography>
+          {/* <StyledTypography variant="h3"> */}
+          {/* <u>Work with me?</u> */}
+          {/* <SimpleDialog /> */}
+          {/* </StyledTypography> */}
           <Boxes />
         </SmallerContainer>
       </AboutMeContainer>
