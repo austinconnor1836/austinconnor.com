@@ -3,6 +3,7 @@ import { Button, styled, Typography } from "@material-ui/core";
 import { useHistory } from "react-router-dom";
 import Boxes from "./Boxes";
 import SimpleDialog from "../components/SimpleDialog";
+import AssignmentIcon from "@material-ui/icons/Assignment";
 
 const AboutMeContainer = styled("div")({
   background: "hsl(204, 86%, 53%)",
@@ -26,25 +27,32 @@ const StyledTypography = styled(Typography)({
 const Home = () => {
   const history = useHistory();
 
-  const handleRoute = () => {
-    history.push("/resume");
+  const handleRoute = (route: string) => {
+    history.push(`/${route}`);
   };
 
   return (
     <div style={{ height: "100%" }}>
       <AboutMeContainer>
         <SmallerContainer>
-          <StyledTypography variant="h3">
+          <b
+            style={{
+              color: "#fcc200",
+              fontSize: "3rem",
+              letterSpacing: "3px",
+              padding: "1rem 1rem",
+              textAlign: "center",
+              WebkitTextStroke: "0.5px black",
+            }}
+          >
             Profit will never outpace the Spirit of Innovation.
-          </StyledTypography>
-          <StyledTypography variant="h3">
-            Hello, my name is Austin.
-          </StyledTypography>
-          <Button onClick={handleRoute}>Resume</Button>
-          {/* <StyledTypography variant="h3"> */}
-          {/* <u>Work with me?</u> */}
-          {/* <SimpleDialog /> */}
-          {/* </StyledTypography> */}
+          </b>
+          <Button
+            endIcon={<AssignmentIcon />}
+            onClick={() => handleRoute("resume")}
+          >
+            Resume
+          </Button>
           <Boxes />
         </SmallerContainer>
       </AboutMeContainer>
