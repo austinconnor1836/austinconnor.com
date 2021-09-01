@@ -1,8 +1,7 @@
 import React from "react";
-import { Button, styled, Typography } from "@material-ui/core";
+import { Button, styled } from "@material-ui/core";
 import { useHistory } from "react-router-dom";
 import Boxes from "./Boxes";
-import SimpleDialog from "../components/SimpleDialog";
 import AssignmentIcon from "@material-ui/icons/Assignment";
 
 const AboutMeContainer = styled("div")({
@@ -18,10 +17,6 @@ const SmallerContainer = styled("div")({
   justifyContent: "center",
   alignItems: "center",
   width: "40%",
-});
-
-const StyledTypography = styled(Typography)({
-  paddingTop: "1rem",
 });
 
 const Home = () => {

@@ -39,10 +39,6 @@ const StyledStepper = styled(Stepper)(({ theme }) => ({
   backgroundColor: theme.palette.primary.dark,
 }));
 
-const StyledTypography = styled(Typography)(({ theme }) => ({
-  backgroundColor: theme.palette.primary.dark,
-}));
-
 const educationTitle = "B.A. in Physics, Aug. 2018";
 const collegeText = "University of Nebraska at Lincoln";
 
