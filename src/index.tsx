@@ -8,8 +8,8 @@ import Resume from "./pages/Resume";
 import reportWebVitals from "./reportWebVitals";
 import Navbar from "./Navbar";
 import { DarkTheme } from "./darkTheme";
-import Footer from "./Footer";
 import MyDevLessons from "./pages/MyDevLessons";
+import FaveQuotes from "./pages/FaveQuotes";
 
 ReactDOM.render(
   <React.StrictMode>
@@ -23,12 +23,14 @@ ReactDOM.render(
           <Route path={"/resume"}>
             <Resume />
           </Route>
+          <Route path={"/fave-quotes"}>
+            <FaveQuotes />
+          </Route>
           <Route path={"load-data-on-initial-render"}>
             <MyDevLessons />
           </Route>
         </Switch>
       </Router>
-      <Footer />
     </ThemeProvider>
   </React.StrictMode>,
   document.getElementById("root")
