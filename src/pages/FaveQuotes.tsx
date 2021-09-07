@@ -14,7 +14,6 @@ const OuterContainer = styled("div")({
   alignItems: "center",
   width: "100%",
   "& > *": {
-    marginTop: "3rem",
     fontSize: "2rem",
     padding: "2rem 2rem",
     width: "30rem",
@@ -29,10 +28,15 @@ const FaveQuotes = () => {
   return (
     <OuterContainer>
       {quotes?.map((quoteItem: IQuoteItem, index: number) => (
-        <Paper key={index}>
+        <Paper
+          key={index}
+          style={{ margin: index === 0 ? "4rem 0 1rem 0" : "1rem" }}
+        >
           <q>{quoteItem?.quote}</q>
           <p>
-            - {quoteItem?.book}, by {quoteItem?.author}
+            {quoteItem?.book !== ""
+              ? `- ${quoteItem?.book} by ${quoteItem?.author}`
+              : `- ${quoteItem?.author}`}
           </p>
         </Paper>
       ))}
