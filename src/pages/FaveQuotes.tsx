@@ -1,5 +1,5 @@
 import React from "react";
-import { Paper, styled } from "@material-ui/core";
+import { Paper, styled, useMediaQuery } from "@material-ui/core";
 import { quotes } from "../data/quotes";
 import { IQuoteItem } from "../utils/interfaces";
 
@@ -13,33 +13,58 @@ const OuterContainer = styled("div")({
   justifyContent: "center",
   alignItems: "center",
   width: "100%",
-  "& > *": {
-    fontSize: "2rem",
-    padding: "2rem 2rem",
-    width: "30rem",
-  },
 });
 
 // const InnerItem = styled(Paper)({
 //   width: "30rem",
 // });
 
+const DesktopPaper = styled(Paper)({
+  fontSize: "2rem",
+  margin: "1rem 0 1rem 0",
+  padding: "2rem 2rem",
+  width: "30rem",
+});
+
+const MobilePaper = styled(Paper)({
+  fontSize: "1.5rem",
+  margin: "1rem",
+  padding: "10px",
+  width: "20rem",
+});
+
 const FaveQuotes = () => {
+  const isDesktop = useMediaQuery("(min-width:600px)");
+
   return (
     <OuterContainer>
-      {quotes?.map((quoteItem: IQuoteItem, index: number) => (
-        <Paper
-          key={index}
-          style={{ margin: index === 0 ? "4rem 0 1rem 0" : "1rem" }}
-        >
-          <q>{quoteItem?.quote}</q>
-          <p>
-            {quoteItem?.book !== ""
-              ? `- ${quoteItem?.book} by ${quoteItem?.author}`
-              : `- ${quoteItem?.author}`}
-          </p>
-        </Paper>
-      ))}
+      {quotes?.map((quoteItem: IQuoteItem, index: number) =>
+        isDesktop ? (
+          <DesktopPaper
+            key={index}
+            // style={{ margin: index === 0 ? "4rem 0 1rem 0" : "1rem" }}
+          >
+            <q>{quoteItem?.quote}</q>
+            <p>
+              {quoteItem?.book !== ""
+                ? `- ${quoteItem?.book} by ${quoteItem?.author}`
+                : `- ${quoteItem?.author}`}
+            </p>
+          </DesktopPaper>
+        ) : (
+          <MobilePaper
+            key={index}
+            // style={{ margin: index === 0 ? "4rem 0 1rem 0" : "1rem" }}
+          >
+            <q>{quoteItem?.quote}</q>
+            <p>
+              {quoteItem?.book !== ""
+                ? `- ${quoteItem?.book} by ${quoteItem?.author}`
+                : `- ${quoteItem?.author}`}
+            </p>
+          </MobilePaper>
+        )
+      )}
     </OuterContainer>
   );
 };
