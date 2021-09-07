@@ -7,4 +7,14 @@ export const quotes: IQuoteItem[] = [
     book: "The Science of Getting Rich",
     author: "Wallace D. Wattles",
   },
+  {
+    author: "Isaiah Berlin",
+    book: "",
+    quote: "Total liberty for wolves is death to the lambs.",
+  },
+  {
+    author: "Euripedes",
+    book: "The Bacchae",
+    quote: "Talk sense to a fool and he calls you foolish.",
+  },
 ];
