@@ -4,8 +4,12 @@ import { useHistory } from "react-router-dom";
 import Boxes from "./Boxes";
 import AssignmentIcon from "@material-ui/icons/Assignment";
 
+const OuterContainer = styled("div")({
+  height: "100%",
+});
+
 const AboutMeContainer = styled("div")({
-  background: "hsl(204, 86%, 53%)",
+  // background: "hsl(204, 86%, 53%)",
   display: "flex",
   height: "80vh",
   justifyContent: "center",
@@ -27,7 +31,8 @@ const Home = () => {
   };
 
   return (
-    <div style={{ height: "100%" }}>
+    // <div style={{ height: "100%" }}>
+    <OuterContainer>
       <AboutMeContainer>
         <SmallerContainer>
           <b
@@ -53,7 +58,7 @@ const Home = () => {
           </Suspense>
         </SmallerContainer>
       </AboutMeContainer>
-    </div>
+    </OuterContainer>
   );
 };
 
