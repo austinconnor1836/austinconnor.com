@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { Button, styled } from "@material-ui/core";
 import { useHistory } from "react-router-dom";
 import Boxes from "./Boxes";
@@ -48,7 +48,9 @@ const Home = () => {
           >
             Resume
           </Button>
-          <Boxes />
+          <Suspense fallback={null}>
+            <Boxes />
+          </Suspense>
         </SmallerContainer>
       </AboutMeContainer>
     </div>

@@ -1,7 +1,10 @@
 import React, { useRef, useState } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
+import { Canvas, useFrame, useLoader } from "@react-three/fiber";
+import { TextureLoader } from "three";
 
 function Box(props: any) {
+  const myFaceMap = useLoader(TextureLoader, "winter.jpg");
+  // const myFaceMap = useLoader(TextureLoader, "PavingStones092_1K_Color.jpg");
   // This reference will give us direct access to the mesh
   const mesh = useRef<any>();
   // Set up state for the hovered and active state
@@ -21,7 +24,10 @@ function Box(props: any) {
       onPointerOut={(e) => setHover(false)}
     >
       <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial color={hovered ? "hotpink" : "orange"} />
+      <meshStandardMaterial
+        color={hovered ? "hotpink" : "orange"}
+        map={myFaceMap}
+      />
     </mesh>
   );
 }
@@ -33,7 +39,6 @@ export default function Boxes() {
       <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} />
       <pointLight position={[-10, -10, -10]} />
       <Box position={[-1.2, 0, 0]} />
-      <Box position={[1.2, 0, 0]} />
     </Canvas>
   );
 }

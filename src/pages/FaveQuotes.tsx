@@ -17,7 +17,7 @@ const StyledPaper = styled(Paper)({
   padding: "2rem 2rem",
   marginTop: "1rem",
   width: "30rem",
-  height: "30rem",
+  minHeight: "30rem",
 });
 
 // const InnerItem = styled(Paper)({
