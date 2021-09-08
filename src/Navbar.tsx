@@ -1,5 +1,5 @@
 import React from "react";
-import { Button, Link, styled } from "@material-ui/core";
+import { Link, styled } from "@material-ui/core";
 import { useHistory } from "react-router";
 
 const FlexContainer = styled("div")(({ theme }) => ({
