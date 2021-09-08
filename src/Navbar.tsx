@@ -1,5 +1,6 @@
 import React from "react";
-import { Link, styled } from "@material-ui/core";
+import { Button, Link, styled } from "@material-ui/core";
+import { useHistory } from "react-router";
 
 const FlexContainer = styled("div")(({ theme }) => ({
   display: "flex",
@@ -11,8 +12,8 @@ const OuterContainer = styled("div")(({ theme }) => ({
   display: "flex",
   height: "3.5rem",
   justifyContent: "space-between",
-  position: "fixed",
-  width: "100%",
+  // position: "fixed",
+  // width: "100%",
 }));
 
 const StyledLink = styled(Link)({
@@ -20,12 +21,23 @@ const StyledLink = styled(Link)({
 });
 
 const Navbar = () => {
+  const history = useHistory();
+
+  const handleRoute = (route: string) => history.push(`/${route}`);
+
   return (
     <OuterContainer>
-      <StyledLink href="/">Home</StyledLink>
+      <StyledLink onClick={() => handleRoute("")}>Home</StyledLink>
       <FlexContainer>
-        <StyledLink href="/fave-quotes">Fave Quotes</StyledLink>
-        <StyledLink href="/resume">Resume</StyledLink>
+        <StyledLink
+          href="/fave-quotes"
+          onClick={() => handleRoute("fave-quotes")}
+        >
+          Fave Quotes
+        </StyledLink>
+        <StyledLink href="/resume" onClick={() => handleRoute("resume")}>
+          Resume
+        </StyledLink>
       </FlexContainer>
     </OuterContainer>
   );

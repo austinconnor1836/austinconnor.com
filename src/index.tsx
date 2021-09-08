@@ -9,7 +9,7 @@ import Navbar from "./Navbar";
 import { DarkTheme } from "./darkTheme";
 import MyDevLessons from "./pages/MyDevLessons";
 import FaveQuotes from "./pages/FaveQuotes";
-import Home from "./pages/Home";
+import App from "./App";
 
 ReactDOM.render(
   <React.StrictMode>
@@ -18,7 +18,7 @@ ReactDOM.render(
       <Router>
         <Switch>
           <Route exact path={"/"}>
-            <Home />
+            <App />
           </Route>
           <Route path={"/resume"}>
             <Resume />

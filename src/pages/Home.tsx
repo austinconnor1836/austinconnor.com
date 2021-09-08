@@ -6,7 +6,7 @@ const Home = () => {
   // const history = useHistory();
 
   // const handleRoute = (route: string) => {
-  //   history.push(`/${route}`);
+  // history.push(`/${route}`);
   // };
 
   return <Intro />;
