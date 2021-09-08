@@ -23,19 +23,21 @@ const StyledLink = styled(Link)({
 const Navbar = () => {
   const history = useHistory();
 
-  const handleRoute = (route: string) => history.push(`/${route}`);
+  const handleRoute = (route: string) => history.push(`${route}`);
 
   return (
     <OuterContainer>
-      <StyledLink onClick={() => handleRoute("")}>Home</StyledLink>
+      <StyledLink href="/" onClick={() => handleRoute("/")}>
+        Home
+      </StyledLink>
       <FlexContainer>
         <StyledLink
           href="/fave-quotes"
-          onClick={() => handleRoute("fave-quotes")}
+          onClick={() => handleRoute("/fave-quotes")}
         >
           Fave Quotes
         </StyledLink>
-        <StyledLink href="/resume" onClick={() => handleRoute("resume")}>
+        <StyledLink href="/resume" onClick={() => handleRoute("/resume")}>
           Resume
         </StyledLink>
       </FlexContainer>
