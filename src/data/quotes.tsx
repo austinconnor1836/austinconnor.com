@@ -40,4 +40,10 @@ export const quotes: IQuoteItem[] = [
     quote:
       "Love looks not with the eyes, but with the mind, / And therefore is winged Cupid painted blind.",
   },
+  {
+    author: "Frederick Douglass",
+    book: "",
+    quote:
+      "The struggle may be a moral one; or it may be a physical one; or it may be both moral and physical, but it must be a struggle. Power concedes nothing without a demand. It never did and it never will...",
+  },
 ];

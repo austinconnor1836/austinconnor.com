@@ -3,13 +3,13 @@ import ReactDOM from "react-dom";
 import { BrowserRouter as Router, Switch, Route } from "react-router-dom";
 import { ThemeProvider } from "@material-ui/core/styles";
 import "./index.css";
-import App from "./App";
 import Resume from "./pages/Resume";
 import reportWebVitals from "./reportWebVitals";
 import Navbar from "./Navbar";
 import { DarkTheme } from "./darkTheme";
 import MyDevLessons from "./pages/MyDevLessons";
 import FaveQuotes from "./pages/FaveQuotes";
+import Home from "./pages/Home";
 
 ReactDOM.render(
   <React.StrictMode>
@@ -18,7 +18,7 @@ ReactDOM.render(
       <Router>
         <Switch>
           <Route exact path={"/"}>
-            <App />
+            <Home />
           </Route>
           <Route path={"/resume"}>
             <Resume />

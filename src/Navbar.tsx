@@ -9,8 +9,10 @@ const OuterContainer = styled("div")(({ theme }) => ({
   backgroundColor: theme.palette.primary.main,
   borderBottom: "0.3rem solid black",
   display: "flex",
-  height: "3rem",
+  height: "3.5rem",
   justifyContent: "space-between",
+  position: "fixed",
+  width: "100%",
 }));
 
 const StyledLink = styled(Link)({
@@ -20,17 +22,11 @@ const StyledLink = styled(Link)({
 const Navbar = () => {
   return (
     <OuterContainer>
-      <StyledLink href="/">
-        {/* <Typography variant="body1">Home</Typography> */}
-        Home
-      </StyledLink>
+      <StyledLink href="/">Home</StyledLink>
       <FlexContainer>
         <StyledLink href="/fave-quotes">Fave Quotes</StyledLink>
         <StyledLink href="/resume">Resume</StyledLink>
       </FlexContainer>
-      {/* <StyledLink href="/load-data-on-initial-render"> */}
-      {/* My Dev Lessons */}
-      {/* </StyledLink> */}
     </OuterContainer>
   );
 };
