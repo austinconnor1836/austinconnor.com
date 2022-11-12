@@ -4,6 +4,7 @@ import { Route, Switch, BrowserRouter as Router } from "react-router-dom"
 import './styles.css'
 import App from './App'
 import { Nav } from "./Styles"
+import VocabList from './components/VocabList'
 
 
 ReactDOM.render(
@@ -12,8 +13,11 @@ ReactDOM.render(
       <Nav />
     <Switch>
       <Route exact path="/">
-    <App />
-    </Route>
+        <App />
+      </Route>
+      <Route path="/gre-vocab-list">
+        <VocabList />
+      </Route>
     </Switch>
     </Router>
   </React.StrictMode>,

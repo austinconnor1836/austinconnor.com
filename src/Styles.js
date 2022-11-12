@@ -66,6 +66,7 @@ function Nav(props) {
     <>
       <NavRight {...props}>
         <StyledLink onClick={() => history.push("/")} to="/">Home</StyledLink>
+        <StyledLink onClick={() => history.push("/gre-vocab-list")} to="/gre-vocab-list">Vocab List</StyledLink>
       </NavRight>
       <Badge style={{ position: "absolute", bottom: 25, left: "50%", transform: "translate3d(-50%,0,0)" }} />
     </>

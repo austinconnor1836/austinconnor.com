@@ -34,6 +34,9 @@ const Navbar = () => {
         <StyledLink href="/fave-quotes" onClick={() => handleRoute('/fave-quotes')}>
           Fave Quotes
         </StyledLink>
+        <StyledLink href="/gre-vocab-list" onClick={() => handleRoute('/gre-vocab-list')}>
+          GRE Vocab List
+        </StyledLink>
       </FlexContainer>
     </OuterContainer>
   )

@@ -166,8 +166,7 @@ export default function App() {
   useEffect(() => void onScroll({ target: scrollArea.current }), [])
   const [pages, setPages] = useState(0)
   return (
-    <>
-            
+    <div id="app-root">
       <Canvas
         shadows
         raycaster={{ enabled: false }}
@@ -201,6 +200,6 @@ export default function App() {
         <div style={{ height: `${pages * 100}vh` }} />
       </div>
       <Loader />
-    </>
+    </div>
   )
 }
