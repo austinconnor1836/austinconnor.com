@@ -34,9 +34,6 @@ const Navbar = () => {
         <StyledLink href="/fave-quotes" onClick={() => handleRoute('/fave-quotes')}>
           Fave Quotes
         </StyledLink>
-        <StyledLink href="/resume" onClick={() => handleRoute('/resume')}>
-          Resume
-        </StyledLink>
       </FlexContainer>
     </OuterContainer>
   )
