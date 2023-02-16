@@ -10,7 +10,7 @@ const state = {
       images: ['/images/BH41NVu.jpg', '/images/fBoIJLX.jpg', '/images/04zTfWB.jpg'],
     },
     { tag: '01', text: `I'm a\nsoftware developer`, images: ['/images/c4cA8UN.jpg', '/images/ajQ73ol.jpg', '/images/gZOmLNU.jpg'] },
-    { tag: '02', text: `but a physicist\nat my core`, images: ['/images/mbFIW1b.jpg', '/images/mlDUVig.jpg', '/images/gwuZrgo.jpg'] },
+    { tag: '02', text: `and a cloud architect.`, images: ['/images/mbFIW1b.jpg', '/images/mlDUVig.jpg', '/images/gwuZrgo.jpg'] },
   ],
   depthbox: [
     {
