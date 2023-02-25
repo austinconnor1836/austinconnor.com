@@ -1,5 +1,6 @@
 {
   "name": "austinconnor.com",
+  "homepage": "https://austinconnor.com",
   "version": "0.1.0",
   "private": true,
   "dependencies": {
@@ -12,6 +13,7 @@
     "@types/react-router": "^5.1.16",
     "chalk": "^5.2.0",
     "debug": "^4.3.4",
+    "gh-pages": "^5.0.0",
     "next": "^13.1.6",
     "react": "18.2.0",
     "react-dev-utils": "^12.0.1",
@@ -26,6 +28,8 @@
     "wouter": "2.7.4"
   },
   "scripts": {
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -b main -d build",
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
