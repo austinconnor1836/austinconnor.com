@@ -1,7 +1,6 @@
 import React from "react"
 import { Link } from "wouter"
 import "styled-components/macro"
-import { Badge } from "@pmndrs/branding"
 import { a } from "@react-spring/web"
 import styled from "styled-components"
 import { useHistory } from "react-router"
@@ -68,7 +67,6 @@ function Nav(props) {
         <StyledLink onClick={() => history.push("/")} to="/">Home</StyledLink>
         <StyledLink onClick={() => history.push("/gre-vocab-list")} to="/gre-vocab-list">Vocab List</StyledLink>
       </NavRight>
-      <Badge style={{ position: "absolute", bottom: 25, left: "50%", transform: "translate3d(-50%,0,0)" }} />
     </>
   )
 }
