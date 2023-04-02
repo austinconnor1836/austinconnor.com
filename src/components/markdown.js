@@ -3062,6 +3062,11 @@ Vicissitude:
 
 Vilify: spread negative information about
 
+Vitiate:
+
+- **verb**: Spoil or impair the quality or efficiency of.
+- *The insurance is **vitiated** because of foolish acts on the part of the tenant*.
+
 Virago:
 
 - **noun**: an ill-tempered or violent woman
