@@ -1514,6 +1514,10 @@ Heyday:
 
 - **noun**: the pinnacle or top of a time period or career
 
+Highfalutin:
+
+- **adjective**: (especially of speech, writing, or ideas) pompous or pretentious.
+
 Histrionic:
 
 - **adjective**: to be overly theatrical
