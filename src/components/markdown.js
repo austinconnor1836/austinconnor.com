@@ -2494,6 +2494,11 @@ Pundit:
 
 - **noun**: someone who has been admitted to membership in a scholarly field
 
+Preponderant:
+
+- **adjective**: Predominant in influence, number, or importance.
+- *The preponderant influence of the US within the alliance*.
+
 Presentiment:
 
 - **noun**: a feeling of evil to come
