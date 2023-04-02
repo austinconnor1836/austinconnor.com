@@ -17,6 +17,11 @@ Abjure:
 - **verb**: formally reject or give up (as a belief)
 - *While the church believed that Galileo **abjured** the heliocentric theory under threat of torture, he later wrote a book clearly supporting the theory.*
 
+Abysmal:
+
+- **adjective**: extremely bad
+- *Coach Ramsey took his newest player off the field after watching a few painful minutes of her **abysmal** performance*.
+
 Aboveboard:
 
 - **adjective**: open and honest
@@ -168,6 +173,7 @@ Antipathy:
 Antiquated:
 
 - **adjective**: old-fashioned; belonging to an earlier period in time
+- *Aunt Betty had **antiquated** notions about marriage, believing that a man should court a woman for at least a year before receiving a kiss*.
 
 Antithetical:
 
@@ -401,6 +407,11 @@ Baleful:
 - **adjective**: threatening or foreshadowing evil or tragic developments
 - *Movies often use storms or rain clouds as a **baleful** omen of evil events that will soon befall the main character.*
 
+Balk:
+
+- **verb**: refuse to comply
+- *The students were willing to clean up the broken glass, but when the teacher asked them to mop the entire floor, they **balked**, citing reasons why they needed to leave*.
+
 Banal:
 
 - **adjective**: predictable; clichéd; boring
@@ -437,6 +448,11 @@ Bereft:
 - *After 64 years of marriage, William was **bereft** after the death of his wife.*
 - **adjective**: sorrowful through loss or deprivation
 - *"You are not **bereft** if you haven't played on your Xbox in the past week," his mother said.*
+
+Besiege:
+
+- **verb**: harass, as with questions or requests; cause to feel distressed or worried
+- *After discovering a priceless artifact in her backyard, Jane was **beseiged** by phone calls, emails, and reporters all trying to buy, hold or see the rare piece of history*.
 
 Besotted:
 
@@ -672,6 +688,11 @@ Cogent:
 - **adjective**: (of an argument or case) clear, logical, and convincing.
 - *they put forward cogent arguments for British membership*
 
+Colossal:
+
+- **adjective**: so great in size or force or extent as to elicit awe
+- *Few appreciate the **colossal** scale of the sun: if hollow, it could contain a million Earths*.
+
 Commendable:
 
 - **adjective**: worthy of high praise
@@ -690,6 +711,11 @@ Complaisant:
 
 - **adjective**: showing a cheerful willingness to do favors for others
 - *On her first day at the job, Annie was **complaisant**, fulfilling every request of her new employer and anticipating future requests.*
+
+Complementary:
+
+- **adjective**: enhancing each other's qualities (for two things or more).
+- *The head waiter was careful to tell the amateur diners that red wine was **complemntary** with beef, each bringing out subtle taste notes in the other*.
 
 Compliant:
 
@@ -751,6 +777,11 @@ Connoisseur:
 - ********noun********: an informed and astute judge in matters of taste
 - *a **connoisseur of** music*
 
+Constraint:
+
+- **noun**: something that limits or restricts
+- *We don't have many resources, so we'll have to work with some very tight **constraints***.
+
 Construe:
 
 - **verb**: interpreted in a particular way
@@ -785,10 +816,15 @@ Conundrum:
 - **noun**: a confusing and difficult problem or question.
 - *one of the most difficult conundrums for the experts*
 
+Convivial:
+
+- **adjective**: describing a lively atmosphere
+- *The wedding reception was **convivial**; friends who hadn't seen each other for ages drank and ate together before heading to the dance floor*.
+
 Convoluted:
 
 - **adjective**: highly complex or intricate
-- ******************adjective******************: complex or complicated
+- **adjective**: complex or complicated
 - *its convoluted narrative encompasses all manner of digressions*
 
 Corollary:
@@ -799,8 +835,7 @@ Corollary:
 Cosmopolitan:
 
 - **adjective**: comprising many cultures; global in reach and outlook
-    
-    *There are few cities in the world as diverse and **cosmopolitan** as New York.*
+- *There are few cities in the world as diverse and **cosmopolitan** as New York.*
     
 
 Cosset:
@@ -1245,7 +1280,10 @@ Enthrall:
 Enumerate:
 
 - **verb**: determine the number or amount of
+- *The survey **enumerates** the number of happy workers and the number of unhappy workers*.
+
 - **verb**: specify individually, one by one
+- *I sat and listened as she **enumerated** all of the things she did not like about the past three months*.
 
 Ephemeral:
 
@@ -1344,6 +1382,11 @@ Excoriate:
 
 - **verb**: to critics very harshly
 
+Excruciating:
+
+- **adjective**: extremely painful
+- *After the boulder rolled a couple of feet, pining my friend's arm, he experienced **excruciating** pain*.
+
 Execrate:
 
 - **verb**: to curse and hiss at
@@ -1379,7 +1422,7 @@ Expurgate:
 
 Extemporaneous:
 
-- ********************************adjective:******************************** improvised; done without preparation
+- **adjective**: improvised; done without preparation
 
 Extenuating:
 
@@ -1427,7 +1470,7 @@ Fete:
 
 Filibuster:
 
-- ********************noun:******************** intentional obstruction, especially using prolonged speechmaking to delay legislative action
+- **noun**: intentional obstruction, especially using prolonged speechmaking to delay legislative action
 
 Firebrand:
 
@@ -1533,6 +1576,11 @@ Halcyon:
 
 - **adjective**: idyllically calm and peaceful; suggesting happy tranquility; marked by peace and prosperity
 - *The first decade after WWI was a **halcyon** period in America with new-found wealth and rapidly improving technology.*
+
+Hamper:
+
+- **verb**: prevent the progress or free movement of
+- *As the rain water began to collect in pools on the highway, it began to **hamper** the flow of traffic*.
 
 Hamstrung:
 
@@ -1968,9 +2016,14 @@ Malingerer:
 - **noun**: someone shirking their duty by pretending to be sick or incapacitated
 - *At one time, our country was full of hardworking respectful people, but now it seems that everyone is a **malingerer** with little inclination to work.*
 
+Malodorous:
+
+- **adjective**: having an unpleasant smell
+- *Some thermally active fountains spew sulfur fumes-the air around them is sometimes so **malodorous** that many have to plug their noses*.
+
 Martial:
 
-- ******************adjective******************: associated with war and the armed forces
+- **adjective**: associated with war and the armed forces
 
 Martinet:
 
@@ -2022,6 +2075,11 @@ Misattribute:
 - **verb**: To erroneously attribute; to falsely ascribe; used especially of authorship.
 - *I made a mistake; I **misattributed** "Crime and Punishment" to Leo Tolstoy when it was actually written by Fyodor Dostoyevsky.*
 
+Misogynist:
+
+- **noun**: a person who dislikes women in particular
+- *Many have accused Hemingway of being a quiet **misogynist**, but recently unearthed letters gainsay this belief*.
+
 Mettlesome:
 
 - **adjective**: filed with courage or valor
@@ -2053,11 +2111,16 @@ Moribund
 
 Morose:
 
-**adjective**: ill-tempered and not inclined to talk; gloomy
+- **adjective**: ill-tempered and not inclined to talk; gloomy
+
+Morph:
+
+- **verb**: To undergo dramatic change in a seamless and barely noticeable fashion.
+- *The earnestness of the daytime talk shows of the 1970's has **morphed** into something far more sensational and vulgar: today guests actually stand up and threaten to take swings at one another*.
 
 Mundane:
 
-- ********************************adjective:******************************** of the world; typical of or concerned with the ordinary
+- **adjective:** of the world; typical of or concerned with the ordinary
 
 Mulct:
 
@@ -2408,6 +2471,11 @@ Provident:
 
 Provincial: characteristic of a limited perspective; not fashionable or sophisticated
 
+Provisional:
+
+- **adjective**: under terms not final or fully worked out or agreed upon
+- *Until the corporate office hands down a definitive decision on use of the extra offices, we will share their use in a **provisional** arrangement*.
+
 Puerile:
 
 - **adjective**: of or characteristic of a child; displaying or suggesting a lack of maturity
@@ -2467,6 +2535,11 @@ Quail:
 Qualify:
 
 - **verb**: to make less severe; to limit (a statement)
+
+Qualm:
+
+- **noun**: uneasiness about the fitness of an action
+- *While he could articulate no clear reason why Harkner's plan would fail, he nevertheless felt **qualms** about committing any resources to it*.
 
 Quip:
 
@@ -2537,6 +2610,11 @@ Refute:
 
 - **verb**: prove to be false or incorrect
 
+Relegate:
+
+- **verb**: assign to a lower position
+- *When Dexter was unable to fulfill his basic duties, instead of firing him, the boss **relegated** him to kitchen cleanup*.
+
 Remonstrate:
 
 - **verb**: to make objections while pleading
@@ -2561,6 +2639,11 @@ Reprove:
 Rescind:
 
 - **verb**: cancel officially
+
+Resignation:
+
+- **noun**: the acceptance of something unpleasant that can't be avoided
+- *Since Jack could not think of a convincing reason why he had to miss the seminar, he attended it with a sense of **resignation***.
 
 Respite:
 
@@ -2629,6 +2712,11 @@ Simulacrum:
 Snide:
 
 - **adjective**: expressive of contempt; derogatory or mocking in an indirect way
+
+Snub:
+
+- **verb**: refuse to acknowledge; reject outright and bluntly
+- *Wheeler was completely qualified for the committee, but the board **snubbed** him, choosing an obviously lesser qualified candidate instead*.
 
 Solecism:
 
@@ -2745,6 +2833,11 @@ Surfeit:
 
 - **noun**: an excessive amount of something
 - *There was no such thing as a **surfeit** of shopping for Nancy--she could stay at the outlet stores from opening to closing time.*
+
+Surly:
+
+- **adjective**: bad-tempered and unfriendly
+- *The porter left with a **surly** expression*.
 
 Surreptitious:
 
@@ -2920,6 +3013,11 @@ Unviable:
 Vacillate:
 
 - **verb**: be undecided about something; waver between conflicting positions or courses of action
+
+Vanquish:
+
+- **verb**: come out better in a competition, race, or conflict
+- *For years, Argentina would dominate in World Cup qualifying matches, only to be **vanquished** by one of the European countries during the late stages of the tournament*.
 
 Vaunted:
 
