@@ -180,6 +180,7 @@ Apathy:
 Aphorism:
 
 - **noun**: a short instructive saying about a general truth
+- *Nietzsche was known for using **aphorisms**, sometimes encapsulating a complex philosophical thought in a mere sentence*.
 
 Apothegm:
 
@@ -461,6 +462,7 @@ Bombast:
 Boorish:
 
 - **adjective**: ill-mannered and coarse or contemptible in behavior or appearance
+- *Bukowski was known for being a **boorish** drunk and alienating close friends and family*.
 
 Bowdlerize:
 
@@ -562,6 +564,14 @@ Cardinal:
 
 - **adjective**: of primary importance; fundamental
 
+Carping:
+
+- **noun**: persistently petty and unjustified criticism
+- *The author was very upset about the constant **carping** of his critics who posted reviews on social media*.
+
+- **adjective**: continually complaining about trivial matters; hypercritical
+- *Although my mother seemed like a carping **carping** critic during my teenage years, her advise turned out to be wise and useful later in life*.
+
 Cataclysm:
 
 - **noun**: an event resulting in great loss and misfortune
@@ -596,7 +606,7 @@ Celerity:
 
 Censure:
 
-- ******************verb:****************** to criticize severely; to officially rebuke
+- **verb:** to criticize severely; to officially rebuke
 
 Chagrin:
 
@@ -617,8 +627,13 @@ Chauvinist:
 Chicanery:
 
 - **noun**: the use of trickery to achieve a political, financial, or legal purpose.
-- ********noun********: trickery or subterfuge
+- **noun**: trickery or subterfuge
 - *an underhanded person who schemes corruption and political chicanery behind closed doors*
+
+Chivalrous:
+
+- **adjective**: being attentive to women like an ideal knight
+- *Medieval tales are full of stories of **chivalry**, in which a young knight must commit deeds of heroism to win the hand of a fair maiden*.
 
 Chimera:
 
@@ -686,6 +701,11 @@ Complicit:
 
 - **adjective**: Associated with or participating in an activity, especially one of a questionable nature.
 - *While the grand jury cleared the senator of all criminal charges, in the public mind he was still **complicit** in the corruption.*
+
+Compound:
+
+- **verb**: make more intense, stronger, or more marked
+- *The scrutiny of the politician was only **compounded** even more after the revelation of his hush money payments occurring on the eve of the election.*
 
 Conciliatory:
 
@@ -843,10 +863,15 @@ Debonair:
 - **adjective**: having a sophisticated charm
 - *James Bond is known for his good looks, high tech gadgets, and **debonair** manner.*
 
-Deign:
+Debunk:
 
-- **verb**: do something that one considers to be below one’s dignity
-- *The master of the house never **deigned** to answer questions from the servants.*
+- **verb**: expose as false ideas and claims, especially while ridiculing
+- *Richard Dawkins tries to **debunk** religious belief, but his ridicule tends to push people away from his points rather than convince them.*
+
+Decimation:
+
+- **noun**: destroying or killing a large part of the population
+- *The **decimation** after atomic bombs were dropped on Hiroshima and Nagasaki is incomprehensible*.
 
 Decorum:
 
@@ -865,6 +890,11 @@ Deference:
 Defray:
 
 - **verb**: to help pay the cost of, either in part or full
+
+Deign:
+
+- **verb**: do something that one considers to be below one’s dignity
+- *The master of the house never **deigned** to answer questions from the servants.*
 
 Delineate:
 
@@ -945,6 +975,14 @@ Dichotomy:
 - **noun**: a division or contrast between two things that are or are represented as being opposed or entirely different.
 - *a rigid **dichotomy between** science and mysticism*
 
+Differentiate:
+
+- **verb**: be a distinctive feature, attribute, or trait (sometimes in positive sense)
+- *Mozart's long melodic lines **differentiate** his compositions from other works of late 18th century music*.
+
+- **verb**: evolve so as to lead to a new species or develop in a way most suited to the environment
+- *Animals on Madagascar **differentiated** from other similar animal species due to many years of isolation on the island*.
+
 Diffidence:
 
 - **noun**: modesty or shyness resulting from a lack of self-confidence.
@@ -955,9 +993,14 @@ Diffuse:
 - **verb**: spread or cause to spread over a wide area or among a large number of people.
 - *technologies diffuse rapidly*
 
-Dilatory
+Dilatory:
 
 - **adjective**: wasting time
+
+Dilapidated:
+
+- **adjective**: in terrible condition
+- *The main house has been restored but the gazebo is still **dilapidated** and unusable*.
 
 Dilettante:
 
@@ -997,6 +1040,11 @@ Discredit:
 
 - **verb**: harm the good reputation of (someone or something).
 - *his remarks were taken out of context in an effort to discredit him*
+
+Discreet:
+
+- **adjective**: careful to protect one's speech or actions in order to avoid offense or draw attention
+- *The professor thought that he was **discreet**, subtly wiping the stain off of his shirt, but as soon as he stepped off the podium a heckler in the audience burst out, "You missed a spot"*.
 
 Discrepancy:
 
@@ -1425,6 +1473,11 @@ Furtive:
 
 - **adjective**: marked by quiet and caution and secrecy; taking pains to avoid being observed
 
+Futile:
+
+- **adjective**: producing no result or effect; unproductive of success
+- *Any attempts to stop the operations of the Death Star will be **futile***.
+
 Gaffe:
 
 - **noun**: a socially awkward or tactless act
@@ -1504,7 +1557,8 @@ Hedge:
 
 - **verb**: to limit or qualify a statement; to avoid making a direct statement
 
-Heretic: a person who holds unorthodox opinions in any field (not merely religion)
+Heretic:
+- **noun**: a person who holds unorthodox opinions in any field (not merely religion)
 
 Heterodoxy:
 
@@ -1583,7 +1637,14 @@ Impetuous:
 - **adjective**: characterized by undue haste and lack of thought or deliberation
 - *Herbert is rarely **impetuous**, but on the spur of the moment, he spent thousands of dollars on a motorcycle today.*
 
-Incorrigible: impervious to correction by punishment
+Inarticulate:
+
+- **adjective**: without or deprived of the use of speech or words
+- *Although a brilliant economist, Professor Wilson was completely **inarticulate**, a terrible lecturer*.
+
+Incorrigible:
+
+- **adjective**: impervious to correction by punishment
 
 Ingratiate:
 
@@ -1633,6 +1694,11 @@ Immure:
 - **verb**: to enclose, usually in walls
 - *The modern supermarket experience makes many feel claustrophobic, as they are **immured** in walls upon walls of products.*
 
+Inanity:
+
+- **noun**: total lack of meaning or ideas
+- *Bill's poem was nothing more than a list of impressive sounding words, so there was no point in trying to take meaning from the **inanity**.*
+
 Inchoate:
 
 - **adjective**: only partly in existence; imperfectly formed
@@ -1663,11 +1729,6 @@ Inequity:
 - **noun**: injustice by virtue of not conforming with rules or standards
 - *After decades of racial **inequity**, the "separate but equal" doctrine was successfully overturned.*
 
-Inimitable:
-
-- **adjective**: defying imitation; matchless
-- *Mozart's music follows a clear pattern that, anyone could imitate, but his music gives an overall sense of effortlessness that is **inimitable**.*
-
 Infelicitous:
 
 - **adjective**: inappropriate
@@ -1679,7 +1740,12 @@ Ingenuity:
 
 Ingenuous:
 
-- **********************************adjective:********************************** artless; frank and candid; lacking in sophistication
+- **adjective:** artless; frank and candid; lacking in sophistication
+
+Inimitable:
+
+- **adjective**: defying imitation; matchless
+- *Mozart's music follows a clear pattern that, anyone could imitate, but his music gives an overall sense of effortlessness that is **inimitable**.*
 
 Inimical:
 
@@ -1690,10 +1756,10 @@ Inimitable:
 
 - **adjective**: defying imitation; matchless
 
-Inanity:
+Inkling:
 
-- **noun**: total lack of meaning or ideas
-- *Bill's poem was nothing more than a list of impressive sounding words, so there was no point in trying to take meaning from the **inanity**.*
+- **noun**: a slight suggestion or vague understanding
+- *Lynne speaks four Romance languages, but she doesn't have an **inkling** about how East Asian languages are structured*.
 
 Impervious:
 
@@ -1799,6 +1865,11 @@ Juggernaut:
 Kowtow:
 
 - **verb**: to bow or act in a subservient manner
+
+Laborious:
+
+- **adjective**: characterized by effort to the point of exhaustion; especially physical effort
+- *The most **laborious** job I've had was working 20 hours a day as a fisherman in King Salmon, Alaska*.
 
 Lacerate:
 
@@ -2136,6 +2207,11 @@ Panegyric:
 
 - **noun**: a formal expression of praise
 - *Dave asked Andrew to do just a simple toast, but Andrew launched into a full **panegyric**, enumerating a complete list of Dave's achievements and admirable qualities.*
+
+Paradoxical:
+
+- **adjective**: seemingly contradictory but nonetheless possibly true
+- *That light could be both a particle and a wave seems **paradoxical**, but nonetheless, it is true*.
 
 Paragon:
 
@@ -2617,9 +2693,7 @@ Solicitude:
 Sordid:
 
 - **adjective**: involving ignoble actions and motives; arousing moral distaste and contempt; foul and run-down and repulsive
-    
-    *The nightly news simply announced that the senator had had an affair, but the tabloid published all the **sordid*** *details of the interaction.*
-    
+- *The nightly news simply announced that the senator had had an affair, but the tabloid published all the **sordid*** *details of the interaction.*
 
 Spartan:
 
@@ -2634,6 +2708,7 @@ Spurious:
 Staid:
 
 - **adjective**: characterized by dignity and propriety
+- *Frank came from a **staid** environment, so he was shocked that his college roommate sold narcotics.
 
 Stalwart:
 
@@ -2648,9 +2723,14 @@ Stringent:
 
 - **adjective**: demanding strict attention to rules and procedures
 
+Stymie:
+
+- **verb**: hinder or prevent the progress or accomplishment of
+- *Any legislation produced by their party's opposition was **stymied***.
+
 Subjoin:
 
-- ********verb********: add (comments or supplementary information) at the end of a speech or text.
+- **verb**: add (comments or supplementary information) at the end of a speech or text.
 
 Subterfuge:
 
