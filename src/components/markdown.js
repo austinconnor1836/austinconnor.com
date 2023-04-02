@@ -2752,6 +2752,11 @@ Surfeit:
 - **noun**: an excessive amount of something
 - *There was no such thing as a **surfeit** of shopping for Nancy--she could stay at the outlet stores from opening to closing time.*
 
+Surmise:
+
+- **verb**: Suppose that something is true without having evidence to confirm it.
+- *He **surmised** that something must be wrong*.
+
 Sangfroid:
 
 - **noun**: calmness or poise in difficult situations
