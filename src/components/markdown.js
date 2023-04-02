@@ -1010,6 +1010,11 @@ Dichotomy:
 - **noun**: a division or contrast between two things that are or are represented as being opposed or entirely different.
 - *a rigid **dichotomy between** science and mysticism*
 
+Dictum:
+
+- **noun**: A formal pronouncement from an authoritative source.
+- *The **dicta** of High Court Judges*.
+
 Differentiate:
 
 - **verb**: be a distinctive feature, attribute, or trait (sometimes in positive sense)
