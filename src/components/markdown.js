@@ -2895,6 +2895,11 @@ Tendentious:
 
 - **adjective**: likely to lean towards a controversial view
 
+Thoroughgoing:
+
+- **adjective**: Involving or attending to every detail or aspect of something.
+- *A **thoroughgoing** reform of the whole economy*.
+
 Tortuous:
 
 - full of twists and turns
