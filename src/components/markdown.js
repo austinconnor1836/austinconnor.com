@@ -1,6 +1,7 @@
 export const markdown = `Abate:
 
 - **verb**: (of something perceived as hostile, threatening, or negative) become less intense or widespread.
+- **verb**: to decrease; reduce
 
 Aberrant:
 
