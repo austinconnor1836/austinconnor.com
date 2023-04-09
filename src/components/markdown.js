@@ -170,6 +170,9 @@ Alleviate:
 - **verb**: make (suffering, deficiency, or a problem) less severe.
 - *he couldn't prevent her pain, only alleviate it*
 
+Allure:
+- **noun**: the power to entice by charm
+
 Altruism:
 
 - **noun**: the quality of unselfish concern for the welfare of others
@@ -193,10 +196,25 @@ Ameliorate:
 
 - **verb**: make something bad better
 
+Amenable:
+
+- **adjective**: agreeable; cooperative; suited
+- He was **amenable** to suggestions to improve his essay.
+
+Amenity:
+
+- **noun**: something that increases comfort
+- Indoor plumbing is considered an **amenity** to many in third world countries.
+
 Anachronism:
 
 - **noun**: something that is inappropriate for the given time period (usually something old).
 - *Dressed in 15th century clothing each day, Edward was a walking **anachronism**.*
+
+Analgesic:
+
+- **noun**: medication that reduces or eliminates pain
+- Ibuprofen is a very popular **analgesic** usually taken after surgeries.
 
 Analogous:
 
@@ -228,6 +246,10 @@ Anodyne:
 - **adjective**: inoffensive
 - *Wilbur enjoyed a spicy Mexican breakfast, but Jill preferred a far more **anodyne** meal in the mornings.*
 
+Anomalous:
+
+- **adjective**: irregular; deviating from the norm
+
 Antedate:
 
 - **verb**: precede in time
@@ -254,11 +276,37 @@ Antithetical:
 Apathy:
 
 - **noun**: an absence of emotion or enthusiasm
+- **noun**: indifference
+
+Apex:
+
+- **noun**: the highest point
 
 Aphorism:
 
 - **noun**: a short instructive saying about a general truth
 - *Nietzsche was known for using **aphorisms**, sometimes encapsulating a complex philosophical thought in a mere sentence*.
+
+Aphoristic:
+
+- **adjective**: something that is concise and instructive of a general truth or principle
+
+Aplomb:
+
+- **noun**: great coolness and composure under strain
+- *Nancy acted with **aplomb** during dangerous situations--she once calmly climbed up an oak tree to save a cat.*
+
+Apocryphal:
+
+- **adjective**: being of questionable authenticity
+
+Apogee:
+
+- **noun**: the point in an orbit most distant from the body being orbited; the highest point
+
+Apostate:
+
+- **noun**: a person who has abandoned a religious faith or cause
 
 Apothegm:
 
@@ -269,6 +317,11 @@ Appease:
 
 - **verb**: pacify by acceding to the demands of
 - *amendments have been added to appease local pressure groups*
+
+Apposite:
+
+- **adjective**: remarkably appropriate
+- *For a writer with such quick wit, Jonathan Swift has a rather **apposite** name.*
 
 Apprise:
 
@@ -297,32 +350,6 @@ Appurtenant:
 - **adjective**: supplying added support
 - *In hiking Mt. Everest, sherpas are **appurtenant**, helping climbers both carry gear and navigate treacherous paths.*
 
-Aphoristic:
-
-- **adjective**: something that is concise and instructive of a general truth or principle
-
-Aplomb:
-
-- **noun**: great coolness and composure under strain
-- *Nancy acted with **aplomb** during dangerous situations--she once calmly climbed up an oak tree to save a cat.*
-
-Apocryphal:
-
-- **adjective**: being of questionable authenticity
-
-Apogee:
-
-- **noun**: the highest point
-
-Apostate:
-
-- **noun**: a person who has abandoned a religious faith or cause
-
-Apposite:
-
-- **adjective**: remarkably appropriate
-- *For a writer with such quick wit, Jonathan Swift has a rather **apposite** name.*
-
 Arch:
 
 - **adjective**: to be deliberately teasing
@@ -348,7 +375,7 @@ Archaic:
 Arduous:
 
 - **adjective**: difficult and requiring a lot of effort
-- ******************adjective******************: strenuous, taxing; requiring significant effort
+- **adjective**: strenuous, taxing; requiring significant effort
 
 Arriviste:
 
@@ -411,7 +438,7 @@ Attenuate:
 Audacious:
 
 - **adjective**: showing a willingness to take surprisingly bold risks.
-- ******************adjective******************: daring and fearless; recklessly bold
+- **adjective**: daring and fearless; recklessly bold
 - *a series of audacious takeovers*
 
 Austere:
@@ -420,7 +447,7 @@ Austere:
     - like asperity
 - **adjective**: unadorned in style or appearance
 - **adjective**: practicing self-denial
-- ******************adjective******************: without adornment; bare; severely simple; ascetic
+- **adjective**: without adornment; bare; severely simple; ascetic
 
 Autocratic:
 
@@ -2983,6 +3010,11 @@ Tenacious:
 Tendentious:
 
 - **adjective**: likely to lean towards a controversial view
+
+Terse:
+
+- **adjective**: sparing in the use of words; abrupt
+- *a **terse** statement*
 
 Thoroughgoing:
 
