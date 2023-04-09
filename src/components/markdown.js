@@ -86,16 +86,25 @@ Accretion:
 Accrue:
 
 - **verb**: to accumulate; grow by additions  
-  *Regulating the growth of large companies when they begin to become monopolistic is a difficult task for government in a capitalist county; if it limits monopolies too much, the nation's firms could become less competitive than foreign companies that enjoy the advantages accruing from greater monopolies.*
+  *Regulating the growth of large companies when they begin to become monopolistic is a difficult task for government in a capitalist county; if it limits monopolies too much, the nation's firms could become less competitive than foreign companies that enjoy the advantages **accruing** from greater monopolies.*
 
 Adamant:
 
 - **adjective**: refusing to change one’s mind
+- **adjective**: uncompromising; unyielding
 
 Adjudicate:
 
 - **verb**: to serve as a judge in a competition; to arrive at a judgment or conclusion
 - *Only those with the most refined palates were able to **adjudicate** during the barbeque competition.*
+
+Adjunct:
+
+- **adjective**: something added, attached, or joined
+
+Admonish:
+
+- **verb**: to caution or reprimand
 
 Admonitory:
 
@@ -110,6 +119,11 @@ Aesthetic:
 
 - **adjective**: concerned with beauty or the appreciation of beauty.
 - *the pictures give great aesthetic pleasure*
+
+Affected:
+
+- **adjective**: pretentious, phony
+- **adjective**: artificial, pretentious, and designed to impress.
 
 Afford:
 
