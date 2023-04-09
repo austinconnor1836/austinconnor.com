@@ -3044,6 +3044,11 @@ Unassailable:
 - **adjective**: immune to attack; without flaws
 - *Professor Williams is so self-assured as to seem arrogant, presenting each and every opinion as an **unassailable** fact.*
 
+Undergird:
+
+- **verb**: provide support or a firm basis for.
+- *that's a philosophy that needs to **undergird** retailers' business plans this year*
+
 Underscore:
 
 - **verb**: give extra weight to (a communication)
