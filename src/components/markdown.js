@@ -85,7 +85,7 @@ Accretion:
 
 Accrue:
 
-- **verb**: to accumulate; grow by additions
+- **verb**: to accumulate; grow by additions  
   *Regulating the growth of large companies when they begin to become monopolistic is a difficult task for government in a capitalist county; if it limits monopolies too much, the nation's firms could become less competitive than foreign companies that enjoy the advantages accruing from greater monopolies.*
 
 Adamant:
