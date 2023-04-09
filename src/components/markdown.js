@@ -125,15 +125,24 @@ Affected:
 - **adjective**: pretentious, phony
 - **adjective**: artificial, pretentious, and designed to impress.
 
+Affinity:
+
+- **noun**: fondness; liking; similarity
+
 Afford:
 
 - **verb**: provide with an opportunity
 - *The summit of Mt. Kilimanjaro **affords** a panoramic view that encompasses both Tanzania and Kenya.*
 
+Aggrandize:
+
+- **verb**: to make larger or greater
+
 Aggregate:
 
 - **noun**: a whole formed by combining several (typically disparate) elements.
 - *the council was an aggregate of three regional assemblies*
+- **adjective**: amounting to a whole; total
 
 Alacrity:
 
@@ -2528,6 +2537,11 @@ Provisional:
 
 - **adjective**: under terms not final or fully worked out or agreed upon
 - *Until the corporate office hands down a definitive decision on use of the extra offices, we will share their use in a **provisional** arrangement*.
+
+Pulchritude:
+
+- **noun**: beauty.
+- *the irresistable pulchritude of her friend*
 
 Puerile:
 
