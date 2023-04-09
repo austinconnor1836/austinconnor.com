@@ -13,6 +13,17 @@ Abeyance:
 - *… new contracts on all but one existing mine … are in **abeyance** pending the outcome of a government inquiry to be carried out into Australia's role in the nuclear fuel cycle.
 Vimala Sarma*
 
+Abdicate:
+
+- **verb**: to give up a position, right, or power
+- **verb**: (of a monarch) renounce one's throne
+- **verb**: fail to fulfil or undertake (a responsibility or duty)
+
+Abject:
+
+- **adjective**: miserable; pitiful
+- *Many paupers live in **abject** poverty*.
+
 Abjure:
 
 - **verb**: formally reject or give up (as a belief)
