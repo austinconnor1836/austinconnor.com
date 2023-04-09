@@ -155,6 +155,16 @@ Alacrity:
 - ********noun********: eager and enthusiastic willingness
 - *she accepted the invitation with alacrity*
 
+Allay:
+
+- **verb**: to lessen; ease; soothe
+- *The newly developed vaccine **allayed** the fears of many people of a prolonged outbreak*.
+
+Alloy:
+
+- **noun**: a combination; a mixture of two or more metals
+- **Alloys** are formulated to create properties that natural metals or other substances do not have.
+
 Alleviate:
 
 - **verb**: make (suffering, deficiency, or a problem) less severe.
