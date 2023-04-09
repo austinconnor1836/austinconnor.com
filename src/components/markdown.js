@@ -144,6 +144,11 @@ Aggregate:
 - *the council was an aggregate of three regional assemblies*
 - **adjective**: amounting to a whole; total
 
+Agog:
+
+- **adjective**: very eager or curious to hear or see something.
+- *I'm all **agog***
+
 Alacrity:
 
 - **noun**: brisk and cheerful readiness.
@@ -2309,6 +2314,8 @@ Palatable:
 
 - **adjective**: acceptable to the taste or mind
 - *Mikey didn't partake much in his friends' conversations, but found their presence **palatable**.*
+- **adjective**: (of an action or proposal) acceptable or satisfactory.
+- *a device that made increased taxation more **palatable***
 
 Palaver:
 
@@ -2487,6 +2494,11 @@ Preemptive:
 Presaging:
 
 - (of an event) be a sign or warning that (something, typically something bad) will happen.
+
+Prescient:
+
+- **adjective**: having or showing knowledge of events before they take place.
+- *a **prescient** warning*
 
 Primacy:
 
