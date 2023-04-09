@@ -2897,6 +2897,11 @@ Subjoin:
 
 - **verb**: add (comments or supplementary information) at the end of a speech or text.
 
+Subsume:
+
+- **verb**: include or absorb (something) in something else.
+- *most of these phenomena can be subsumed under two broad categories*
+
 Subterfuge:
 
 - **noun**: something intended to misrepresent the true nature of an activity
