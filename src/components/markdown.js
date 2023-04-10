@@ -1099,6 +1099,11 @@ Cupidity:
 
 - greed for money
 
+Cursory:
+
+- **adjective**: hasty and therefore not thorough or detailed
+- *a **cursory** glance at the figures*
+
 Daunt:
 
 - **verb**: make (someone) feel intimidated or apprehensive.
