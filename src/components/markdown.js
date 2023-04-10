@@ -672,10 +672,19 @@ Bombast:
 - **noun**: high-sounding language with little meaning, used to impress people.
 - *the bombast of gung-ho militarism*
 
+Bombastic:
+
+- **adjective**: pompous; using inflated language
+
 Boorish:
 
 - **adjective**: ill-mannered and coarse or contemptible in behavior or appearance
 - *Bukowski was known for being a **boorish** drunk and alienating close friends and family*.
+- **adjective**: rude; insensitive
+
+Bovine:
+
+- **adjective**: cowlike
 
 Bowdlerize:
 
@@ -685,6 +694,7 @@ Bowdlerize:
 Brazen:
 
 - **adjective**: unrestrained by convention or propriety
+- **adjective**: bold; shameless
 
 Bridle:
 
@@ -698,6 +708,11 @@ Bristle:
 - **verb**: react in an offended or angry manner
 - *As we discussed the painting, I noticed the artist's wife **bristling** at our criticisms, ready to defend her husband's work.*
 
+Broach:
+
+- **verb**: to mention for the first time
+- *He **broached** the sensitive topic with his subordinates*.
+
 Broadside:
 
 - **noun**: a strong verbal attack
@@ -706,7 +721,6 @@ Broadside:
 Bromide:
 
 - **noun**: a trite or obvious remark
-- *The amount of GRE vocabulary he used increased with his years--by the time he was 60, his novels were so **turgid** that even his diehard fans refused to read them.*
 
 Brook:
 
@@ -722,6 +736,10 @@ Brusquely:
 
 - **adverb**: in a blunt, direct manner
 
+Bucolic:
+
+- **adjective**: characteristic of the countryside; rustic; pastoral
+
 Bumbling:
 
 - **adjective**: lacking physical movement skills, especially with the hands
@@ -732,7 +750,7 @@ Burgeon:
 
 Burnish:
 
-- **verb**: polish (something, especially metal) by rubbing.
+- **verb**: to polish (something, especially metal) by rubbing.
 - *to burnish copper, I would probably use a drill with a pad attached to the end*
 
 Buttress:
@@ -2410,6 +2428,7 @@ Obtain:
 Obviate:
 
 - **verb**: to anticipate and make unnecessary
+- **verb**: remove (a need or difficulty)
 
 Officious:
 
