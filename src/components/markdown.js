@@ -1107,7 +1107,7 @@ Cursory:
 Daunt:
 
 - **verb**: make (someone) feel intimidated or apprehensive.
-- *some people are daunted by technology*
+- *some people are **daunted** by technology*
 
 Dearth:
 
