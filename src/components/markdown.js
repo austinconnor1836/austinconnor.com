@@ -318,6 +318,10 @@ Appease:
 - **verb**: pacify by acceding to the demands of
 - *amendments have been added to appease local pressure groups*
 
+Appellation:
+
+- **noun**: name
+
 Apposite:
 
 - **adjective**: remarkably appropriate
@@ -330,8 +334,8 @@ Apprise:
 
 Approbation:
 
-- ********noun********: an expression of approval or praise
-- *the opera met with high approbation*
+- **noun**: an expression of approval or praise
+- *the opera met with high **approbation***
 
 Approbatory:
 
@@ -349,6 +353,15 @@ Appurtenant:
 
 - **adjective**: supplying added support
 - *In hiking Mt. Everest, sherpas are **appurtenant**, helping climbers both carry gear and navigate treacherous paths.*
+
+Apropos:
+
+- **adjective**: relevant
+- ***Apropos** of nothing, the speaker declared that the purpose of life is to love.*
+
+Arabesque:
+
+- **noun**: ornate design featuring intertwined curves; a ballet position in which one leg is extended in back while the other supports the weight of the body
 
 Arch:
 
@@ -372,10 +385,24 @@ Archaic:
 
 - **adjective**: so old as to appear to belong to a different period
 
+Archeology:
+
+- **noun** the study of material evidence of past human life
+
+Ardor:
+
+- **noun**: great emotion or passion
+
 Arduous:
 
 - **adjective**: difficult and requiring a lot of effort
 - **adjective**: strenuous, taxing; requiring significant effort
+
+Argot:
+
+- **noun**: a specialized vocabulary used by a group
+- **noun**: the jargon or slang of a particular group or class
+- *teenage **argot***
 
 Arriviste:
 
@@ -404,6 +431,7 @@ Ascetic:
 
 - **adjective**: characterized by or suggesting the practice of severe self-discipline and abstention from all forms of indulgence, typically for religious reasons.
 - *an ascetic life of prayer, fasting, and manual labor*
+- **noun**: one who practices self-denial
 
 Ascribe:
 
@@ -414,6 +442,11 @@ Asperity:
 - **noun**: harshness of manner
 - *The editor was known for his **asperity**, often sending severe letters of rejection to amateur writers.*
 
+Aspersion:
+
+- **noun**: slander; false rumor
+- The politician cast many **aspersions** on his opponent.
+
 Assiduously:
 
 - **adverb**: with care and persistence
@@ -422,13 +455,20 @@ Assiduously:
 Assuage:
 
 - **verb**: make (an unpleasant feeling) less intense.
-- ******verb******: to ease or lessen; to appease or pacify
 - *the letter assuaged the fears of most members*
+- **verb**: to ease or lessen; to appease or pacify
+
+Astringent:
+
+- **adjective**: harsh; severe
+- *Bob tends to nick himself when he shaves, so he uses an **astringent** aftershave to stop the bleeding*.
 
 Atavism:
 
 - **noun**: a reappearance of an earlier characteristic; throwback
 - *Much of the modern art movement was an **atavism** to a style of art found only in small villages through Africa and South America*
+- **noun**: in biology, the reappearance of a characteristic in an organism after several generations of absence; individual or a part that exhibits atavism; return of a trait after a period of absence
+- *Some modern political theorists reject nationalism as a tribal **atavism***.
 
 Attenuate:
 
@@ -445,7 +485,7 @@ Austere:
 
 - **adjective**: harsh in manner of temperament
     - like asperity
-- **adjective**: unadorned in style or appearance
+- **adjective**: unadorned in style or appearance; stern
 - **adjective**: practicing self-denial
 - **adjective**: without adornment; bare; severely simple; ascetic
 
@@ -470,36 +510,28 @@ Aver:
 
 - **verb**: state or assert to be the case.
 - *he averred that he was innocent of the allegations*
+- **verb**: to affirm; declare to be true
+
+Avocation:
+
+- **noun**: secondary occupation
+- Chris became so well-versed at his **avocation** that he thought about leaving his full time job.
+
+Avuncular:
+
+- **adjective**: like an uncle, benevolent and tolerant
+- *Larry King had an **avuncular** manner with his stolid disposition*.
 
 Axiomatic:
 
-- ******************adjective******************: taken as a given; possessing self-evident truth
+- **adjective**: taken as a given; possessing self-evident truth
+- *Pastafarians **aver** that the supreme deity is a flying spaghetti monster.*
+- **adjective**: taken for granted
 
-Banality:
+Bacchanalian:
 
-- **noun**: a trite or obvious remark
-
-Base
-
-- **adjective**: the lowest, without any moral principles
-
-Bastardization:
-
-- **noun**: an act that debases or corrupts
-- *The movie World War Z is a complete **bastardization** of the book with little more in common than zombies and a title.*
-
-Beget:
-
-- **verb**: (typically of a man, sometimes of a man and a woman) bring (a child) into existence by the process of reproduction.
-
-Belie:
-
-- **verb**: (of an appearance) fail to give a true notion or impression of (something); disguise or contradict.
-- *his lively, alert manner belied his years*
-
-Bilious:
-
-- **adjective**: irritable; always angry
+- **adjective**: pertaining to riotous or drunken festivity; pertaining to revelry
+- *Fat Tuesday, or Mardi Gras, is an occasion of **bacchanalian** revelry*.
 
 Baleful:
 
@@ -513,15 +545,63 @@ Balk:
 
 Banal:
 
+- **adjective**: commonplace; trite
 - **adjective**: predictable; clichéd; boring
+
+Banality:
+
+- **noun**: a trite or obvious remark
+
+Banter:
+
+- **noun**: playful conversation
+
+Bard:
+
+- **noun**: poet
+
+Base
+
+- **adjective**: the lowest, without any moral principles
+
+Bastardization:
+
+- **noun**: an act that debases or corrupts
+- *The movie World War Z is a complete **bastardization** of the book with little more in common than zombies and a title.*
+
+Bawdy:
+
+- **adjective**: obscene
+- *Geoffrey Chaucer's Canterbury Tales is the story of a group of Christian pilgrims who entertain one another with stories, ranging from the holy to the **bawdy**, on their journey to Canterbury Cathedral*.
 
 Beatific:
 
 - **adjective**: blissfully happy
 
+Beatify:
+
+- **verb**: to sanctify; to bless; to ascribe a virtue to
+- *In the year 2000 Pope John Paul II traveled to Fatima in Portugal to **beatify** two of the three children who said they saw the appearance of the Virgin Mary there in 1917*.
+
+Bedizen:
+
+- **verb**: to dress in a vulgar, showy manner
+- *Paul went to the costume party **bedizened** as a seventeenth-century French aristocrat*.
+
+Beget:
+
+- **verb**: (typically of a man, sometimes of a man and a woman) bring (a child) into existence by the process of reproduction.
+
 Behoove:
 
 - **verb**: to be one’s duty or obligation
+
+Belie:
+
+- **verb**: (of an appearance) fail to give a true notion or impression of (something); disguise or contradict.
+- *his lively, alert manner **belied** his years*
+- **verb**: to contradict; misrepresent; give a false impression
+- *The boxer's childlike faces **belies** the ferocity with which he can attack opponents in the ring*.
 
 Bellicose:
 
@@ -536,6 +616,7 @@ Beneficent:
 
 - **adjective**: (of a person) generous or doing good.
 - *a beneficent landowner*
+- **adjective**: kindly; doing good
 
 Benighted:
 
@@ -559,6 +640,23 @@ Besotted:
 - *Even though her father did not approve, Juliet became **besotted** with the young Romeo.*
 - **adjective:** very drunk
 - *Never before have I seen my mom so **besotted**, and honestly, I hope it's the last time she drinks so much.*
+
+Bifurcate:
+
+- **verb**: to divide into two parts
+
+Bilious:
+
+- **adjective**: irritable; always angry
+
+Blandishment:
+
+- **noun**: flattery
+
+Blasé:
+
+- **adjective**: bored because of frequent indulgence; unconcerned
+- *We were amazed by John's **blasé** attitude toward school; he seems to have made it a rule never to open a book*.
 
 Blinkered:
 
