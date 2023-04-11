@@ -1290,10 +1290,15 @@ Discerning:
 - **adjective**: having or showing good judgment.
 - *the restaurant attracts discerning customers*
 
+Discompose:
+
+- **verb**: disturb or agitate (someone)
+- *nothing could **discompose** her*
+
 Discordant:
 
 - **adjective**: disagreeing or incongruous.
-- ******************adjective******************: conflicting; dissonant or harsh in sound
+- **adjective**: conflicting; dissonant or harsh in sound
 - *the principle of meritocracy is discordant with claims of inherited worth*
 
 Discredit:
