@@ -778,7 +778,12 @@ Candidness:
 
 Canonical:
 
-- ******************adjective******************: following or in agreement with accepted, traditional standards
+- **adjective**: following or in agreement with accepted, traditional standards
+
+Cant:
+
+- **verb**: talk hypocritically and sanctimoniously about something
+- *if they'd stop **canting** about 'honest work' they might get somewhere*
 
 Capitulate:
 
@@ -788,7 +793,7 @@ Capitulate:
 Capricious:
 
 - **adjective**: determined by chance or impulse or whim rather than by necessity or reason
-- ******************adjective******************: inclined to change one’s mind impulsively; erratic, unpredictable
+- **adjective**: inclined to change one’s mind impulsively; erratic, unpredictable
 - changing one’s mind quickly and often
 
 Cardinal:
@@ -3060,6 +3065,11 @@ Stolid:
 
 - **adjective**: having or revealing little emotion or sensibility; not easily aroused or excited
 
+Stricture:
+
+- **noun**: a restriction on a person or activity
+- *the **strictures** imposed by the British Board of Film Censors*
+
 Stringent:
 
 - **adjective**: demanding strict attention to rules and procedures
@@ -3303,6 +3313,10 @@ Venial:
 
 - **adjective**: easily excused or forgiven; pardonable
 - *His traffic violations ran the gamut from the **venial** to the egregious—on one occasion he simply did not come to a complete stop; another time he tried to escape across state lines at speeds in excess of 140 mph.*
+
+Verdure:
+
+- **noun**: lush green vegetation
 
 Verisimilitude:
 
