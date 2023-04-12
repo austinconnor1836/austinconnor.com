@@ -1601,7 +1601,7 @@ Exalt:
 
 Exigent:
 
-- ******************************adjective:****************************** urgent, pressing, requiring immediate action or attention
+- **adjective**: urgent, pressing, requiring immediate action or attention
 
 Exiguity:
 
@@ -2188,7 +2188,7 @@ Lassitude:
 
 Laud:
 
-- ********verb********: to praise highly
+- **verb**: to praise highly
 
 Laudable:
 
@@ -2197,6 +2197,7 @@ Laudable:
 Limpid:
 
 - **adjective**: having clarity in terms of expression
+- **adjective**: (of a liquid) free of anything that darkens; completely clear
 
 Litany:
 
@@ -2214,7 +2215,7 @@ Loquacious:
 
 Lucid:
 
-- ********************************adjective:******************************** clear, easily understood
+- **adjective**: clear, easily understood
 
 Lugubrious:
 
@@ -2233,7 +2234,7 @@ Magisterial:
 
 Magnanimity:
 
-- ******************adjective******************: the quality of being generously noble in mind and heart, especially in forgiving
+- **adjective**: the quality of being generously noble in mind and heart, especially in forgiving
 
 Magnanimous: noble and generous in spirit, especially towards a rival or someone less powerful
 
@@ -2623,6 +2624,11 @@ Pithy:
 Pittance:
 
 - **noun**: a small amount (of money)
+
+Plaintive:
+
+- **adjective**: sounding sad and mournful
+- *a **plaintive** cry*
 
 Plucky:
 
