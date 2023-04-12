@@ -1647,6 +1647,16 @@ Expansive:
 
 - **adjective**: communicative, and prone to talking in a sociable manner
 
+Expatiate:
+
+- **verb**: speak or write at length or in detail
+- *she **expatiated** on working-class novelists*
+
+Expiate:
+
+- **verb**: make amends or reparation for (guilt or wrongdoing)
+- *their sins must be **expiated** by sacrifice*
+
 Expunge:
 
 - **verb**: to eliminate completely
