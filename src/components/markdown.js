@@ -1822,6 +1822,11 @@ Halcyon:
 - **adjective**: idyllically calm and peaceful; suggesting happy tranquility; marked by peace and prosperity
 - *The first decade after WWI was a **halcyon** period in America with new-found wealth and rapidly improving technology.*
 
+Hallowed:
+
+- **adjective**: made holy; consecrated
+- ***hallowed** ground*
+
 Hamper:
 
 - **verb**: prevent the progress or free movement of
@@ -1855,7 +1860,7 @@ Heretic:
 
 Heterodoxy:
 
-- ********noun********: deviation from accepted or orthodox standards or beliefs.
+- **noun**: deviation from accepted or orthodox standards or beliefs.
 
 Heyday:
 
