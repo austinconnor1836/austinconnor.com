@@ -2695,6 +2695,11 @@ Primacy:
 - **noun**: the state of being first in importance
 - *The **primacy** of Apple Computers is not guaranteed, as seen in the recent lawsuits and weak growth.*
 
+Profusion:
+
+- **noun**: an abundance or large quantity of something
+- *a rich **profusion** of flowers*
+
 Prognostication:
 
 - **noun**: a statement made about the future
