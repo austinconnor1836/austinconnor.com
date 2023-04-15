@@ -796,6 +796,11 @@ Capricious:
 - **adjective**: inclined to change one’s mind impulsively; erratic, unpredictable
 - changing one’s mind quickly and often
 
+Captious:
+
+- **adjective**: (of a person) tending to find fault or raise petty objections.
+- *a **captious** teacher
+
 Cardinal:
 
 - **adjective**: of primary importance; fundamental
@@ -2723,6 +2728,11 @@ Propitious:
 
 - **adjective**: presenting favorable circumstances; likely to result in or show signs of success
 - *The child’s heartbeat is still weak, but I am seeing many **propitious** signs and I think that she may be healing.*
+
+Propound:
+
+- **verb**: put forward (an idea or theory) for consideration by others.
+- *he began to **propound** the idea of a 'social monarchy' as an alternative to Franco*
 
 Proselytize:
 
