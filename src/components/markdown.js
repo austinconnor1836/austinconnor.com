@@ -658,6 +658,15 @@ Blasé:
 - **adjective**: bored because of frequent indulgence; unconcerned
 - *We were amazed by John's **blasé** attitude toward school; he seems to have made it a rule never to open a book*.
 
+Blight:
+
+- **verb**: have a severely detrimental effect on.
+- *the scandal **blighted** the careers of several leading politicians*
+- **noun**: a thing that spoils or damages something
+- *the vacant properties are a **blight** on the neighborhood*
+- **noun**: a plant disease, typically one caused by fungi such as mildews, rusts, and smuts
+- *the vinees suffered **blight** and disease*
+
 Blinkered:
 
 - **adjective**: to have a limited outlook or understanding
