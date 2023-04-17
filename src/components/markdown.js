@@ -652,6 +652,7 @@ Bilious:
 Blandishment:
 
 - **noun**: flattery
+- **noun**: a flattering or pleasing statement or action used to persuade someone gently to do something.
 
 Blasé:
 
