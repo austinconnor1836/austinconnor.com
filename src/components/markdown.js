@@ -772,10 +772,19 @@ Cacophony:
 
 - **noun**: harsh, jarring noise
 
+Cadge:
+
+- **verb**: to beg; sponge
+- *“An enduring image of the Great Depression in America is the out-of-work man **cadging** money with the line, "Hey, mister, can you spare a dime for a cup of coffee?*
+
 Callow:
 
 - **adjective**: young and inexperienced
 - *Both Los Angeles and New York are known for **callow** out-of-towners hoping to make it big.*
+
+Calumny:
+
+- **noun**: false and malicious accusation; slander
 
 Canard:
 
