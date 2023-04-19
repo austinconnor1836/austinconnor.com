@@ -785,6 +785,7 @@ Callow:
 Calumny:
 
 - **noun**: false and malicious accusation; slander
+- *“Be thou chaste as ice, as pure as snow, thou shalt not escape **calumny**.”* -William Shakespeare, *Hamlet* Act III, Scene 1 (Hamlet addressing Ophelia)
 
 Canard:
 
@@ -3427,6 +3428,10 @@ Wax:
 Winsome:
 
 - **adjective**: charming in a childlike or naive way
+
+Wistful:
+
+- **adjective**: having or showing a feeling of vague or regretful longing
 
 ## Words related to:
 
