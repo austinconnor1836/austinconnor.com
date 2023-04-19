@@ -1914,6 +1914,11 @@ Hoodwink:
 - **verb**: to deceive or trick someone
 - *Someone tried to **hoodwink** Marty with an email telling him that his uncle had just passed away, and to collect the inheritance he should send his credit card information.*
 
+Hortatory:
+
+- **adjective**: tending or aiming to exhort
+- *the central bank relied on **hortatory** messages and voluntary compliance*
+
 Hubris:
 
 - **noun**: overbearing pride or presumption
