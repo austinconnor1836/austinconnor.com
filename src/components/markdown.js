@@ -1373,7 +1373,7 @@ Disparage:
 Disparate:
 
 - **adjective**: two things are fundamentally different
-- ******************adjective******************: fundamentally distinct or dissimilar
+- **adjective**: fundamentally distinct or dissimilar
 
 Dispassionate:
 
@@ -1386,7 +1386,7 @@ Dispensation:
 
 Disquieting:
 
-- ******************adjective******************: inducing feelings of anxiety or worry.
+- **adjective**: inducing feelings of anxiety or worry.
 
 Dissemble:
 
@@ -2451,6 +2451,10 @@ Oblique:
 
 - **adjective**: not straightforward; indirect
 - *Herbert never explicitly revealed anything negative about Tom's past, but at times he would **obliquely** suggest that Tom was not as innocent as he seemed.*
+
+Obloquy:
+
+- **noun**: strong public criticism or verbal abuse
 
 Obsequious:
 
