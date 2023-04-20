@@ -1780,7 +1780,11 @@ Fractious:
 
 Fulminate:
 
-- ********verb********: to loudly attack or denounce
+- **verb**: to loudly attack or denounce
+
+Fulsome:
+
+- **adjective**: complimentary or flattering to an excessive degree
 
 Furtive:
 
