@@ -6,7 +6,7 @@
     "@fortawesome/fontawesome-svg-core": "^6.3.0",
     "@fortawesome/free-solid-svg-icons": "^6.3.0",
     "@material-ui/core": "^4.12.3",
-    "@pmndrs/branding": "0.0.7",
+    "@pmndrs/branding": "0.0.8",
     "@react-spring/web": "9.6.1",
     "@react-three/drei": "4.1.8",
     "@react-three/fiber": "6.0.14",
