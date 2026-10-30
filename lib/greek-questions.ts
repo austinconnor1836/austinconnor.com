@@ -21,6 +21,9 @@ export function getGreekQuestions(): string[] {
   return raw
     .split(/\n[ \t]*\n/)
     .map((p) => p.replace(/^\s+|\s+$/g, ""))
+    // The page numbers the list itself, so drop a leading "1." / "1)" / "-"
+    // marker if the note has one (display only; the file stays verbatim).
+    .map((p) => p.replace(/^(?:\d+[.)]|[-*+])\s+/, ""))
     .filter(Boolean);
 }
 
