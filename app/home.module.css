@@ -1,0 +1,239 @@
+.wrap {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 56px 16px 40px;
+}
+
+/* Header */
+.name {
+  font: 700 clamp(2.4rem, 9vw, 3.4rem) / 1.05 var(--serif);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.roles {
+  font: 400 13px/1.6 var(--mono);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin: 12px 0 0;
+}
+
+.location {
+  margin: 4px 0 0;
+  color: var(--muted);
+}
+
+/* Greek key (meander) rule: one tile repeated, drawn in the accent color. */
+.meander {
+  height: 12px;
+  margin-top: 28px;
+  background-color: var(--accent);
+  opacity: 0.55;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='12' viewBox='0 0 24 12'%3E%3Cpath d='M0 11.25h18V.75H6v7.5h6V4.5' fill='none' stroke='%23000' stroke-width='1.5'/%3E%3Cpath d='M18 11.25h6' fill='none' stroke='%23000' stroke-width='1.5'/%3E%3C/svg%3E")
+    repeat-x left center / 24px 12px;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='12' viewBox='0 0 24 12'%3E%3Cpath d='M0 11.25h18V.75H6v7.5h6V4.5' fill='none' stroke='%23000' stroke-width='1.5'/%3E%3Cpath d='M18 11.25h6' fill='none' stroke='%23000' stroke-width='1.5'/%3E%3C/svg%3E")
+    repeat-x left center / 24px 12px;
+}
+
+/* Intro */
+.intro {
+  margin-top: 32px;
+  font-size: 1.125rem;
+}
+
+.intro p {
+  margin: 0 0 1em;
+  max-width: 36rem;
+}
+
+/* Sections */
+.section {
+  margin-top: 48px;
+}
+
+.label {
+  font: 500 12px/1 var(--mono);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent-ink);
+  margin: 0 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--line);
+}
+
+/* Projects */
+.projects {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 14px;
+}
+
+.project {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 18px 18px 14px;
+}
+
+.projectHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+
+.projectName {
+  font: 700 1.45rem/1.2 var(--serif);
+  margin: 0;
+}
+
+.status {
+  font: 500 12px/1.4 var(--mono);
+  color: var(--accent-ink);
+  background: var(--accent-soft);
+  padding: 2px 8px;
+  border-radius: 99px;
+  white-space: nowrap;
+}
+
+.stack {
+  font: 400 12.5px/1.5 var(--mono);
+  color: var(--muted);
+  margin: 4px 0 0;
+}
+
+.summary {
+  margin: 10px 0 0;
+}
+
+.links {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 4px;
+}
+
+.linkButton {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0 10px;
+  margin-left: -10px;
+  margin-right: 6px;
+  font-weight: 600;
+}
+
+/* Writing */
+.writing {
+  display: grid;
+  gap: 6px;
+  padding: 18px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.writing:hover .writingCta {
+  text-decoration: underline;
+}
+
+.writingName {
+  font: 700 1.45rem/1.2 var(--serif);
+}
+
+.writingBlurb {
+  color: var(--muted);
+}
+
+.writingCta {
+  color: var(--accent-ink);
+  font-weight: 600;
+  text-underline-offset: 3px;
+  min-height: 28px;
+}
+
+/* Learning */
+.learning {
+  margin: 0;
+}
+
+.greek {
+  font-family: var(--serif);
+  font-style: italic;
+  color: var(--accent-ink);
+  margin-right: 4px;
+}
+
+/* Contact */
+.contact {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.contactLink {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  overflow-wrap: anywhere;
+}
+
+.contactKind {
+  font: 400 12px/1 var(--mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  width: 5.5rem;
+  flex: none;
+}
+
+/* Footer */
+.footer {
+  margin-top: 64px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.footer a {
+  color: var(--muted);
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
+
+@media (min-width: 640px) {
+  .wrap {
+    padding-top: 88px;
+  }
+  .project,
+  .writing {
+    padding: 22px 24px 16px;
+  }
+}
