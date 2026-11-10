@@ -11,20 +11,50 @@ const QUESTIONS_FILE = path.join(
 
 export type Meeting = typeof meeting;
 
+export type QuestionSection = { heading: string | null; items: string[] };
+
+const MARKER = /^(?:\d+[.)]|[-*+])\s+/;
+
 /**
- * Each paragraph of the Obsidian note is one question. Paragraphs are
- * separated by one or more blank lines; line breaks inside a paragraph are
- * kept as written.
+ * Parses the Obsidian note into sections of questions.
+ *
+ * - A line starting with a list marker ("1.", "1)", "-") starts a new
+ *   question; unmarked lines right after it continue that question.
+ * - Blank lines separate blocks. A block of unmarked lines whose first line
+ *   is followed by more lines becomes a section: first line = heading, each
+ *   remaining line = one question (e.g. "Unit 2 G2E Sentences Questions"
+ *   followed by "3, 10" / "18, word order: ...").
+ * - Any other unmarked block is one question.
+ *
+ * The page numbers the list itself, so leading markers are dropped (display
+ * only; the file stays verbatim).
  */
-export function getGreekQuestions(): string[] {
+export function getGreekQuestionSections(): QuestionSection[] {
   const raw = readFileSync(QUESTIONS_FILE, "utf8").replace(/\r\n?/g, "\n");
-  return raw
-    .split(/\n[ \t]*\n/)
-    .map((p) => p.replace(/^\s+|\s+$/g, ""))
-    // The page numbers the list itself, so drop a leading "1." / "1)" / "-"
-    // marker if the note has one (display only; the file stays verbatim).
-    .map((p) => p.replace(/^(?:\d+[.)]|[-*+])\s+/, ""))
-    .filter(Boolean);
+  const sections: QuestionSection[] = [{ heading: null, items: [] }];
+  const current = () => sections[sections.length - 1];
+
+  for (const block of raw.split(/\n[ \t]*\n/)) {
+    const lines = block.split("\n").map((l) => l.trim()).filter(Boolean);
+    if (lines.length === 0) continue;
+
+    if (lines.some((l) => MARKER.test(l))) {
+      for (const line of lines) {
+        const items = current().items;
+        if (MARKER.test(line) || items.length === 0) {
+          items.push(line.replace(MARKER, ""));
+        } else {
+          items[items.length - 1] += `\n${line}`;
+        }
+      }
+    } else if (lines.length > 1) {
+      sections.push({ heading: lines[0], items: lines.slice(1) });
+    } else {
+      current().items.push(lines[0]);
+    }
+  }
+
+  return sections.filter((s) => s.heading || s.items.length > 0);
 }
 
 export function getMeeting(): Meeting {
