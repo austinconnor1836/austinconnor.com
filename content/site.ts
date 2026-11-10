@@ -48,30 +48,6 @@ export const site = {
         { label: "gainplate.app", href: "https://gainplate.app" },
       ],
     },
-    {
-      name: "Clipfire",
-      status: "In development",
-      stack: "Next.js · iOS · AI pipeline",
-      summary:
-        "Turns long-form video into clips ready for Reels, Shorts, and TikTok, picked and scored by AI. The point is to publish without ever opening an editor.",
-      links: [
-        { label: "Web app", href: "https://polemicyst.vercel.app" },
-        {
-          label: "Source",
-          href: "https://github.com/austinconnor1836/polemicyst.com",
-        },
-      ],
-    },
-    {
-      name: "Pulse",
-      status: "In development",
-      stack: "iOS · Android · Kotlin Multiplatform",
-      summary:
-        "A city guide that ranks what's worth doing right now instead of listing everything there is to do. Native on both platforms with a shared Kotlin core. New York first.",
-      links: [
-        { label: "Source", href: "https://github.com/austinconnor1836/pulse" },
-      ],
-    },
   ] satisfies Project[],
 
   writing: {
