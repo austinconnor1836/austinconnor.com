@@ -38,3 +38,17 @@ The script pushes straight to `main` on purpose. It only ever touches the two co
 in a temporary worktree, so your current branch and uncommitted changes are left alone. Vercel redeploys on the push.
 
 Each week, edit `meeting.json` for the next meeting (commit it through a normal PR, or alongside a sync).
+
+## Passcode gate for /grad-school/*
+
+Everything under `/grad-school/` is locked by `proxy.ts` (Next 16's request interception file), which runs on every
+request to those paths before any prerendered page is served. Logic lives in `lib/grad-school-auth.ts`.
+
+- The passcode is the `GRAD_SCHOOL_PASSCODE` env var (Vercel → Settings → Environment Variables, Production + Preview).
+  If it's missing, the pages stay locked. Austin's copy is in `~/.config/austinconnor/grad-school-passcode`.
+- Share link: `https://austinconnor-com.vercel.app/grad-school/randolph/greek-1?key=<passcode>`. A correct `key` sets
+  a 90-day httpOnly cookie and redirects to the same URL without `key`. A wrong one goes to `/unlock`.
+- Without the cookie, visitors land on `/unlock?next=<path>`, a one-field form (case and surrounding spaces ignored).
+- The cookie holds an HMAC of the passcode, not the passcode. To revoke every link and cookie, change the env var and
+  redeploy.
+- Local dev: `GRAD_SCHOOL_PASSCODE=... npm run dev`. The cookie is `Secure`, which browsers accept on `localhost`.
