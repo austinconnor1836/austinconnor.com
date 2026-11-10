@@ -2,7 +2,11 @@
   "professor": "Prof. Cohen",
   "course": "Greek 1111 · Online Modular Greek · Randolph College",
   "student": "Austin Connor",
-  "nextMeeting": "Monday, November 2",
-  "bundle": "Bundle A",
-  "topics": "alphabet, pronunciation, accents, Hansen & Quinn §§1–12"
+  "schedule": {
+    "weekday": "Thursday",
+    "timeZone": "America/Chicago",
+    "firstMeeting": "2026-11-12",
+    "lastMeeting": "2026-12-03"
+  },
+  "topics": "Hansen & Quinn, Units 1–2"
 }

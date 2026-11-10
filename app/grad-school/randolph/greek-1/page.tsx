@@ -6,13 +6,14 @@ import {
   getLastUpdated,
   getMeeting,
 } from "@/lib/greek-questions";
+import { NextMeeting } from "./next-meeting";
 import styles from "./greek.module.css";
 
 const meeting = getMeeting();
 
 export const metadata: Metadata = {
   title: { absolute: `Questions for ${meeting.professor}` },
-  description: `${meeting.student}'s questions for ${meeting.nextMeeting} · ${meeting.course}`,
+  description: `${meeting.student}'s questions for weekly meetings · ${meeting.course}`,
   robots: { index: false, follow: false, nocache: true },
   openGraph: null,
 };
@@ -33,10 +34,10 @@ export default function GreekQuestionsPage() {
       </h1>
       <p className={styles.meta}>
         From <strong>{meeting.student}</strong> · next meeting{" "}
-        <strong>{meeting.nextMeeting}</strong>
+        <NextMeeting schedule={meeting.schedule} />
       </p>
       <p className={styles.meta}>
-        {meeting.bundle}: {meeting.topics}
+        {meeting.topics} · weekly on {meeting.schedule.weekday}s
       </p>
       <hr className={styles.rule} />
 
