@@ -59,6 +59,24 @@ export default function Home() {
             </ul>
           </section>
 
+          <section aria-labelledby="education" className={styles.section}>
+            <h2 id="education" className={styles.label}>
+              Education
+            </h2>
+            <ul className={styles.projects}>
+              {site.education.map((e) => (
+                <li key={e.school} className={styles.project}>
+                  <div className={styles.projectHead}>
+                    <h3 className={styles.projectName}>{e.school}</h3>
+                    <span className={styles.status}>{e.status}</span>
+                  </div>
+                  <p className={styles.stack}>{e.program}</p>
+                  <p className={styles.summary}>{e.detail}</p>
+                </li>
+              ))}
+            </ul>
+          </section>
+
           <section aria-labelledby="writing" className={styles.section}>
             <h2 id="writing" className={styles.label}>
               Writing

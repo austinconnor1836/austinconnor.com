@@ -20,12 +20,13 @@ export const site = {
   name: "Austin Connor",
   title: "Austin Connor · Software engineer",
   description:
-    "Austin Connor is a software engineer who builds and ships his own products, writes essays at Dead Reckoning, and studies Ancient Greek.",
-  roles: ["Software engineer", "Essayist", "Student of Greek"],
+    "Austin Connor is a software engineer who builds and ships his own products, is studying AI in Georgia Tech's MS in Computer Science program, writes essays at Dead Reckoning, and studies Ancient Greek.",
+  roles: ["Software engineer", "AI grad student", "Essayist", "Student of Greek"],
 
   intro: [
     "I'm a software engineer. I build my own products and I ship them: native iOS apps, the web apps and AI pipelines behind them, and the tooling that lets one person run all of it.",
-    "I also write. Dead Reckoning is my Substack, where I take on politics, economics, and constitutional questions, argued from the primary sources and stated plainly.",
+    "I'm also a graduate student in Georgia Tech's Master of Science in Computer Science program, specializing in artificial intelligence, with the goal of going on to a PhD.",
+    "I write, too. Dead Reckoning is my Substack, where I take on politics, economics, and constitutional questions, argued from the primary sources and stated plainly.",
     "And I'm learning Ancient Greek, starting from the alphabet.",
   ],
 
@@ -79,6 +80,15 @@ export const site = {
     blurb:
       "Essays on politics, economics, and the Constitution. Published on Substack under the name Polemicyst.",
   },
+
+  education: [
+    {
+      school: "Georgia Institute of Technology",
+      program: "M.S. in Computer Science",
+      detail: "Specialization in Artificial Intelligence. Aiming for a PhD next.",
+      status: "Enrolled",
+    },
+  ],
 
   learning:
     "Ancient Greek, through Randolph College's online modular course (Hansen & Quinn), with Athenaze on the side.",
