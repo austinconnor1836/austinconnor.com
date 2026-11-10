@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 
 import {
   formatLongDate,
-  getGreekQuestions,
+  getGreekQuestionSections,
   getLastUpdated,
   getMeeting,
 } from "@/lib/greek-questions";
@@ -18,7 +18,8 @@ export const metadata: Metadata = {
 };
 
 export default function GreekQuestionsPage() {
-  const questions = getGreekQuestions();
+  const sections = getGreekQuestionSections();
+  const total = sections.reduce((n, s) => n + s.items.length, 0);
   const updated = getLastUpdated();
 
   return (
@@ -39,20 +40,27 @@ export default function GreekQuestionsPage() {
       </p>
       <hr className={styles.rule} />
 
-      {questions.length > 0 ? (
-        <ol className={styles.list}>
-          {questions.map((q, i) => (
-            <li key={i} className={styles.q}>
-              <p className={styles.qText}>{q}</p>
-            </li>
-          ))}
-        </ol>
+      {total > 0 ? (
+        sections.map((section, si) => (
+          <section key={si} className={styles.section}>
+            {section.heading && <h2 className={styles.sectionHeading}>{section.heading}</h2>}
+            {/* Headed sections (e.g. "Unit 2 G2E Sentences") reference exercise
+                numbers themselves, so they aren't renumbered. */}
+            <ol className={section.heading ? `${styles.list} ${styles.unnumbered}` : styles.list}>
+              {section.items.map((q, i) => (
+                <li key={i} className={styles.q}>
+                  <p className={styles.qText}>{q}</p>
+                </li>
+              ))}
+            </ol>
+          </section>
+        ))
       ) : (
         <p className={styles.empty}>No questions yet. Check back before the meeting.</p>
       )}
 
       <p className={styles.foot}>
-        {questions.length} {questions.length === 1 ? "question" : "questions"} · last updated{" "}
+        {total} {total === 1 ? "question" : "questions"} · last updated{" "}
         <time dateTime={updated}>{formatLongDate(updated)}</time>
       </p>
     </main>
