@@ -310,20 +310,31 @@ function ladderDFS(b,wroot,depth){
     const rest=ladderDFS(w.board,wroot,depth+1); if(rest)return [{black:m,white:ext},...rest]; }
   return null;
 }
+// A working ladder, found empirically and confirmed by ladderDFS: in the corner frame
+// White sits at (k,k) with black "caps" on its two away-from-corner sides and a single
+// wall stone at (k-1,k+1). That drives a clean ladder of 2k+1 moves into the corner.
+// A random dihedral transform drops it at any corner/orientation; ladderDFS re-derives
+// and verifies the exact capturing sequence (so a bad placement just returns null).
 function genLadder(S,minL,maxL){
-  const corner=ri(4); const cx=corner&1?S-1:0, cy=corner&2?S-1:0;
-  const dx=cx===0?1:-1, dy=cy===0?1:-1;
-  const dist=2+ri(Math.min(maxL+2,S-3)); const wx=cx+dx*dist, wy=cy+dy*dist;
-  const b=makeBoard(S); if(!inB(b,wx,wy))return null; const wi=idx(b,wx,wy); b.grid[wi]=WHITE;
-  const bx=wx+dx, by=wy+dy;
-  if(inB(b,bx,wy))b.grid[idx(b,bx,wy)]=BLACK; else return null;
-  if(inB(b,wx,by))b.grid[idx(b,wx,by)]=BLACK; else return null;
-  if(!setupLegal(b))return null;
-  const steps=ladderDFS(b,wi,0); if(!steps)return null;
-  if(steps.length<minL||steps.length>maxL)return null;
+  const kMin=Math.max(2,Math.ceil((minL-1)/2)), kMax=Math.min(Math.floor((maxL-1)/2),S-3);
+  if(kMax<kMin) return null;
+  const k=kMin+ri(kMax-kMin+1);
+  const op=ri(8);
+  const T=(x,y)=>transformPt(x,y,S,op);
+  const b=makeBoard(S);
+  const W=T(k,k), caps=[T(k+1,k),T(k,k+1),T(k-1,k+1)];
+  if(!inB(b,W[0],W[1])) return null;
+  for(const c of caps){ if(!inB(b,c[0],c[1])) return null; }
+  b.grid[idx(b,W[0],W[1])]=WHITE;
+  for(const [x,y] of caps) b.grid[idx(b,x,y)]=BLACK;
+  if(!setupLegal(b)) return null;
+  const wi=idx(b,W[0],W[1]);
+  if(group(b,wi).libs.size!==2) return null;
+  const steps=ladderDFS(b,wi,0); if(!steps) return null;
+  if(steps.length<minL||steps.length>maxL) return null;
   const script=steps.map((s,i)=>({accept:[[s.black%S,(s.black/S)|0]],
     reply:s.white?[s.white%S,(s.white/S)|0]:null, done:i===steps.length-1}));
-  return {kind:'ladder', size:S, toPlay:BLACK, goal:'script', w:[[wx,wy]], b:collect(b,BLACK), script};
+  return {kind:'ladder', size:S, toPlay:BLACK, goal:'script', w:[[W[0],W[1]]], b:collect(b,BLACK), script};
 }
 const SHAPES={ straight3:{cells:[[0,0],[1,0],[2,0]],vital:[1,0]},
                bent3:{cells:[[0,0],[1,0],[0,1]],vital:[0,0]} };
@@ -438,9 +449,9 @@ const LEVELS=[
 const POOL={
  1:[()=>genCaptureAtari(choice([5,7]),1,1),()=>genCaptureAtari(choice([5,7]),1,2)],
  2:[()=>genCaptureAtari(7,2,1),()=>genCaptureAtari(7,2,2),()=>genDouble(7)],
- 3:[()=>genLifeDeath(choice([7,9]),'straight3',false),()=>genLifeDeath(choice([7,9]),'straight3',true),()=>genLifeDeathBlob(9,3,4,true),()=>genLifeDeathBlob(9,3,4,false),()=>genDouble(9),()=>genCaptureAtari(9,2,1)],
- 4:[()=>genCaptureAtari(9,3,1),()=>genLifeDeathBlob(9,4,5,false),()=>genLifeDeathBlob(9,4,5,true),()=>genLifeDeathBlob(9,3,4,false),()=>genDouble(9)],
- 5:[()=>genLifeDeathBlob(9,4,5,true),()=>genLifeDeathBlob(9,4,5,true),()=>genLifeDeathBlob(choice([9,11]),3,6,false),()=>genLifeDeathBlob(9,4,6,false),()=>genCaptureAtari(11,4,1),()=>genDouble(11)],
+ 3:[()=>genLifeDeath(choice([7,9]),'straight3',false),()=>genLifeDeath(choice([7,9]),'straight3',true),()=>genLifeDeathBlob(9,3,4,true),()=>genLifeDeathBlob(9,3,4,false),()=>genDouble(9),()=>genLadder(11,5,5),()=>genCaptureAtari(9,2,1)],
+ 4:[()=>genCaptureAtari(9,3,1),()=>genLifeDeathBlob(9,4,5,false),()=>genLifeDeathBlob(9,4,5,true),()=>genLifeDeathBlob(9,3,4,false),()=>genLadder(11,5,7),()=>genDouble(9)],
+ 5:[()=>genLifeDeathBlob(9,4,5,true),()=>genLifeDeathBlob(9,4,5,true),()=>genLifeDeathBlob(choice([9,11]),3,6,false),()=>genLifeDeathBlob(9,4,6,false),()=>genLadder(11,7,11),()=>genCaptureAtari(11,4,1),()=>genDouble(11)],
 };
 // dihedral-8 canonical signature so rotations/reflections dedup to one id
 function transformPt(x,y,S,op){
