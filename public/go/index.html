@@ -5,27 +5,48 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Go Trainer — Learn Baduk by Problems</title>
 <style>
+  /* Self-hosted copies of the site's typefaces (austinconnor.com uses these via next/font),
+     so /go reads as part of the site and still runs fully offline. Latin subset only. */
+  @font-face{font-family:"Source Sans 3";font-style:normal;font-weight:400;font-display:swap;src:url("fonts/source-sans-3-400.woff2") format("woff2")}
+  @font-face{font-family:"Source Sans 3";font-style:normal;font-weight:600;font-display:swap;src:url("fonts/source-sans-3-600.woff2") format("woff2")}
+  @font-face{font-family:"Gentium Book Plus";font-style:normal;font-weight:400;font-display:swap;src:url("fonts/gentium-book-plus-400.woff2") format("woff2")}
+  @font-face{font-family:"Gentium Book Plus";font-style:normal;font-weight:700;font-display:swap;src:url("fonts/gentium-book-plus-700.woff2") format("woff2")}
+  @font-face{font-family:"IBM Plex Mono";font-style:normal;font-weight:400;font-display:swap;src:url("fonts/ibm-plex-mono-400.woff2") format("woff2")}
+  @font-face{font-family:"IBM Plex Mono";font-style:normal;font-weight:500;font-display:swap;src:url("fonts/ibm-plex-mono-500.woff2") format("woff2")}
+
+  /* Site design tokens (globals.css). Default = dark; light overrides below. The board
+     itself keeps its traditional wood + black/white stones — that's not site chrome. */
   :root{
-    --bg:#1b1d21; --panel:#24272c; --panel2:#2c2f35; --ink:#e9e6df; --muted:#9aa0a8;
-    --line:#3a3e45; --accent:#d9a441; --good:#5bbf7a; --bad:#e06c6c; --hint:#6fa8dc;
+    --bg:#0f151a; --panel:#161f26; --panel2:#111a21; --ink:#e2e8ec; --muted:#93a2ac;
+    --line:#26333d; --accent:#7db4dc; --accent-ink:#a3cbe8; --on-accent:#0f151a;
+    --good:#6fcf97; --bad:#e08a82; --hint:#7db4dc;
     --board:#dcb060; --boardline:#4a3410; --black:#1a1a1a; --white:#f4f2ec;
+    --serif:"Gentium Book Plus",Georgia,serif;
+    --sans:"Source Sans 3",system-ui,-apple-system,sans-serif;
+    --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+    color-scheme:dark;
   }
   @media (prefers-color-scheme: light){
-    :root{ --bg:#f3f1ec; --panel:#ffffff; --panel2:#f6f4ef; --ink:#23262b; --muted:#6a7078; --line:#e0ddd5; }
+    :root{
+      --bg:#f5f7f8; --panel:#ffffff; --panel2:#eef2f5; --ink:#18242d; --muted:#56646e;
+      --line:#d6dee4; --accent:#1f5f8b; --accent-ink:#174a6d; --on-accent:#ffffff;
+      --good:#2e7d55; --bad:#b0423b; --hint:#1f5f8b;
+      color-scheme:light;
+    }
   }
   *{box-sizing:border-box}
   html,body{margin:0;height:100%}
   body{
     background:var(--bg); color:var(--ink);
-    font:15px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+    font:15px/1.5 var(--sans); -webkit-font-smoothing:antialiased;
     display:flex; flex-direction:column; min-height:100vh;
   }
   header{
     padding:12px 18px; border-bottom:1px solid var(--line);
     display:flex; align-items:center; gap:12px; flex-wrap:wrap;
   }
-  header h1{font-size:18px; margin:0; letter-spacing:.3px}
-  header h1 b{color:var(--accent)}
+  header h1{font-family:var(--serif); font-size:20px; font-weight:700; margin:0}
+  header h1 b{color:var(--accent-ink)}
   .sub{color:var(--muted); font-size:13px}
   .wrap{
     flex:1; display:grid; grid-template-columns: minmax(300px, 1fr) 400px;
@@ -48,37 +69,37 @@
     background:var(--panel2); color:var(--ink); cursor:pointer; transition:.12s;
   }
   button:hover{border-color:var(--accent)}
-  button.primary{background:var(--accent); color:#1a1200; border-color:var(--accent); font-weight:600}
+  button.primary{background:var(--accent); color:var(--on-accent); border-color:var(--accent); font-weight:600}
   button:disabled{opacity:.4; cursor:default}
   .side{display:flex; flex-direction:column; gap:14px}
   .card{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px}
   .tabrow{display:flex; gap:8px}
   .tab{flex:1; text-align:center}
-  .tab.active{background:var(--accent); color:#1a1200; border-color:var(--accent); font-weight:600}
+  .tab.active{background:var(--accent); color:var(--on-accent); border-color:var(--accent); font-weight:600}
   .levelrow{display:flex; gap:6px; margin-top:10px; flex-wrap:wrap}
   .lvl{flex:1 1 0; min-width:62px; text-align:center; padding:8px 4px; font-size:12px; line-height:1.25}
   .lvl b{display:block; font-size:13px}
-  .lvl.active{background:var(--accent); color:#1a1200; border-color:var(--accent); font-weight:600}
+  .lvl.active{background:var(--accent); color:var(--on-accent); border-color:var(--accent); font-weight:600}
   .lvl small{opacity:.8; font-size:10px}
   .tag{
     display:inline-block; font-size:11px; text-transform:uppercase; letter-spacing:.7px;
     color:var(--accent); border:1px solid var(--accent); border-radius:20px; padding:2px 10px; margin:0 6px 8px 0;
   }
   .tag.src{color:var(--muted); border-color:var(--line)}
-  .card h2{margin:0 0 4px; font-size:19px}
+  .card h2{font-family:var(--serif); font-weight:700; margin:0 0 4px; font-size:20px}
   .concept{font-size:13px; color:var(--muted); margin:0 0 8px}
   .prompt{font-size:14.5px; margin:8px 0}
   .feedback{min-height:20px; font-size:14px; border-radius:10px; padding:10px 12px; margin-top:10px; display:none}
   .feedback.show{display:block}
-  .feedback.good{background:rgba(91,191,122,.14); border:1px solid var(--good); color:var(--good)}
-  .feedback.bad{background:rgba(224,108,108,.12); border:1px solid var(--bad); color:var(--bad)}
-  .feedback.hint{background:rgba(111,168,220,.12); border:1px solid var(--hint); color:var(--hint)}
+  .feedback.good{background:color-mix(in srgb,var(--good) 15%,transparent); border:1px solid var(--good); color:var(--good)}
+  .feedback.bad{background:color-mix(in srgb,var(--bad) 15%,transparent); border:1px solid var(--bad); color:var(--bad)}
+  .feedback.hint{background:color-mix(in srgb,var(--hint) 15%,transparent); border:1px solid var(--hint); color:var(--hint)}
   .explain{margin-top:10px; font-size:13.5px; color:var(--muted); border-left:3px solid var(--accent); padding:4px 0 4px 12px; display:none}
   .explain.show{display:block}
   .navrow{display:flex; justify-content:space-between; gap:8px; margin-top:12px}
   .stats{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; font-size:12px; color:var(--muted)}
   .stat{background:var(--panel2); border:1px solid var(--line); border-radius:9px; padding:7px 10px; flex:1 1 0; min-width:80px; text-align:center}
-  .stat b{display:block; font-size:17px; color:var(--ink)}
+  .stat b{display:block; font-family:var(--mono); font-size:17px; color:var(--ink)}
   .srcbar{height:8px; border-radius:5px; overflow:hidden; display:flex; margin-top:10px; background:var(--panel2); border:1px solid var(--line)}
   .srcbar i{display:block; height:100%}
   ul.key{margin:8px 0 0; padding-left:18px; font-size:13px; color:var(--muted)}

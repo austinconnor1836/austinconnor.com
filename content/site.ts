@@ -48,6 +48,14 @@ export const site = {
         { label: "gainplate.app", href: "https://gainplate.app" },
       ],
     },
+    {
+      name: "Go Trainer",
+      status: "Live",
+      stack: "Web · offline",
+      summary:
+        "An endless baduk (Go) puzzle trainer: capture and tactics problems graded Beginner to Expert, served from a known library before any are AI-generated. Runs fully offline and remembers what you've solved on your device.",
+      links: [{ label: "Play", href: "/go" }],
+    },
   ] satisfies Project[],
 
   writing: {
