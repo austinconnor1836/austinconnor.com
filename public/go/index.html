@@ -353,6 +353,46 @@ function genLifeDeath(S,shapeName,kill){
     moves:[vital], target:null, region:[...interiorSet], b:collect(b,BLACK), w:collect(b,WHITE)};
 }
 
+// Procedural life & death: carve a RANDOM connected eye space, wall it with the
+// group's stones, then let the solver find the vital point instead of hard-coding
+// one. Keep only positions with a UNIQUE winning move, so every puzzle has exactly
+// one answer. This gives endless shape variety (3–6 point eye spaces) while verify()
+// below still re-confirms each one — a wrong guess simply never gets emitted.
+function genLifeDeathBlob(S,minK,maxK,kill){
+  const k=minK+ri(maxK-minK+1);
+  const interiorPts=randomBlob(S,k,2);
+  if(interiorPts.length<k) return null;
+  const b=makeBoard(S);
+  const interiorSet=new Set(interiorPts.map(([x,y])=>idx(b,x,y)));
+  if(interiorSet.size<k) return null;
+  const groupColor=kill?WHITE:BLACK, outColor=other(groupColor);
+  const wall=new Set();
+  for(const i of interiorSet) for(const n of neighbors(b,i)) if(!interiorSet.has(n)) wall.add(n);
+  for(const i of wall) b.grid[i]=groupColor;
+  const shell=new Set();
+  for(const i of wall) for(const n of neighbors(b,i)) if(!wall.has(n)&&!interiorSet.has(n)) shell.add(n);
+  for(const i of shell) b.grid[i]=outColor;
+  if(!setupLegal(b)) return null;
+  const region=[...interiorSet];
+  const open=region.filter(i=>b.grid[i]===EMPTY);
+  const winners=[];
+  if(kill){
+    // Black attacks: the white group must be alive now, and exactly one black move kills it.
+    if(!aliveStatus(b,WHITE,region,WHITE,0)) return null;
+    for(const m of open){ const mv=tryMove(b,m,BLACK); if(!mv.ok) continue;
+      if(!aliveStatus(mv.board,WHITE,region,WHITE,0)) winners.push(m); }
+  } else {
+    // Black defends: white must be able to kill now, and exactly one black move makes two eyes.
+    if(aliveStatus(b,BLACK,region,WHITE,0)) return null;
+    for(const m of open){ const mv=tryMove(b,m,BLACK); if(!mv.ok) continue;
+      if(eyes(mv.board,BLACK)>=2) winners.push(m); }
+  }
+  if(winners.length!==1) return null;
+  const v=winners[0];
+  return {kind:kill?'death':'life', shape:'blob'+k, size:S, toPlay:BLACK, goal:'move',
+    moves:[[v%S,(v/S)|0]], target:null, region, b:collect(b,BLACK), w:collect(b,WHITE)};
+}
+
 /* ============================================================
    PURE: VERIFY  (gates every problem, generated OR ingested)
    ============================================================ */
@@ -398,9 +438,9 @@ const LEVELS=[
 const POOL={
  1:[()=>genCaptureAtari(choice([5,7]),1,1),()=>genCaptureAtari(choice([5,7]),1,2)],
  2:[()=>genCaptureAtari(7,2,1),()=>genCaptureAtari(7,2,2),()=>genDouble(7)],
- 3:[()=>genLifeDeath(choice([7,9]),'straight3',false),()=>genLifeDeath(choice([7,9]),'straight3',true),()=>genLadder(choice([7,9]),2,3),()=>genDouble(9)],
- 4:[()=>genCaptureAtari(9,3,1),()=>genLadder(9,3,5),()=>genLifeDeath(9,'bent3',false),()=>genLifeDeath(9,'bent3',true)],
- 5:[()=>genLadder(choice([9,11]),5,9),()=>genLifeDeath(9,'bent3',true),()=>genLifeDeath(9,'bent3',false),()=>genCaptureAtari(11,3,1)],
+ 3:[()=>genLifeDeath(choice([7,9]),'straight3',false),()=>genLifeDeath(choice([7,9]),'straight3',true),()=>genLifeDeathBlob(9,3,4,true),()=>genLifeDeathBlob(9,3,4,false),()=>genDouble(9),()=>genCaptureAtari(9,2,1)],
+ 4:[()=>genCaptureAtari(9,3,1),()=>genLifeDeathBlob(9,4,5,false),()=>genLifeDeathBlob(9,4,5,true),()=>genLifeDeathBlob(9,3,4,false),()=>genDouble(9)],
+ 5:[()=>genLifeDeathBlob(9,4,5,true),()=>genLifeDeathBlob(9,4,5,true),()=>genLifeDeathBlob(choice([9,11]),3,6,false),()=>genLifeDeathBlob(9,4,6,false),()=>genCaptureAtari(11,4,1),()=>genDouble(11)],
 };
 // dihedral-8 canonical signature so rotations/reflections dedup to one id
 function transformPt(x,y,S,op){
@@ -419,14 +459,20 @@ function canonId(p){
 }
 function hash32(str){ let h=2166136261>>>0; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0).toString(36); }
 
+function shuffledArr(a){ a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=ri(i+1); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+// Fair generation: try the generators in a fresh random order, giving each a budget
+// of attempts before moving on, under a hard per-puzzle time cap. Because the order is
+// shuffled every call, each kind gets an equal first crack — so an instant generator
+// (capture/double) no longer crowds out the slower, more varied life & death shapes.
 function generate(level){
-  const gens=POOL[level];
-  for(let attempt=0;attempt<500;attempt++){
-    const g=choice(gens); let p; try{ p=g(); }catch(e){ p=null; }
-    if(!p)continue; if(verify(p)!==null)continue;
-    p.level=level; p.id=canonId(p); p.source='ai'; return p;
+  const deadline=performance.now()+550;
+  for(const g of shuffledArr(POOL[level])){
+    for(let a=0; a<30 && performance.now()<deadline; a++){
+      let p; try{ p=g(); }catch(e){ p=null; }
+      if(p && verify(p)===null){ p.level=level; p.id=canonId(p); p.source='ai'; return p; }
+    }
   }
-  let p; do{ p=genCaptureAtari(7,1,1); }while(!p||verify(p)!==null);
+  let p; do{ p=genCaptureAtari(9,2,1); }while(!p||verify(p)!==null);
   p.level=level; p.id=canonId(p); p.source='ai'; return p;
 }
 
