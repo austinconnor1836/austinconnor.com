@@ -1,0 +1,801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Go Trainer — Learn Baduk by Problems</title>
+<style>
+  :root{
+    --bg:#1b1d21; --panel:#24272c; --panel2:#2c2f35; --ink:#e9e6df; --muted:#9aa0a8;
+    --line:#3a3e45; --accent:#d9a441; --good:#5bbf7a; --bad:#e06c6c; --hint:#6fa8dc;
+    --board:#dcb060; --boardline:#4a3410; --black:#1a1a1a; --white:#f4f2ec;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#f3f1ec; --panel:#ffffff; --panel2:#f6f4ef; --ink:#23262b; --muted:#6a7078; --line:#e0ddd5; }
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:var(--bg); color:var(--ink);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",system-ui,sans-serif;
+    display:flex; flex-direction:column; min-height:100vh;
+  }
+  header{
+    padding:12px 18px; border-bottom:1px solid var(--line);
+    display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  }
+  header h1{font-size:18px; margin:0; letter-spacing:.3px}
+  header h1 b{color:var(--accent)}
+  .sub{color:var(--muted); font-size:13px}
+  .wrap{
+    flex:1; display:grid; grid-template-columns: minmax(300px, 1fr) 400px;
+    gap:18px; padding:16px; max-width:1240px; width:100%; margin:0 auto; align-items:start;
+  }
+  @media (max-width:880px){ .wrap{grid-template-columns:1fr} }
+  .boardcard{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:14px;
+    display:flex; flex-direction:column; align-items:center; gap:10px;
+  }
+  canvas{ touch-action:manipulation; border-radius:8px; cursor:pointer; max-width:100%; height:auto; }
+  .boardmeta{ display:flex; gap:10px; align-items:center; width:100%; justify-content:space-between; flex-wrap:wrap }
+  .turnpill{ display:flex; align-items:center; gap:7px; font-size:13px; color:var(--muted) }
+  .dot{width:15px;height:15px;border-radius:50%;display:inline-block;border:1px solid rgba(0,0,0,.3)}
+  .dot.b{background:radial-gradient(circle at 35% 30%, #555, #111)}
+  .dot.w{background:radial-gradient(circle at 35% 30%, #fff, #cdc9bf)}
+  .controls{display:flex; gap:7px; flex-wrap:wrap; justify-content:center}
+  button{
+    font:inherit; font-size:13px; padding:8px 12px; border-radius:9px; border:1px solid var(--line);
+    background:var(--panel2); color:var(--ink); cursor:pointer; transition:.12s;
+  }
+  button:hover{border-color:var(--accent)}
+  button.primary{background:var(--accent); color:#1a1200; border-color:var(--accent); font-weight:600}
+  button:disabled{opacity:.4; cursor:default}
+  .side{display:flex; flex-direction:column; gap:14px}
+  .card{background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:16px}
+  .tabrow{display:flex; gap:8px}
+  .tab{flex:1; text-align:center}
+  .tab.active{background:var(--accent); color:#1a1200; border-color:var(--accent); font-weight:600}
+  .levelrow{display:flex; gap:6px; margin-top:10px; flex-wrap:wrap}
+  .lvl{flex:1 1 0; min-width:62px; text-align:center; padding:8px 4px; font-size:12px; line-height:1.25}
+  .lvl b{display:block; font-size:13px}
+  .lvl.active{background:var(--accent); color:#1a1200; border-color:var(--accent); font-weight:600}
+  .lvl small{opacity:.8; font-size:10px}
+  .tag{
+    display:inline-block; font-size:11px; text-transform:uppercase; letter-spacing:.7px;
+    color:var(--accent); border:1px solid var(--accent); border-radius:20px; padding:2px 10px; margin:0 6px 8px 0;
+  }
+  .tag.src{color:var(--muted); border-color:var(--line)}
+  .card h2{margin:0 0 4px; font-size:19px}
+  .concept{font-size:13px; color:var(--muted); margin:0 0 8px}
+  .prompt{font-size:14.5px; margin:8px 0}
+  .feedback{min-height:20px; font-size:14px; border-radius:10px; padding:10px 12px; margin-top:10px; display:none}
+  .feedback.show{display:block}
+  .feedback.good{background:rgba(91,191,122,.14); border:1px solid var(--good); color:var(--good)}
+  .feedback.bad{background:rgba(224,108,108,.12); border:1px solid var(--bad); color:var(--bad)}
+  .feedback.hint{background:rgba(111,168,220,.12); border:1px solid var(--hint); color:var(--hint)}
+  .explain{margin-top:10px; font-size:13.5px; color:var(--muted); border-left:3px solid var(--accent); padding:4px 0 4px 12px; display:none}
+  .explain.show{display:block}
+  .navrow{display:flex; justify-content:space-between; gap:8px; margin-top:12px}
+  .stats{display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; font-size:12px; color:var(--muted)}
+  .stat{background:var(--panel2); border:1px solid var(--line); border-radius:9px; padding:7px 10px; flex:1 1 0; min-width:80px; text-align:center}
+  .stat b{display:block; font-size:17px; color:var(--ink)}
+  .srcbar{height:8px; border-radius:5px; overflow:hidden; display:flex; margin-top:10px; background:var(--panel2); border:1px solid var(--line)}
+  .srcbar i{display:block; height:100%}
+  ul.key{margin:8px 0 0; padding-left:18px; font-size:13px; color:var(--muted)}
+  ul.key li{margin:3px 0}
+  .muted{color:var(--muted); font-size:12.5px}
+  footer{padding:10px 20px; color:var(--muted); font-size:12px; border-top:1px solid var(--line); text-align:center}
+  details{margin-top:8px} summary{cursor:pointer; font-size:13px; color:var(--muted)}
+  /* Touch screens: 44px minimum hit targets. */
+  @media (pointer:coarse){ button, summary{min-height:44px} }
+</style>
+</head>
+<body>
+<header>
+  <h1><b>⚫⚪ Go</b> Trainer</h1>
+  <span class="sub">Learn baduk by solving positions · endless, difficulty-graded</span>
+</header>
+
+<div class="wrap">
+  <!-- LEFT: board -->
+  <div class="boardcard">
+    <div class="boardmeta">
+      <span class="turnpill"><span id="turnDot" class="dot b"></span><span id="turnText">Black to play</span></span>
+      <span class="turnpill">Captures — ⚫<span id="capB">0</span> &nbsp; ⚪<span id="capW">0</span></span>
+    </div>
+    <canvas id="board" width="560" height="560"></canvas>
+    <div class="controls">
+      <button id="undoBtn">↶ Undo</button>
+      <button id="resetBtn">↺ Reset</button>
+      <button id="hintBtn">💡 Hint</button>
+      <button id="showBtn">✓ Solution</button>
+      <button id="passBtn" style="display:none">Pass</button>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="side">
+    <div class="card">
+      <div class="tabrow">
+        <button class="tab active" id="tabPlay">Train</button>
+        <button class="tab" id="tabSandbox">Free Play</button>
+      </div>
+      <div class="levelrow" id="levelRow"></div>
+    </div>
+
+    <!-- TRAIN PANEL -->
+    <div class="card" id="playPanel">
+      <div>
+        <span class="tag" id="conceptTag">—</span>
+        <span class="tag src" id="sourceTag">—</span>
+      </div>
+      <h2 id="probTitle">—</h2>
+      <p class="concept" id="probConcept"></p>
+      <p class="prompt" id="probPrompt"></p>
+      <div class="feedback" id="feedback"></div>
+      <div class="explain" id="explain"></div>
+      <div class="navrow">
+        <button id="skipBtn">⤼ Skip</button>
+        <button id="nextBtn" class="primary">Next puzzle →</button>
+      </div>
+      <div class="stats" id="stats"></div>
+      <div class="srcbar" id="srcbar" title="Library composition: known vs AI-generated"></div>
+      <div class="muted" id="libline" style="margin-top:8px"></div>
+      <details>
+        <summary>Rules in 20 seconds &amp; library info</summary>
+        <ul class="key">
+          <li><b>Liberties</b> = empty points touching a stone/group. Fill the last one to <b>capture</b>.</li>
+          <li>Make a group <b>uncapturable</b> with <b>two eyes</b> (two separate interior points).</li>
+          <li>Difficulty 1→5 = Beginner→Expert. Each solved puzzle is remembered and never repeats.</li>
+          <li><b>Known problems are served first</b>; the AI only invents new ones once the known pool at a level is exhausted. (Classic-corpus ingestion coming — research in progress.)</li>
+        </ul>
+        <button id="resetProgress" style="margin-top:8px">Reset all progress</button>
+      </details>
+    </div>
+
+    <!-- SANDBOX PANEL -->
+    <div class="card" id="sandboxPanel" style="display:none">
+      <span class="tag">Sandbox</span>
+      <h2>Free play</h2>
+      <p class="prompt">Two-player local board. Captures, suicide and ko are enforced — try ideas from the puzzles.</p>
+      <div class="controls" style="margin-top:8px; justify-content:flex-start">
+        <span style="align-self:center;color:var(--muted);font-size:13px">Size:</span>
+        <button data-size="9" class="szbtn">9×9</button>
+        <button data-size="13" class="szbtn">13×13</button>
+        <button data-size="19" class="szbtn">19×19</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer>Go Trainer · runs fully offline · progress saved on this device</footer>
+
+<script>
+/* ============================================================
+   PURE: GO ENGINE  (0 empty / 1 black / 2 white)
+   ============================================================ */
+const EMPTY=0, BLACK=1, WHITE=2;
+const other = c => c===BLACK?WHITE:BLACK;
+const makeBoard = s => ({size:s, grid:new Array(s*s).fill(0), koPoint:-1});
+const idx=(b,x,y)=>y*b.size+x;
+const inB=(b,x,y)=>x>=0&&y>=0&&x<b.size&&y<b.size;
+function neighbors(b,i){
+  const x=i%b.size, y=(i/b.size)|0, out=[];
+  if(x>0)out.push(i-1); if(x<b.size-1)out.push(i+1);
+  if(y>0)out.push(i-b.size); if(y<b.size-1)out.push(i+b.size);
+  return out;
+}
+function group(b,i){
+  const color=b.grid[i], stones=new Set([i]), libs=new Set(), stack=[i];
+  while(stack.length){ const c=stack.pop();
+    for(const n of neighbors(b,c)){
+      if(b.grid[n]===EMPTY) libs.add(n);
+      else if(b.grid[n]===color && !stones.has(n)){ stones.add(n); stack.push(n); } } }
+  return {stones, libs};
+}
+const libc = (b,i)=>group(b,i).libs.size;
+function tryMove(b, i, color){
+  if(b.grid[i]!==EMPTY) return {ok:false, reason:'occupied'};
+  if(i===b.koPoint) return {ok:false, reason:'ko'};
+  const ng=b.grid.slice(); ng[i]=color;
+  const nb={size:b.size, grid:ng, koPoint:-1}; const captured=[];
+  for(const n of neighbors(nb,i)){
+    if(nb.grid[n]===other(color)){ const g=group(nb,n);
+      if(g.libs.size===0){ for(const s of g.stones){ ng[s]=EMPTY; captured.push(s); } } } }
+  if(group(nb,i).libs.size===0 && captured.length===0) return {ok:false, reason:'suicide'};
+  if(captured.length===1){ const g=group(nb,i); if(g.stones.size===1 && g.libs.size===1) nb.koPoint=captured[0]; }
+  return {ok:true, board:nb, captured};
+}
+
+/* ============================================================
+   PURE: eyes + exact tiny life/death solver + helpers
+   ============================================================ */
+function eyes(b,color){ let n=0;
+  for(let i=0;i<b.grid.length;i++){ if(b.grid[i]!==EMPTY)continue; let ok=true;
+    for(const q of neighbors(b,i)){ if(b.grid[q]!==color){ok=false;break;} } if(ok)n++; } return n; }
+function aliveStatus(b,color,region,toMove,depth){
+  if(depth>12) return eyes(b,color)>=2;
+  if(eyes(b,color)>=2) return true;
+  const open=region.filter(i=>b.grid[i]===EMPTY);
+  if(open.length===0) return eyes(b,color)>=2;
+  if(toMove===color){
+    for(const m of open){ const mv=tryMove(b,m,color); if(!mv.ok)continue;
+      if(aliveStatus(mv.board,color,region,other(color),depth+1))return true; }
+    if(aliveStatus(b,color,region,other(color),depth+1))return true;
+    return false;
+  } else {
+    for(const m of open){ const mv=tryMove(b,m,other(color)); if(!mv.ok)continue;
+      if(!aliveStatus(mv.board,color,region,color,depth+1))return false; }
+    if(!aliveStatus(b,color,region,color,depth+1))return false;
+    return true;
+  }
+}
+function countAtari(b,color){ const seen=new Set(); let n=0;
+  for(let i=0;i<b.grid.length;i++){ if(b.grid[i]===color&&!seen.has(i)){ const g=group(b,i);
+    g.stones.forEach(s=>seen.add(s)); if(g.libs.size===1)n++; } } return n; }
+const ri=n=>Math.floor(Math.random()*n);
+const choice=a=>a[ri(a.length)];
+function collect(b,color){ const o=[]; for(let i=0;i<b.grid.length;i++) if(b.grid[i]===color) o.push([i%b.size,(i/b.size)|0]); return o; }
+function setupLegal(b){ const seen=new Set();
+  for(let i=0;i<b.grid.length;i++){ if(b.grid[i]&&!seen.has(i)){ const g=group(b,i);
+    g.stones.forEach(s=>seen.add(s)); if(g.libs.size===0)return false; } } return true; }
+function randomBlob(S,k,margin){ let x=margin+ri(S-2*margin), y=margin+ri(S-2*margin);
+  const cells=[[x,y]], set=new Set([x+','+y]); let guard=0;
+  while(cells.length<k&&guard++<300){ const [cx,cy]=cells[ri(cells.length)];
+    const [dx,dy]=choice([[1,0],[-1,0],[0,1],[0,-1]]); const nx=cx+dx, ny=cy+dy;
+    if(nx<margin||ny<margin||nx>=S-margin||ny>=S-margin)continue;
+    const key=nx+','+ny; if(set.has(key))continue; set.add(key); cells.push([nx,ny]); }
+  return cells; }
+
+/* ============================================================
+   PURE: GENERATORS  (each returns a candidate, verified below)
+   ============================================================ */
+function genCaptureAtari(S,k,leave){
+  const b=makeBoard(S); const target=randomBlob(S,k,1); if(target.length<k)return null;
+  for(const [x,y] of target) b.grid[idx(b,x,y)]=WHITE;
+  const tgi=idx(b,target[0][0],target[0][1]); const libs=[...group(b,tgi).libs];
+  if(libs.length<leave)return null;
+  const keep=[]; const pool=libs.slice();
+  for(let i=0;i<leave;i++){ keep.push(pool.splice(ri(pool.length),1)[0]); }
+  for(const i of pool) b.grid[i]=BLACK;
+  const sols=keep.map(i=>[i%S,(i/S)|0]);
+  return {kind:leave===1?'capture':'atari', size:S, toPlay:BLACK,
+    goal:leave===1?'capture':'atari', target:[target[0][0],target[0][1]], moves:sols,
+    b:collect(b,BLACK), w:collect(b,WHITE)};
+}
+function genDouble(S){
+  const b=makeBoard(S); const P=[1+ri(S-2),1+ri(S-2)]; const pi=idx(b,P[0],P[1]);
+  const horiz=Math.random()<0.5;
+  const A=horiz?[P[0]-1,P[1]]:[P[0],P[1]-1], Bp=horiz?[P[0]+1,P[1]]:[P[0],P[1]+1];
+  if(!inB(b,A[0],A[1])||!inB(b,Bp[0],Bp[1]))return null;
+  const perp=horiz?[[P[0],P[1]-1],[P[0],P[1]+1]]:[[P[0]-1,P[1]],[P[0]+1,P[1]]];
+  for(const q of perp) if(!inB(b,q[0],q[1]))return null;
+  b.grid[idx(b,A[0],A[1])]=WHITE; b.grid[idx(b,Bp[0],Bp[1])]=WHITE;
+  for(const stone of [A,Bp]){ const si=idx(b,stone[0],stone[1]);
+    const nbrs=neighbors(b,si).filter(n=>n!==pi); const open=nbrs.filter(n=>b.grid[n]===EMPTY);
+    if(open.length<1)return null; const keep=choice(open);
+    for(const n of open) if(n!==keep && b.grid[n]===EMPTY) b.grid[n]=BLACK; }
+  return {kind:'double', size:S, toPlay:BLACK, goal:'move', target:null, moves:[P],
+    b:collect(b,BLACK), w:collect(b,WHITE)};
+}
+function ladderDFS(b,wroot,depth){
+  if(b.grid[wroot]===EMPTY)return [];
+  if(depth>40)return null;
+  const g=group(b,wroot); if(g.libs.size>2)return null;
+  for(const m of [...g.libs]){ const mv=tryMove(b,m,BLACK); if(!mv.ok)continue;
+    if(mv.board.grid[wroot]===EMPTY)return [{black:m,white:null}];
+    const g2=group(mv.board,wroot); if(g2.libs.size!==1)continue;
+    const ext=[...g2.libs][0]; const w=tryMove(mv.board,ext,WHITE); if(!w.ok)continue;
+    const rest=ladderDFS(w.board,wroot,depth+1); if(rest)return [{black:m,white:ext},...rest]; }
+  return null;
+}
+function genLadder(S,minL,maxL){
+  const corner=ri(4); const cx=corner&1?S-1:0, cy=corner&2?S-1:0;
+  const dx=cx===0?1:-1, dy=cy===0?1:-1;
+  const dist=2+ri(Math.min(maxL+2,S-3)); const wx=cx+dx*dist, wy=cy+dy*dist;
+  const b=makeBoard(S); if(!inB(b,wx,wy))return null; const wi=idx(b,wx,wy); b.grid[wi]=WHITE;
+  const bx=wx+dx, by=wy+dy;
+  if(inB(b,bx,wy))b.grid[idx(b,bx,wy)]=BLACK; else return null;
+  if(inB(b,wx,by))b.grid[idx(b,wx,by)]=BLACK; else return null;
+  if(!setupLegal(b))return null;
+  const steps=ladderDFS(b,wi,0); if(!steps)return null;
+  if(steps.length<minL||steps.length>maxL)return null;
+  const script=steps.map((s,i)=>({accept:[[s.black%S,(s.black/S)|0]],
+    reply:s.white?[s.white%S,(s.white/S)|0]:null, done:i===steps.length-1}));
+  return {kind:'ladder', size:S, toPlay:BLACK, goal:'script', w:[[wx,wy]], b:collect(b,BLACK), script};
+}
+const SHAPES={ straight3:{cells:[[0,0],[1,0],[2,0]],vital:[1,0]},
+               bent3:{cells:[[0,0],[1,0],[0,1]],vital:[0,0]} };
+function xf(x,y,rot,refl){ if(refl)x=-x; for(let r=0;r<rot;r++){ const t=x; x=-y; y=t; } return [x,y]; }
+function genLifeDeath(S,shapeName,kill){
+  const sh=SHAPES[shapeName]; const rot=ri(4), refl=ri(2);
+  const raw=sh.cells.map(([x,y])=>xf(x,y,rot,refl));
+  const vraw=xf(sh.vital[0],sh.vital[1],rot,refl);
+  const mnx=Math.min(...raw.map(p=>p[0])), mny=Math.min(...raw.map(p=>p[1]));
+  const cells=raw.map(([x,y])=>[x-mnx,y-mny]); const vital0=[vraw[0]-mnx, vraw[1]-mny];
+  const w=Math.max(...cells.map(p=>p[0]))+1, h=Math.max(...cells.map(p=>p[1]))+1;
+  const margin=2; if(S-w-2*margin<1||S-h-2*margin<1)return null;
+  const ox=margin+ri(S-w-2*margin), oy=margin+ri(S-h-2*margin);
+  const b=makeBoard(S);
+  const interior=cells.map(([x,y])=>[x+ox,y+oy]);
+  const vital=[vital0[0]+ox, vital0[1]+oy];
+  const groupColor=kill?WHITE:BLACK, outColor=other(groupColor);
+  const interiorSet=new Set(interior.map(([x,y])=>idx(b,x,y)));
+  const wall=new Set();
+  for(const i of interiorSet) for(const n of neighbors(b,i)) if(!interiorSet.has(n)) wall.add(n);
+  for(const i of wall) b.grid[i]=groupColor;
+  const shell=new Set();
+  for(const i of wall) for(const n of neighbors(b,i)) if(!wall.has(n)&&!interiorSet.has(n)) shell.add(n);
+  for(const i of shell) b.grid[i]=outColor;
+  if(!setupLegal(b))return null;
+  return {kind:kill?'death':'life', shape:shapeName, size:S, toPlay:BLACK, goal:'move',
+    moves:[vital], target:null, region:[...interiorSet], b:collect(b,BLACK), w:collect(b,WHITE)};
+}
+
+/* ============================================================
+   PURE: VERIFY  (gates every problem, generated OR ingested)
+   ============================================================ */
+function loadB(p){ const b=makeBoard(p.size);
+  for(const [x,y] of (p.b||[])) b.grid[idx(b,x,y)]=BLACK;
+  for(const [x,y] of (p.w||[])) b.grid[idx(b,x,y)]=WHITE; return b; }
+function verify(p){
+  const b=loadB(p); if(!setupLegal(b)) return 'illegal-setup';
+  if(p.kind==='capture'||p.kind==='atari'){
+    for(const m of p.moves){ const mv=tryMove(b,idx(b,m[0],m[1]),BLACK); if(!mv.ok)return 'sol-illegal';
+      const ti=idx(mv.board,p.target[0],p.target[1]); const still=mv.board.grid[ti]!==EMPTY;
+      if(p.kind==='capture'&&still)return 'not-captured';
+      if(p.kind==='atari'&&!(still&&libc(mv.board,ti)===1))return 'not-atari'; } return null; }
+  if(p.kind==='double'){
+    const before=countAtari(b,WHITE); const mv=tryMove(b,idx(b,p.moves[0][0],p.moves[0][1]),BLACK);
+    if(!mv.ok)return 'sol-illegal'; const after=countAtari(mv.board,WHITE);
+    return (after>=2&&after>before)?null:'not-double'; }
+  if(p.kind==='life'){
+    const mv=tryMove(b,idx(b,p.moves[0][0],p.moves[0][1]),p.toPlay); if(!mv.ok)return 'sol-illegal';
+    return eyes(mv.board,p.toPlay)>=2?null:'not-two-eyes'; }
+  if(p.kind==='death'){
+    const region=p.region;
+    const canLiveBefore=aliveStatus(b,WHITE,region,WHITE,0);
+    const mv=tryMove(b,idx(b,p.moves[0][0],p.moves[0][1]),BLACK); if(!mv.ok)return 'sol-illegal';
+    const dead=!aliveStatus(mv.board,WHITE,region,WHITE,0);
+    if(!canLiveBefore)return 'not-meaningful';
+    return dead?null:'not-killed'; }
+  if(p.kind==='ladder'){
+    let bb=b; const wr=idx(bb,p.w[0][0],p.w[0][1]);
+    for(const s of p.script){ const mv=tryMove(bb,idx(bb,s.accept[0][0],s.accept[0][1]),BLACK); if(!mv.ok)return 'step-illegal'; bb=mv.board;
+      if(s.reply){ const r=tryMove(bb,idx(bb,s.reply[0],s.reply[1]),WHITE); if(!r.ok)return 'reply-illegal'; bb=r.board; } }
+    return bb.grid[wr]===EMPTY?null:'white-survived'; }
+  if(p.kind==='curated') return null; // curated carry their own validated data
+  return 'unknown-kind';
+}
+
+/* ============================================================
+   PURE: difficulty pools + canonical id
+   ============================================================ */
+const LEVELS=[
+  {n:1,name:'Beginner'}, {n:2,name:'Easy'}, {n:3,name:'Intermediate'},
+  {n:4,name:'Hard'}, {n:5,name:'Expert'} ];
+const POOL={
+ 1:[()=>genCaptureAtari(choice([5,7]),1,1),()=>genCaptureAtari(choice([5,7]),1,2)],
+ 2:[()=>genCaptureAtari(7,2,1),()=>genCaptureAtari(7,2,2),()=>genDouble(7)],
+ 3:[()=>genLifeDeath(choice([7,9]),'straight3',false),()=>genLifeDeath(choice([7,9]),'straight3',true),()=>genLadder(choice([7,9]),2,3),()=>genDouble(9)],
+ 4:[()=>genCaptureAtari(9,3,1),()=>genLadder(9,3,5),()=>genLifeDeath(9,'bent3',false),()=>genLifeDeath(9,'bent3',true)],
+ 5:[()=>genLadder(choice([9,11]),5,9),()=>genLifeDeath(9,'bent3',true),()=>genLifeDeath(9,'bent3',false),()=>genCaptureAtari(11,3,1)],
+};
+// dihedral-8 canonical signature so rotations/reflections dedup to one id
+function transformPt(x,y,S,op){
+  const m=S-1;
+  switch(op){ case 0:return[x,y]; case 1:return[m-x,y]; case 2:return[x,m-y]; case 3:return[m-x,m-y];
+    case 4:return[y,x]; case 5:return[m-y,x]; case 6:return[y,m-x]; case 7:return[m-y,m-x]; } }
+function canonId(p){
+  const S=p.size; let best=null;
+  for(let op=0;op<8;op++){
+    const B=(p.b||[]).map(([x,y])=>transformPt(x,y,S,op)).map(([x,y])=>y*S+x).sort((a,b)=>a-b);
+    const W=(p.w||[]).map(([x,y])=>transformPt(x,y,S,op)).map(([x,y])=>y*S+x).sort((a,b)=>a-b);
+    const s=S+'|B'+B.join(',')+'|W'+W.join(',')+'|t'+p.toPlay;
+    if(best===null||s<best) best=s;
+  }
+  return 'p'+hash32(best);
+}
+function hash32(str){ let h=2166136261>>>0; for(let i=0;i<str.length;i++){ h^=str.charCodeAt(i); h=Math.imul(h,16777619); } return (h>>>0).toString(36); }
+
+function generate(level){
+  const gens=POOL[level];
+  for(let attempt=0;attempt<500;attempt++){
+    const g=choice(gens); let p; try{ p=g(); }catch(e){ p=null; }
+    if(!p)continue; if(verify(p)!==null)continue;
+    p.level=level; p.id=canonId(p); p.source='ai'; return p;
+  }
+  let p; do{ p=genCaptureAtari(7,1,1); }while(!p||verify(p)!==null);
+  p.level=level; p.id=canonId(p); p.source='ai'; return p;
+}
+
+/* ============================================================
+   PURE: human-readable text per problem
+   ============================================================ */
+function textFor(p){
+  if(p.text) return p.text; // curated / ingested carry their own
+  const T={
+   capture:{tag:'Capture',concept:'Liberties & capturing',
+     prompt:'White is in atari. Play the one move that captures the white group.',
+     hint:'Find the white group’s last empty liberty and fill it.',
+     explain:'A group is captured the instant its final liberty is filled.'},
+   atari:{tag:'Atari',concept:'Reducing liberties',
+     prompt:'Put White in atari — reduce the group to exactly one liberty (don’t capture it outright).',
+     hint:'Leave White with exactly one liberty. Either remaining liberty works.',
+     explain:'Atari means one liberty left — one move away from capture.'},
+   double:{tag:'Double atari',concept:'Attacking two things at once',
+     prompt:'One move puts two separate white stones in atari at the same time. Find it.',
+     hint:'Look for the empty point that touches both white stones.',
+     explain:'A double atari hits two groups at once — White can only save one.'},
+   life:{tag:'Life & Death',concept:'Making two eyes',
+     prompt:'Your group’s eye space is killable as one big eye. Play the vital point to make TWO eyes and live.',
+     hint:'Split the eye space into two separate eyes — play its vital point (centre / elbow).',
+     explain:'Two separate eyes can never both be filled — the group lives unconditionally.'},
+   death:{tag:'Life & Death',concept:'Killing with the vital point',
+     prompt:'White can still make two eyes. Move first and take the vital point to kill the group.',
+     hint:'Whoever plays the vital point of this eye shape first wins. Take it.',
+     explain:'Taking the vital point leaves White at most one eye — the group is dead.'},
+   ladder:{tag:'Ladder',concept:'Reading a capturing chase',
+     prompt:'Capture the white stone by chasing it into the corner. Keep it in atari every move.',
+     hint:'Each move must leave White exactly one liberty; follow it toward the edge.',
+     explain:'A ladder works because the edge stops White ever gaining a second liberty.'},
+  };
+  return T[p.kind]||{tag:'Problem',concept:'',prompt:'Find the best move for Black.',hint:'',explain:''};
+}
+
+/* ============================================================
+   CURATED "known" seed (hand-authored + engine-verified earlier)
+   ============================================================ */
+const CURATED=[
+ {kind:'curated',level:1,size:5,toPlay:BLACK,goal:'capture',target:[2,2],moves:[[2,3]],
+  w:[[2,2]],b:[[1,2],[3,2],[2,1]],
+  text:{tag:'Capture',concept:'Liberties & capturing',title:'Capture one stone',
+   prompt:'The white stone has one liberty left. Play the move that captures it.',
+   hint:'Fill the last empty point touching the white stone.',
+   explain:'A stone is captured the instant its last liberty is filled.'}},
+ {kind:'curated',level:1,size:5,toPlay:BLACK,goal:'atari',target:[2,2],moves:[[3,2]],
+  w:[[2,2]],b:[[1,2],[2,1]],
+  text:{tag:'Atari',concept:'Reducing to one liberty',title:'Atari!',
+   prompt:'Reduce the white stone to a single liberty (atari) from the right.',
+   hint:'White has two liberties; take the one on the right, leaving one.',
+   explain:'Atari = one liberty left, one move from capture.'}},
+ {kind:'curated',level:2,size:5,toPlay:BLACK,goal:'capture',target:[2,2],moves:[[2,4]],
+  w:[[2,2],[2,3]],b:[[1,2],[1,3],[2,1],[3,2],[3,3]],
+  text:{tag:'Capture',concept:'Groups share liberties',title:'Capture two stones',
+   prompt:'The two white stones are one group with a single shared liberty below. Capture both.',
+   hint:'Connected stones die together — fill the one point below the lower stone.',
+   explain:'A chain pools its liberties; filling the last one captures the whole group.'}},
+ {kind:'curated',level:2,size:7,toPlay:BLACK,goal:'move',moves:[[3,4],[4,3]],
+  w:[[2,3],[3,2]],b:[[3,3]],
+  text:{tag:'Shape',concept:'Saving a stone',title:'Extend to live',
+   prompt:'Your stone is being surrounded. Extend toward open space to gain liberties.',
+   hint:'Run into the empty side, not into White.',
+   explain:'Extending toward open space keeps a weak stone ahead of the chase.'}},
+ {kind:'curated',level:3,size:7,toPlay:BLACK,goal:'script',w:[[4,5]],b:[[3,5],[4,4]],
+  script:[{accept:[[5,5]],reply:[4,6],done:false},{accept:[[3,6]],reply:[5,6],done:false},{accept:[[6,6]],reply:null,done:true}],
+  text:{tag:'Ladder',concept:'Reading a capturing sequence',title:'The ladder (shicho)',
+   prompt:'Chase the white stone into the bottom-right corner, keeping it in atari every move.',
+   hint:'First atari from the right: play (5,5), then follow White down.',
+   explain:'A ladder works because the board edge stops White gaining a second liberty.'}},
+ {kind:'curated',level:3,size:7,toPlay:BLACK,goal:'move',moves:[[3,4]],
+  w:[[3,3]],b:[[2,2],[4,2],[2,4],[4,4],[3,2]],
+  text:{tag:'Tactics',concept:'Capturing without a chase',title:'The net (geta)',
+   prompt:'A ladder won’t work here — catch the white stone in a loose net. One calm move seals it.',
+   hint:'Don’t play in contact. Play the diagonal point below the stone.',
+   explain:'A net traps a stone from a distance: every escape runs into your stones.'}},
+ {kind:'curated',level:3,size:7,toPlay:BLACK,goal:'move',moves:[[3,2]],
+  w:[[2,2],[4,2]],b:[[3,1],[2,3],[4,3]],
+  text:{tag:'Shape',concept:'Cutting',title:'Keep them cut',
+   prompt:'White wants to join its two stones at (3,2). Take that point first to keep them split.',
+   hint:'The key point sits exactly between White’s two stones.',
+   explain:'Two weak groups are far easier to attack than one strong connected shape.'}},
+ {kind:'curated',level:5,size:9,toPlay:BLACK,goal:'move',moves:[[2,2],[3,2],[2,3],[3,3]],
+  b:[[2,6],[6,6],[6,2]],w:[[5,5]],
+  text:{tag:'Opening',concept:'Fuseki (opening)',title:'Take the last corner',
+   prompt:'Corner, side, then centre. Three corners are taken — claim the open upper-left corner.',
+   hint:'Play near the 3-3 point of the empty corner (around (2,2)).',
+   explain:'Corners enclose territory most efficiently because the edges do half the work.'}},
+];
+
+/* ============================================================
+   LIBRARY (persistent, dedup, progress memory)
+   ============================================================ */
+const LS_KEY='go-trainer-lib-v1';
+let LIB={ items:{}, progress:{}, order:0,
+  stats:{ solvedByLevel:{1:0,2:0,3:0,4:0,5:0}, streak:0, best:0, generated:0 } };
+function loadLib(){
+  try{ const s=JSON.parse(localStorage.getItem(LS_KEY)); if(s&&s.items){ LIB=s;
+    LIB.stats=LIB.stats||{solvedByLevel:{},streak:0,best:0,generated:0};
+    for(let l=1;l<=5;l++) LIB.stats.solvedByLevel[l]=LIB.stats.solvedByLevel[l]||0; } }catch(e){}
+  seedKnown();
+}
+function saveLib(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(LIB)); }catch(e){} }
+function addItem(p, source){
+  const id=p.id||(p.id=canonId(p));
+  if(LIB.items[id]) return LIB.items[id];
+  LIB.items[id]={ id, level:p.level, kind:p.kind, source:source||p.source||'ai', data:p, order:++LIB.order };
+  if((source||p.source)==='ai') LIB.stats.generated++;
+  return LIB.items[id];
+}
+function seedKnown(){
+  for(const c of CURATED){ c.id=canonId(c); if(!LIB.items[c.id]) addItem(c,'known-curated'); }
+  saveLib();
+}
+function unsolvedAt(level, knownOnly){
+  const out=[];
+  for(const id in LIB.items){ const it=LIB.items[id];
+    if(it.level!==level) continue;
+    if(LIB.progress[id]&&LIB.progress[id].solved) continue;
+    const known=it.source.startsWith('known');
+    if(knownOnly && !known) continue;
+    out.push(it); }
+  // prefer known sources first, then by insertion order
+  out.sort((a,b)=>{ const ka=a.source.startsWith('known')?0:1, kb=b.source.startsWith('known')?0:1;
+    return ka-kb || a.order-b.order; });
+  return out;
+}
+let recentlyShown=new Set();   // session-only, so Skip/Next always advances
+function pickFresh(pool){
+  for(const it of pool){ if(!recentlyShown.has(it.id)){ it.data.source=it.source; return it.data; } }
+  return null;
+}
+function nextProblem(level){
+  // 1) a not-yet-shown unsolved KNOWN problem at this level (known served first)
+  let p=pickFresh(unsolvedAt(level,true));
+  if(p) return p;
+  // 2) a not-yet-shown previously-generated unsolved problem (never recreated)
+  p=pickFresh(unsolvedAt(level,false));
+  if(p) return p;
+  // 3) invent a brand-new one not already in the library
+  for(let i=0;i<60;i++){ const g=generate(level); if(!LIB.items[g.id]&&!recentlyShown.has(g.id)){ addItem(g,'ai'); saveLib(); return g; } }
+  const g=generate(level); addItem(g,'ai'); saveLib(); return g;
+}
+function markSolved(p){
+  const id=p.id||canonId(p);
+  if(!LIB.items[id]) addItem(p, p.source);
+  if(!LIB.progress[id]||!LIB.progress[id].solved){
+    LIB.progress[id]={ solved:true, at:LIB.order };
+    LIB.stats.solvedByLevel[p.level]=(LIB.stats.solvedByLevel[p.level]||0)+1;
+    LIB.stats.streak++; LIB.stats.best=Math.max(LIB.stats.best, LIB.stats.streak);
+  }
+  saveLib();
+}
+function knownRemaining(level){ return unsolvedAt(level,true).length; }
+function libCounts(){ let known=0, ai=0, solved=0;
+  for(const id in LIB.items){ const it=LIB.items[id];
+    if(it.source.startsWith('known')) known++; else ai++;
+    if(LIB.progress[id]&&LIB.progress[id].solved) solved++; }
+  return {known, ai, solved, total:known+ai}; }
+
+/* ============================================================
+   STATE
+   ============================================================ */
+let board, hist=[], turn=BLACK, caps={1:0,2:0};
+let current=null;          // current problem object
+let curLevel=1;
+let scriptStep=0;
+let markPoint=null;
+let mode='play';           // 'play' | 'sandbox'
+let sandboxSize=9;
+const cv=document.getElementById('board'), ctx=cv.getContext('2d');
+
+/* ============================================================
+   RENDERING
+   ============================================================ */
+function sizePx(){ return Math.min(560, (window.innerWidth<880? window.innerWidth-66 : 560)); }
+function getCss(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+function starPoints(S){
+  if(S===19)return cart([3,9,15]); if(S===13)return cart([3,6,9]);
+  if(S===11)return [[2,2],[8,2],[2,8],[8,8],[5,5]];
+  if(S===9)return [[2,2],[6,2],[2,6],[6,6],[4,4]];
+  if(S===7)return [[2,2],[4,2],[2,4],[4,4],[3,3]];
+  if(S===6)return [[1,1],[4,1],[1,4],[4,4]];
+  if(S===5)return [[1,1],[3,1],[1,3],[3,3],[2,2]];
+  return []; }
+function cart(a){const o=[];for(const x of a)for(const y of a)o.push([x,y]);return o;}
+function draw(){
+  const S=board.size; const px=sizePx(); cv.width=px; cv.height=px;
+  const pad=px/(S+1); const step=(px-2*pad)/(S-1>0?S-1:1);
+  const gx=i=> pad + (i% S)*step, gy=i=> pad + Math.floor(i/S)*step;
+  ctx.fillStyle=getCss('--board'); ctx.fillRect(0,0,px,px);
+  ctx.strokeStyle=getCss('--boardline'); ctx.lineWidth=1;
+  for(let i=0;i<S;i++){ const t=pad+i*step;
+    ctx.beginPath(); ctx.moveTo(pad,t); ctx.lineTo(px-pad,t); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(t,pad); ctx.lineTo(t,px-pad); ctx.stroke(); }
+  ctx.fillStyle=getCss('--boardline');
+  for(const [sx,sy] of starPoints(S)){ ctx.beginPath(); ctx.arc(pad+sx*step,pad+sy*step,Math.max(2.5,step*0.07),0,7); ctx.fill(); }
+  const r=step*0.46;
+  for(let i=0;i<board.grid.length;i++){ const c=board.grid[i]; if(c===EMPTY)continue;
+    const x=gx(i), y=gy(i);
+    const grd=ctx.createRadialGradient(x-r*0.35,y-r*0.4,r*0.1, x,y,r);
+    if(c===BLACK){ grd.addColorStop(0,'#6a6a6a'); grd.addColorStop(1,'#0e0e0e'); }
+    else { grd.addColorStop(0,'#ffffff'); grd.addColorStop(1,'#cfcabd'); }
+    ctx.fillStyle=grd; ctx.beginPath(); ctx.arc(x,y,r,0,7); ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,.25)'; ctx.lineWidth=1; ctx.stroke(); }
+  if(markPoint!=null){ const x=gx(markPoint), y=gy(markPoint);
+    ctx.strokeStyle=getCss('--accent'); ctx.lineWidth=3; ctx.beginPath(); ctx.arc(x,y,r*0.95,0,7); ctx.stroke(); }
+  cv._geo={pad,step,S};
+}
+function xyFromEvent(e){
+  const rect=cv.getBoundingClientRect();
+  const cx=(e.touches?e.touches[0].clientX:e.clientX)-rect.left;
+  const cy=(e.touches?e.touches[0].clientY:e.clientY)-rect.top;
+  const {pad,step,S}=cv._geo;
+  const gx=Math.round((cx-pad)/step), gy=Math.round((cy-pad)/step);
+  if(gx<0||gy<0||gx>=S||gy>=S) return null;
+  if(Math.abs(cx-(pad+gx*step))>step*0.5 || Math.abs(cy-(pad+gy*step))>step*0.5) return null;
+  return {x:gx,y:gy,i:gy*S+gx};
+}
+
+/* ============================================================
+   LOAD + SOLVE
+   ============================================================ */
+function loadProblemBoard(p){
+  board=makeBoard(p.size);
+  for(const [x,y] of (p.b||[])) board.grid[idx(board,x,y)]=BLACK;
+  for(const [x,y] of (p.w||[])) board.grid[idx(board,x,y)]=WHITE;
+  turn=p.toPlay; hist=[]; scriptStep=0; caps={1:0,2:0}; markPoint=null;
+}
+function showProblem(p){
+  current=p; if(p.id) recentlyShown.add(p.id);
+  if(recentlyShown.size>200) recentlyShown=new Set([...recentlyShown].slice(-100));
+  loadProblemBoard(p);
+  const t=p.text||textFor(p);
+  document.getElementById('conceptTag').textContent=t.tag||p.kind;
+  const srcLabel = p.source&&p.source.startsWith('known') ? 'Known' :
+                   p.source==='ai' ? 'AI-generated' : (p.source||'');
+  document.getElementById('sourceTag').textContent=srcLabel+' · Lvl '+p.level;
+  document.getElementById('probTitle').textContent=t.title||(t.tag||'Problem');
+  document.getElementById('probConcept').textContent=t.concept?('Concept: '+t.concept):'';
+  document.getElementById('probPrompt').textContent=t.prompt||'';
+  clearFeedback(); const ex=document.getElementById('explain'); ex.classList.remove('show');
+  draw(); updateMeta(); renderStats();
+}
+function sameMove(list,x,y){ return (list||[]).some(m=>m[0]===x&&m[1]===y); }
+function onPlayClick(x,y,i){
+  const p=current; if(!p) return;
+  clearFeedback();
+  if(p.goal==='script'){
+    const stepDef=p.script[scriptStep];
+    if(!sameMove(stepDef.accept,x,y)){ tempWrong(i,p.toPlay,'Not the ladder move — keep White in atari.'); return; }
+    const mv=tryMove(board,i,p.toPlay); if(!mv.ok){ flash('bad','Illegal there.'); return; }
+    pushHist(); board=mv.board; caps[p.toPlay]+=mv.captured.length;
+    if(stepDef.reply){ const r=tryMove(board, idx(board,stepDef.reply[0],stepDef.reply[1]), other(p.toPlay));
+      if(r.ok){ board=r.board; caps[other(p.toPlay)]+=r.captured.length; } }
+    scriptStep++; draw(); updateMeta();
+    if(stepDef.done||scriptStep>=p.script.length){ solved(); } else { flash('good','Good — White runs. Continue.'); }
+    return;
+  }
+  const mv=tryMove(board,i,p.toPlay);
+  if(!mv.ok){ flash('bad', mv.reason==='suicide'?'That’s suicide — your stones would have no liberties.':
+    mv.reason==='ko'?'Ko — you can’t recapture immediately.':'You can’t play there.'); return; }
+  if(p.goal==='move'){
+    if(sameMove(p.moves,x,y)){ pushHist(); board=mv.board; caps[p.toPlay]+=mv.captured.length; draw(); updateMeta(); solved(); }
+    else { const t=p.text||textFor(p); tempWrong(i,p.toPlay,'Not the key point. '+(t.hint?'Hint: '+t.hint:'')); }
+    return;
+  }
+  if(p.goal==='capture'||p.goal==='atari'){
+    pushHist(); board=mv.board; caps[p.toPlay]+=mv.captured.length; draw(); updateMeta();
+    const ti=idx(board,p.target[0],p.target[1]); const still=board.grid[ti]!==EMPTY;
+    if(p.goal==='capture'){ if(!still) solved(); else { undoOnce(); const t=p.text||textFor(p); flash('bad','That doesn’t capture it. '+(t.hint?'Hint: '+t.hint:'')); } }
+    else { if(still&&libc(board,ti)===1) solved();
+      else if(!still){ undoOnce(); flash('bad','You captured it — atari means leaving exactly ONE liberty.'); }
+      else { undoOnce(); const t=p.text||textFor(p); flash('bad','Not atari yet. '+(t.hint?'Hint: '+t.hint:'')); } }
+    return;
+  }
+}
+function tempWrong(i,color,msg){
+  const mv=tryMove(board,i,color);
+  if(!mv.ok){ flash('bad', mv.reason==='suicide'?'That would be suicide.':mv.reason==='occupied'?'There’s already a stone there.':'Illegal move.'); return; }
+  const saved=board; board=mv.board; draw(); flash('bad',msg);
+  setTimeout(()=>{ if(current&&board!==saved){ board=saved; draw(); } }, 950);
+  // streak resets on a real wrong attempt
+  LIB.stats.streak=0; saveLib(); renderStats();
+}
+function solved(){
+  markPoint=null; draw();
+  const t=current.text||textFor(current);
+  flash('good','✓ Correct!');
+  const ex=document.getElementById('explain'); ex.textContent=t.explain||''; ex.classList.add('show');
+  markSolved(current); renderStats();
+}
+function pushHist(){ hist.push({grid:board.grid.slice(), ko:board.koPoint, turn, caps:{...caps}, step:scriptStep}); }
+function undoOnce(){ if(!hist.length)return false; const h=hist.pop();
+  board.grid=h.grid; board.koPoint=h.ko; turn=h.turn; caps=h.caps; scriptStep=h.step; draw(); updateMeta(); return true; }
+function updateMeta(){
+  document.getElementById('capB').textContent=caps[BLACK];
+  document.getElementById('capW').textContent=caps[WHITE];
+  const dot=document.getElementById('turnDot'), txt=document.getElementById('turnText');
+  if(mode==='sandbox'){ dot.className='dot '+(turn===BLACK?'b':'w'); txt.textContent=(turn===BLACK?'Black':'White')+' to play'; }
+  else if(current){ dot.className='dot '+(current.toPlay===BLACK?'b':'w'); txt.textContent=(current.toPlay===BLACK?'Black (you)':'White (you)')+' to play'; }
+}
+function flash(kind,msg){ const fb=document.getElementById('feedback'); fb.textContent=msg; fb.className='feedback show '+kind; }
+function clearFeedback(){ const fb=document.getElementById('feedback'); fb.className='feedback'; fb.textContent=''; }
+
+/* ============================================================
+   STATS / LEVEL UI
+   ============================================================ */
+function renderLevels(){
+  const row=document.getElementById('levelRow'); row.innerHTML='';
+  for(const L of LEVELS){
+    const b=document.createElement('button');
+    b.className='lvl'+(L.n===curLevel?' active':'');
+    b.innerHTML='<b>'+L.n+'</b><small>'+L.name+'</small>';
+    b.onclick=()=>{ curLevel=L.n; renderLevels(); nextPuzzle(); };
+    row.appendChild(b);
+  }
+}
+function renderStats(){
+  const s=LIB.stats; const c=libCounts();
+  document.getElementById('stats').innerHTML=
+    '<div class="stat"><b>'+(s.solvedByLevel[curLevel]||0)+'</b>solved · Lvl '+curLevel+'</div>'+
+    '<div class="stat"><b>'+s.streak+'</b>streak</div>'+
+    '<div class="stat"><b>'+s.best+'</b>best</div>'+
+    '<div class="stat"><b>'+c.solved+'</b>total solved</div>';
+  const kn=knownRemaining(curLevel);
+  const total=Math.max(1,c.known+c.ai);
+  document.getElementById('srcbar').innerHTML=
+    '<i style="width:'+(100*c.known/total)+'%;background:var(--accent)"></i>'+
+    '<i style="width:'+(100*c.ai/total)+'%;background:var(--hint)"></i>';
+  document.getElementById('libline').innerHTML=
+    'Library: <b>'+c.known+'</b> known · <b>'+c.ai+'</b> AI-generated · '+
+    (kn>0? ('<b>'+kn+'</b> known left at Lvl '+curLevel) : ('known pool cleared at Lvl '+curLevel+' — now inventing new'));
+}
+function nextPuzzle(){ const p=nextProblem(curLevel); showProblem(p); }
+
+/* ============================================================
+   SANDBOX
+   ============================================================ */
+function onSandboxClick(x,y,i){
+  const mv=tryMove(board,i,turn); if(!mv.ok) return;
+  pushHist(); board=mv.board; caps[turn]+=mv.captured.length; turn=other(turn); draw(); updateMeta();
+}
+function setMode(m){
+  mode=m;
+  document.getElementById('tabPlay').classList.toggle('active',m==='play');
+  document.getElementById('tabSandbox').classList.toggle('active',m==='sandbox');
+  document.getElementById('playPanel').style.display=m==='play'?'block':'none';
+  document.getElementById('sandboxPanel').style.display=m==='sandbox'?'block':'none';
+  document.getElementById('passBtn').style.display=m==='sandbox'?'inline-block':'none';
+  document.getElementById('hintBtn').style.display=m==='play'?'inline-block':'none';
+  document.getElementById('showBtn').style.display=m==='play'?'inline-block':'none';
+  if(m==='sandbox'){ board=makeBoard(sandboxSize); turn=BLACK; hist=[]; caps={1:0,2:0}; markPoint=null; current=null; draw(); updateMeta(); }
+  else nextPuzzle();
+}
+
+/* ============================================================
+   EVENTS
+   ============================================================ */
+cv.addEventListener('click',e=>{ const pt=xyFromEvent(e); if(!pt)return; markPoint=null;
+  if(mode==='play') onPlayClick(pt.x,pt.y,pt.i); else onSandboxClick(pt.x,pt.y,pt.i); });
+document.getElementById('undoBtn').onclick=()=>undoOnce();
+document.getElementById('resetBtn').onclick=()=>{ if(mode==='play'&&current) showProblem(current);
+  else { board=makeBoard(sandboxSize); turn=BLACK; hist=[]; caps={1:0,2:0}; draw(); updateMeta(); } };
+document.getElementById('hintBtn').onclick=()=>{ if(mode!=='play'||!current)return;
+  const t=current.text||textFor(current);
+  const h=current.goal==='script'?(current.script[scriptStep]?('Play '+fmt(current.script[scriptStep].accept[0])):t.hint):t.hint;
+  flash('hint','💡 '+(h||'Look for the move that achieves the goal.')); };
+document.getElementById('showBtn').onclick=()=>{ if(mode!=='play'||!current)return;
+  let pt; if(current.goal==='script') pt=current.script[scriptStep].accept[0];
+  else pt=(current.moves&&current.moves[0]);
+  if(pt){ markPoint=idx(board,pt[0],pt[1]); draw(); flash('hint','The circled point is a correct move.'); } };
+document.getElementById('passBtn').onclick=()=>{ if(mode==='sandbox'){ turn=other(turn); updateMeta(); } };
+document.getElementById('nextBtn').onclick=()=>nextPuzzle();
+document.getElementById('skipBtn').onclick=()=>{ LIB.stats.streak=0; saveLib(); nextPuzzle(); };
+document.getElementById('tabPlay').onclick=()=>setMode('play');
+document.getElementById('tabSandbox').onclick=()=>setMode('sandbox');
+document.querySelectorAll('.szbtn').forEach(b=>b.onclick=()=>{ sandboxSize=+b.dataset.size; setMode('sandbox'); });
+document.getElementById('resetProgress').onclick=()=>{ if(confirm('Reset all solved progress and the AI-generated library?')){
+  localStorage.removeItem(LS_KEY); LIB={items:{},progress:{},order:0,stats:{solvedByLevel:{1:0,2:0,3:0,4:0,5:0},streak:0,best:0,generated:0}}; seedKnown(); nextPuzzle(); } };
+window.addEventListener('resize',()=>draw());
+function fmt(m){ return '('+m[0]+', '+m[1]+')'; }
+
+/* ============================================================
+   BOOT
+   ============================================================ */
+loadLib();
+renderLevels();
+setMode('play');
+</script>
+</body>
+</html>
