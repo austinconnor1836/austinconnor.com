@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Gentium_Book_Plus, IBM_Plex_Mono, Source_Sans_3 } from "next/font/google";
 
 import { site } from "@/content/site";
+import { Nav } from "./nav";
 import "./globals.css";
 
 // Gentium covers polytonic Greek, so headings and any Greek in the body render
@@ -57,7 +58,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${serif.variable} ${sans.variable} ${mono.variable}`}>
-      <body>{children}</body>
+      <body>
+        <Nav />
+        {children}
+      </body>
     </html>
   );
 }
