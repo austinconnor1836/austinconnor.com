@@ -8,7 +8,7 @@ import styles from "./nav.module.css";
 type NavLink = { label: string; href: string; external?: boolean; note?: string };
 
 // Internal routes first, then the off-site things the home page already points to.
-// `/go` is a static page served by a rewrite, so every entry is a plain anchor.
+// `/go` and the Greek trainer frame static pages from public/, so every entry is a plain anchor.
 const LINKS: NavLink[] = [
   { label: "Home", href: "/", note: "About Austin" },
   { label: "Go Trainer", href: "/go", note: "Baduk puzzles" },
@@ -16,6 +16,11 @@ const LINKS: NavLink[] = [
     label: "Greek questions",
     href: "/grad-school/randolph/greek-1",
     note: "Randolph · Hansen & Quinn",
+  },
+  {
+    label: "Greek trainer",
+    href: "/grad-school/randolph/greek-1/trainer",
+    note: "Flashcards, drills, vocab quiz",
   },
   {
     label: "Dead Reckoning",
