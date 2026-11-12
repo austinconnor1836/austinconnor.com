@@ -1273,7 +1273,8 @@ function gradeEnglish(given, parses) {
     };
 
     // ---- Flashcard review: front = tense/mood, tap to flip to the filled table.
-    let deck = [], pos = 0, flipped = false;
+    // deck grows by one shuffled pass at a time, so Back can step into earlier passes.
+    let deck = [], pass = 1, pos = 0, flipped = false;
     function drawCard() {
       const t = deck[pos];
       const face = flipped
@@ -1282,14 +1283,16 @@ function gradeEnglish(given, parses) {
         : h("div", { class: "empty", style: { padding: "28px 10px" } }, h("div", { class: "size-m muted" }, "Tap to reveal the endings"));
       stage.replaceChildren(
         h("div", { class: "qcard", style: { cursor: "pointer" }, onclick: () => { flipped = !flipped; drawCard(); } },
-          h("div", { class: "qlabel" }, "Ending table — flashcard", h("span", { class: "muted" }, `${pos + 1} / ${deck.length}`)),
+          h("div", { class: "qlabel" }, "Ending table — flashcard", h("span", { class: "muted" }, `${(pos % pass) + 1} / ${pass}`)),
           h("div", { class: "prompt" }, h("div", { class: "size-l" }, tmLabel(t))),
           face),
         h("div", { class: "row", style: { marginTop: "14px", gap: "10px" } },
           h("button", { class: "btn", onclick: e => { e.stopPropagation(); flipped = !flipped; drawCard(); } }, flipped ? "Hide" : "Flip"),
+          h("button", { class: "btn", onclick: cardPrev, disabled: pos === 0, "aria-label": "Previous ending table" }, "← Back"),
           h("button", { class: "btn primary", onclick: cardNext }, "Next →")));
       state.onKey = e => {
         if (e.key === "ArrowRight") { e.preventDefault(); cardNext(); }
+        else if (e.key === "ArrowLeft") { e.preventDefault(); cardPrev(); }
         else if (e.key === " ") { e.preventDefault(); flipped = !flipped; drawCard(); }
         else if (e.key === "Enter") { e.preventDefault(); if (flipped) cardNext(); else { flipped = true; drawCard(); } }
       };
@@ -1298,13 +1301,17 @@ function gradeEnglish(given, parses) {
       const items = pool();
       if (!items.length) { stage.replaceChildren(h("div", { class: "empty" }, "No ending tables in this unit for the chosen sections. Pick another unit or turn on a section in Settings.")); return; }
       pos += 1;
-      if (!deck.length || pos >= deck.length) { deck = shuffle(items); pos = 0; }
+      if (pos >= deck.length) { deck = deck.concat(shuffle(items)); pass = items.length; }
       flipped = false; drawCard();
+    }
+    function cardPrev() {
+      if (pos === 0) return;
+      pos -= 1; flipped = false; drawCard();
     }
     function cardStart() {
       const items = pool();
       if (!items.length) { stage.replaceChildren(h("div", { class: "empty" }, "No ending tables in this unit for the chosen sections. Pick another unit or turn on a section in Settings.")); return; }
-      deck = shuffle(items); pos = 0; flipped = false; drawCard();
+      deck = shuffle(items); pass = items.length; pos = 0; flipped = false; drawCard();
     }
 
     function render() {
