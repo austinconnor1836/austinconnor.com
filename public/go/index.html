@@ -168,7 +168,7 @@
           <li><b>Liberties</b> = empty points touching a stone/group. Fill the last one to <b>capture</b>.</li>
           <li>Make a group <b>uncapturable</b> with <b>two eyes</b> (two separate interior points).</li>
           <li>Difficulty 1→5 = Beginner→Expert. Each solved puzzle is remembered and never repeats.</li>
-          <li><b>Known problems are served first</b>; the AI only invents new ones once the known pool at a level is exhausted. (Classic-corpus ingestion coming — research in progress.)</li>
+          <li><b>Known problems are served first</b>; the AI only invents new ones once the known pool at a level is exhausted. Expert opens with classical problems from public-domain collections (Gokyo Shumyo, Xuanxuan Qijing, Guanzi Pu and others), each solved and checked with KataGo.</li>
         </ul>
         <button id="resetProgress" style="margin-top:8px">Reset all progress</button>
       </details>
@@ -436,6 +436,13 @@ function verify(p){
     for(const s of p.script){ const mv=tryMove(bb,idx(bb,s.accept[0][0],s.accept[0][1]),BLACK); if(!mv.ok)return 'step-illegal'; bb=mv.board;
       if(s.reply){ const r=tryMove(bb,idx(bb,s.reply[0],s.reply[1]),WHITE); if(!r.ok)return 'reply-illegal'; bb=r.board; } }
     return bb.grid[wr]===EMPTY?null:'white-survived'; }
+  if(p.kind==='tsumego'){ // classical problem: answer proved offline by KataGo; replay it here
+    let bb=b;
+    for(const s of p.script){
+      for(const m of s.accept){ if(!tryMove(bb,idx(bb,m[0],m[1]),p.toPlay).ok) return 'accept-illegal'; }
+      bb=tryMove(bb,idx(bb,s.accept[0][0],s.accept[0][1]),p.toPlay).board;
+      if(s.reply){ const r=tryMove(bb,idx(bb,s.reply[0],s.reply[1]),other(p.toPlay)); if(!r.ok) return 'reply-illegal'; bb=r.board; } }
+    return null; }
   if(p.kind==='curated') return null; // curated carry their own validated data
   return 'unknown-kind';
 }
@@ -576,6 +583,185 @@ const CURATED=[
 ];
 
 /* ============================================================
+   CLASSICAL "known" Expert set — public-domain problem collections.
+   Positions: tsumego.tasuki.org transcriptions (github.com/tasuki/tsumego).
+   Answers: computed offline with KataGo inside a tsumego frame (see the
+   go-trainer repo: ingest/). Each row:
+   [collection, problem, goal, viewW, viewH, black(sgf), white(sgf), script]
+   script = steps joined by ",", each "BB" or "BB:WW" (Black move : White reply).
+   ============================================================ */
+const CLASSICAL_META={
+ 'gokyoshumyo':{name:'Gokyo Shumyo',year:'1812'},
+ 'xxqj':{name:'Xuanxuan Qijing',year:'1349'},
+ 'guanzi-pu':{name:'Guanzi Pu',year:'17th c.'},
+ 'shikatsu-myoki':{name:'Shikatsu Myoki',year:'Edo period'},
+ 'gokyo-seimyo':{name:'Gokyo Seimyo',year:'19th c.'},
+ 'hatsuyoron':{name:'Igo Hatsuyoron',year:'1713'} };
+/* CLASSICAL-DATA-BEGIN */
+const CLASSICAL_ROWS=[
+["xxqj","214","semeai",12,8,"abgbkbbcccdcgcjckcedgdkdeegeheefff","bbcbdbebfbjbfchcicfdjdfeiegfifgg","ja:ib,ga"],
+["gokyoshumyo","6-37","live",12,8,"dadbibdchckcddidcekecf","cbebbcfcbdhdfehedfefbgcg","gbfdgd"],
+["gokyoshumyo","1-19","semeai",8,6,"ebbcccecfcdd","dbfbgbgcbdedfdgdcede","da:cb,bbdc"],
+["gokyoshumyo","1-12","live",8,6,"dabbebccdc","fafbecgcbdddedce","ca:ea,db:ac,ab"],
+["gokyoshumyo","1-62","live",11,6,"cbdbhbdcfcgcfd","bbibbccchcjcddgdhdeefe","haga"],
+["gokyoshumyo","2-30","semeai",9,6,"cbfbccfchcbdbecedeee","bbebbcdcecadcddd","ca:ba,ab"],
+["gokyoshumyo","1-24","semeai",9,8,"cbccdcbdcd","bbbcfchcddedbececg","ab:eb,ba"],
+["gokyoshumyo","2-62","semeai",10,9,"cbebfbbdfdhdcefedfch","bbdbbcecddedid","daccca"],
+["gokyoshumyo","2-1","kill",8,7,"ebfbgbgccdddedfdbecf","eadbbcccdcecfcbd","ad"],
+["xxqj","149","semeai",13,7,"cbjbcccdedcedekeefffgfif","abdbkbdclcbdddbeeefegecfdfhf","eb:fc,ec"],
+["gokyoshumyo","6-67","kill",10,7,"bbfbhbbcgccdddgdcf","cbibccecfciceegehedf","dcedfd"],
+["gokyoshumyo","1-1","live",7,6,"bbcbdbbcbd","ebccdcfcbece","aa"],
+["xxqj","19","kill",9,7,"fbhbfcbdcdedeebf","baebbcccec","abeadc"],
+["xxqj","11","kill",7,5,"dcecfcadbdcd","babbdbacbc","dacccb"],
+["shikatsu-myoki","2-6","live",8,7,"daeacbcceccdddedaebe","cadbebfbgbdcfcfdceeebfcf","ac:ba,bb:fa,aabdda"],
+["gokyoshumyo","2-49","kill",9,8,"gbecfchccdbeceeeffcg","ebfbccdcbddd","faad"],
+["shikatsu-myoki","1-12","kill",8,8,"dbecddfdcefeafcfbgcg","cbccfcgcadcdgdbebf","caab"],
+["xxqj","157","semeai",9,7,"hbccdcfcgchcedee","ebfbgbecbdcdddcf","db:bc,da:bb,faeaga"],
+["xxqj","64","kill",9,5,"fbhbecfcbdcddd","daebbcccdc","acbaea"],
+["xxqj","146","kill",7,7,"fafbfcddfdbedebfdf","abbbbcdcecbdae","da"],
+["gokyoshumyo","1-46","live",8,5,"ebbccc","gbfcadbdcdddgd","ba:cb,bbab"],
+["xxqj","70","live",7,7,"eaebbcccdcadcd","fbacecfcbdddbecedebf","ca:ab,bb:ae,aadb"],
+["gokyoshumyo","1-71","live",8,7,"cbdcecbdcdedce","ebgbfcddbedegebfcfdfff","ab:ad,bc:db,ba"],
+["gokyoshumyo","2-52","semeai",13,7,"bafbechcjclcbdedgdjdcedf","eacbebbcccdc","acca"],
+["xxqj","35","kill",11,6,"ibacbchcjccdddedfdgdbe","aabaabbbdbgbccdcfc","ecca"],
+["gokyoshumyo","4-70","semeai",12,9,"hcedfdhdfegeiejefgighh","ccdcfcgcjckcgdidhegfhf","hbec"],
+["gokyoshumyo","4-80","semeai",10,8,"cbgbccgcddgddegedfefhffggghg","dbfbhbdcfcicedhdeefeheffgf","fa:hc,da"],
+["shikatsu-myoki","1-26","kill",9,9,"fbhbdcecgcgdfebfdfffcgbh","bbfccdedfdbeceeecf","dbda"],
+["gokyoshumyo","1-40","live",11,6,"cbdbgbhbibdcgc","bbjbbccchcicjcedfdgdce","fa:fc,fb"],
+["xxqj","120","semeai",7,6,"faabbbfbfcedbecede","bacbebbcecbdcd","ddad"],
+["gokyoshumyo","6-42","live",9,8,"babbfbhbbcccgchccdhdcede","cbdbgbdcbdddgdbeeegecfefcg","eddf"],
+["gokyoshumyo","7-21","semeai",9,8,"daeaebfchccdbefebfcgeg","cadbccdcbdcede","bcbb"],
+["gokyoshumyo","2-18","semeai",10,6,"cbdbhbecicbdcdddedgeie","bbebfbbcccdcgc","ac:ab,ba:ad,da"],
+["xxqj","101","kill",10,6,"baiabbibbciccdgdhdbedeeefe","dacbfbhbccgcdded","ec:fc,ebha"],
+["gokyoshumyo","7-3","semeai",12,10,"cbgbdchcicddbedeheieifdgighh","dbebecfcjcjdfehfkfegggehghjhhi","fd:ed,ff:ge,eegf"],
+["shikatsu-myoki","1-3","kill",8,8,"gagbecfcgcadcdddbecedfcg","baebfbbcccdcbdcfdg","ab:ac,bb:cb,da"],
+["shikatsu-myoki","1-13","kill",9,8,"dbgbfcgcbeheafcfdfefgfbg","cbfbdcbdfdde","bbeb"],
+["xxqj","75","kill",8,6,"gagbfcddedgdaebece","abcbebbd","ba"],
+["xxqj","27","kill",9,8,"fbhbfccdfdcefecfefbgdg","fabbebdcecddde","bd:ab,da"],
+["shikatsu-myoki","1-7","kill",9,9,"ebecfchcgdbfcfdfhffgdheh","dbdcddfdbedefeeg","ba:cb,bddaca"],
+["gokyoshumyo","2-35","kill",9,7,"gbhccdgdbecedeee","bcccecfcbddf","ea:db,bbadba"],
+["xxqj","247","kill",9,6,"fbhbfcfdbecedeee","ebbcecdd","eacb"],
+["gokyoshumyo","1-102","live",11,7,"dacbebgbccecgccdfd","dbhbdchcjcddgdbecedegeff","ab:ed,bafcea"],
+["gokyoshumyo","1-64","live",11,6,"dbhbdcfchcedfd","cbibcciccdddgdhdjdeefe","eb:gb,gc:ha,fbfaia"],
+["xxqj","195","kill",11,6,"bbjbbciccdedhddeeefege","cbebdcecgcfd","da"],
+["xxqj","69","kill",10,5,"gbibbchcbdcdddedgd","bbdbfbccdc","cafa"],
+["xxqj","142","kill",10,7,"gbibgcadbdcdfddeeegecf","cacbfbacbcccfcdd","fa:ea,db:dc,ec"],
+["gokyoshumyo","1-34","semeai",11,6,"babbgbccdcecgc","abcbhbbcicjccdfdgdhdbede","daacbd"],
+["gokyoshumyo","4-82","semeai",8,8,"cbgbccgccdgddeeefe","dbfbbcbdddedfdcebfcg","dabe"],
+["gokyoshumyo","5-21","semeai",9,7,"babbbcfccdddedfd","cbfbccdcecgchcbdbecf","eb"],
+["gokyoshumyo","1-3","live",10,7,"gabbcbebfbbcdc","fagbibccecfcgcbdcddecf","baac"],
+["gokyoshumyo","1-74","live",11,6,"dbebgbhbecgcfdgd","dacbibdchcjcddedhdfege","cc:bb,habc"],
+["gokyoshumyo","1-32","live",13,5,"dbfbhbibfchc","cbbcdcicjclcedfdgdhd","da"],
+["xxqj","235","semeai",13,7,"fbkblbccgcicjccdddfdgdkddf","kagbhbibjbdcecfc","ea"],
+["xxqj","15","kill",7,7,"fafbecfccdddbecf","daebbcccdcbd","dbadab"],
+["gokyoshumyo","2-53","kill",9,8,"fbfchcbefecfdfef","ebbdcdddeddg","ab:bc,dbadac"],
+["gokyoshumyo","4-2","semeai",8,7,"bbgbbcfccddd","cbebccbdbecf","dbba"],
+["gokyoshumyo","2-55","kill",9,8,"ecfchcdddecfbgdg","ccdcbece","cd:eb,bdfbbc"],
+["gokyoshumyo","2-42","semeai",8,8,"facbebgbbcdcfcbegecfefbg","dadbccecadbdcdedde","ba:ab,caea"],
+["gokyoshumyo","1-37","semeai",12,7,"fbdcecicedfdgdhd","dbebjbccfcjckcdddejekeefgfif","cbibea"],
+["gokyoshumyo","1-18","live",7,7,"ebbcccecbd","fbfcadcdddfdbecfff","badc"],
+["gokyoshumyo","6-40","live",11,9,"ebjbecjcedidjddefejeffjfig","cbfcgciccdcegeiegfifdgfgehhh","hagg"],
+["xxqj","3","semeai",8,7,"cbebfbfcgdceeegecfef","dadbeccddded","bb:bc,cc"],
+["xxqj","230","kill",9,9,"cbdbebfbgbcchcbdhdbegebfgfbgcgggdhehfh","dcecfcgccdcefecfffdgeg","de"],
+["shikatsu-myoki","1-21","semeai",9,6,"gabbhbccgccdfdgdcedeee","bacbebfbgbdcfcdd","da:ca,db:ea,db"],
+["gokyoshumyo","1-96","live",9,6,"eafbccdceccd","dbgbfchcddfdbecede","ab:eb,cb:fa,baga"],
+["shikatsu-myoki","1-24","kill",9,6,"gbgcbdcdddedfdhe","bcccdcecfc","ea"],
+["xxqj","124","semeai",10,9,"bacadbfbdccdddbede","abbbcbccfcgcicbdcefecfdfefch","ad:bc,bf:bg,ae"],
+["shikatsu-myoki","2-11","live",9,8,"bccchccdbebfcf","gbdcgcadbdddcedegedfbgcg","ba:af,dbacab"],
+["xxqj","90","semeai",13,7,"hbibbccchcddedfdgdcfdf","gbkbecfcgclccdhdidkdce","faga"],
+["shikatsu-myoki","1-27","kill",9,5,"gahahbfcgcadbdcdddedhd","eacbfbgbbcdcec","bb:ab,ba:cc,eb"],
+["gokyoshumyo","1-92","live",12,8,"bacbdbhbibecfcgcedgdfe","bbebfbjbbcccdcickcdehegfeg","ea:da,ca:fa,gagb"],
+["gokyoshumyo","1-91","semeai",10,8,"gcbdedfdgdbecedeeegeefff","gbbcecfchciccdddhegfhfbgcgegfg","fb:dc,bbeb"],
+["xxqj","225","semeai",9,7,"cbdbhbgchdaebecedeeegf","fbbcccdcecfd","ebabfa"],
+["xxqj","221","semeai",10,8,"dbfbdcecfcgcbdcdedgdee","dacbebhbbcccicddhdcedeheefffcg","ba:ab,fe:ca,ea"],
+["xxqj","163","kill",10,6,"bcccgcicadddgdbeee","abbbcbacecfc","ba:eb,dcgbca"],
+["gokyoshumyo","4-26","semeai",8,7,"dbebdccdedcecf","cbccecfcgcdddeee","bb"],
+["xxqj","60","kill",12,8,"jabbibkbbcfcgchciccdceeefedg","haiacbfbgbhbccecdded","db:da,ea:eb,ca"],
+["xxqj","114","semeai",9,8,"abbbcbdbebfbgchcbdhdheafbfcfgfdgegfggg","bcccdcfcadfdgdbecegedfefff","de:ee,ed"],
+["gokyoshumyo","1-49","live",10,8,"cbgbhbccecgcdd","bbibbchciccdfdgdceefcg","ca:fc,fb:ea,ebed"],
+["xxqj","31","kill",8,7,"fbdcecgcedeebfcfdf","cbccbdddce","ab:be,ae:ac,bb"],
+["gokyoshumyo","2-4","kill",8,6,"ecgcddedbece","dbdcbdcd","adbcbb"],
+["gokyoshumyo","2-71","kill",9,7,"hbfcgcbdedcedefebf","ebfbbceccdee","acbbdc"],
+["gokyoshumyo","4-44","semeai",13,6,"dacbibjbccdcechcickclcedfdgd","dbebfbhbbcfcgcjccdhdidjdbedeeefege","gaeaca"],
+["gokyoshumyo","4-79","semeai",10,7,"cbgbdcgchccdgdcegedfefff","dbhbibecicfdhddeeefehegfhf","faebda"],
+["gokyoshumyo","1-21","live",8,7,"abdbccecfc","ebfbgcbdcdgdeecf","eabagb"],
+["gokyoshumyo","4-41","semeai",10,7,"gbhbbcccfcddedfd","ebfbdcecgchcicbdcdcf","fa:cb,ea:bb,db"],
+["gokyoshumyo","1-63","semeai",12,6,"dbebibfcgchcic","facbfbgbhbkbcckcddedidjdfege","ga:ha,eaia"],
+["gokyoshumyo","1-26","live",13,5,"fbgbkbgcicjc","lbccecfckclcgdhdidjd","jaka"],
+["xxqj","228","kill",12,7,"cbibkbcchcjccdhddeeehecfffgf","iadbfbhbdcgcddgdge","ga:ed,ha:gb,feda"],
+["xxqj","203","kill",12,6,"bbdbkbdckcedhdkdfegeieke","ebhbjbfcicjcfdgd","ea:fa,ec:da,gbgc"],
+["xxqj","145","live",9,8,"cbccbdcddd","dbhbdchcgdbecedefedg","fcabad"],
+["gokyoshumyo","4-14","live",8,7,"bbdbdcbdcdcf","bacbbcccfcgcdded","ab:ac,da:ce,beca"],
+["gokyoshumyo","1-66","live",12,5,"dadbgbibecfchc","cbjbccdcickcedfdgdhdid","iafa"],
+["xxqj","254","semeai",11,7,"fcgchcddedfdhdidge","gbdcecicjccdjdcedeiejeffgfhf","dbcc"],
+["xxqj","112","semeai",10,8,"fbgbibbcdcbdddgdhdcebfdfefhfeggg","bbcbebccfccdfddeeefe","dbeaba"],
+["shikatsu-myoki","1-33","kill",10,9,"bbibhciccdedfdgdceffcgegeh","hacbhbecfcgcdddeeffg","db"],
+["gokyoshumyo","1-36","live",11,6,"dbebibfcgcic","cbjbdcecjccdhdjdeege","fa:gb,da:ca,hbgafb"],
+["gokyoshumyo","1-15","live",10,6,"bbdbebaccciccd","bcdcfcgcbdddbecefe","ca:ab,aa:fb,ea"],
+["xxqj","50","kill",12,10,"gchcicjckcddedfdkdcekecfkfcggghgigjgchghdieifi","idjddeeefejegfhfifjfdgfgdhehfh","efhe"],
+["gokyoshumyo","2-33","semeai",10,8,"bbebccdcecfcgdgecfefcg","fbgbbcgcicbdcdddedfd","da:ab,cb"],
+["xxqj","48","kill",12,6,"cbjbkbbccchcicgdjdcedeeefe","cajabbdbhbibdcfcgc","fdda"],
+["xxqj","179","semeai",10,8,"cbgbibbccchcddgdhddefebfcg","bbacdcecfcgcbdcd","ba:ab,da:db,eafa"],
+["shikatsu-myoki","2-1","live",8,6,"baeadbdcbdcd","ebgbecadddbeceee","ab:bc,cc:cb,da"],
+["shikatsu-myoki","1-42","semeai",11,8,"gadbhbjbecgchcbdddedcecfefbgdg","ebgbbcccdcfccdbfdf","accb"],
+["shikatsu-myoki","1-6","kill",10,9,"ibbchcicbdcedefehedgeg","bbgbhbdcfccfcgdh","db:cb,eb:ec,ab"],
+["gokyoshumyo","1-27","live",12,6,"fadbebjbfcgchcic","cadacbkbbcdcecjckcfdidfehe","ia:ka,gb:ea,ha"],
+["gokyoshumyo","4-12","semeai",8,8,"dbdcecadedbecedecg","cbfbbcgcbdcdddfdeedfef","bb:ab,ba:ca,ccae"],
+["xxqj","224","live",10,6,"bbcbfbgbdcec","abhbbcccfcgcicddcefe","eabd"],
+["xxqj","111","kill",8,5,"gagbfcgcadbdcddded","eaabbbfbbcdcec","ba:cb,eb:db,fa"],
+["gokyoshumyo","5-16","semeai",12,7,"babbfbibbchcicbdddfdgdcedehe","iacbgbhbjbccecfcgckccdbebfcf","dc:db,eb:fa,da"],
+["xxqj","178","live",10,7,"eafbccdceccd","dbgbibfcgcddedbecedf","ab:eb,cb:fa,baga"],
+["xxqj","220","kill",12,7,"bbbcgcickcbdgdbegecfdfefffgf","cbccfccdfdcedeeefe","ea:eb,da:fa,cagagb"],
+["xxqj","8","live",8,7,"ebbcccdcec","bbfbgcbdcdddedfdgdbf","acab"],
+["xxqj","74","semeai",12,6,"daeadbibjbdcecfcgchc","fajacbebfbkbccicjckcddfdgddeie","ia"],
+["gokyoshumyo","1-47","live",7,5,"abbbdbebcc","fafbdcecfcbdcd","ea:bc,cb"],
+["xxqj","51","kill",8,6,"fbecgcbdedbecede","dbebbcdccddd","abbbac"],
+["xxqj","108","kill",12,8,"gbkbecfcgckccdddhdidjdkdcfdg","gaebfbhbjbccdchc","abdb"],
+["xxqj","242","live",11,7,"bbgcbdcdddedfdidgeheie","dbecfchcicjcgdhdbefebfdfff","fb:gb,dc:cb,eb"],
+["shikatsu-myoki","1-1","kill",7,7,"eafbfcadbdedcedebf","bbdbbceccddd","baeb"],
+["gokyoshumyo","1-20","live",9,6,"ebbcccdcec","bbfbfchcbdddedce","acab"],
+["xxqj","227","kill",9,8,"fchcddedfdbecebg","ccdcecbd","eb:db,bb"],
+["gokyoshumyo","1-53","live",10,7,"cbdbgbhbdcgccdddgd","bbibbccchcicbdfdcegeiecfefgf","eafe"],
+["gokyoshumyo","2-58","kill",9,8,"fchcddedfdbececg","ccdcecbd","eb:bb,db"],
+["xxqj","7","kill",10,9,"cbebfbgbibccdchcidbeceiehfcgeghgfhgh","babbbcecfcgcbdcdddhdeehegf","ed:ge,fd"],
+["gokyoshumyo","1-48","semeai",10,7,"cbhbccdcecfcgcgdeefe","cabbdbgbibbchciccdcehedfefgf","fa:dd,daedha"],
+["gokyoshumyo","6-15","live",12,9,"ibccgchccddedfefch","kbdcicjcddeefehejeff","fbeddb"],
+["xxqj","46","kill",12,6,"cakabbdbkbdckcddgdhdidjddeeefe","dajaebjbecgchciced","ib:hb,fb:fc,ea"],
+["gokyoshumyo","4-91","semeai",12,7,"kbfcgcickcidfegehfif","ibjbccechcedhdheefffgf","hb:gb,ha:ga,fb"],
+["xxqj","44","kill",8,8,"ebgbecedcedebfcg","bbdcbdddbe","ae:cd,ac:cb,adbc"],
+["xxqj","250","semeai",13,6,"cbdbkbfcicjclcddgdhddeeefe","ebibjbecgchcedfd","ia:ha,ga:hb,fb"],
+["xxqj","175","semeai",10,7,"babbgbccdcgccdedfdcede","caabcbfbbcfchcbdgdidbegecfdfef","fa:ga,ha:hb,ga"],
+["xxqj","43","kill",7,6,"fbfcadedaebecedefe","bbebacbdcddd","ab:aa,cb:db,dc"],
+["gokyoshumyo","6-60","semeai",13,7,"gacbgblbbcfcgclchdidkdcehf","haebhbkbhcicjcddedgdgeef","da:fa,fbea"],
+["gokyoshumyo","1-89","live",9,7,"bbgcbdcdddedfd","dbecfchcgdhdbefecfef","fb:gb,dc:cb,eb"],
+["gokyoshumyo","4-89","semeai",11,7,"eaebjbecicedfeheieffgf","dadbdcgcddfdhddeeege","fa"]];
+/* CLASSICAL-DATA-END */
+function sgfPts(s){ const o=[]; for(let i=0;i+1<s.length;i+=2) o.push([s.charCodeAt(i)-97,s.charCodeAt(i+1)-97]); return o; }
+const GOAL_TEXT={
+ kill:{tag:'Life & Death',concept:'Killing',prompt:'Black to play and kill the white group.',
+   hint:'Find the point that robs White of its second eye, then read White’s strongest resistance.',
+   wrong:'Not the solution — after that, White can live.'},
+ live:{tag:'Life & Death',concept:'Living',prompt:'Black to play and live.',
+   hint:'Look for the move that secures two eyes no matter how White attacks.',
+   wrong:'Not the solution — after that, White can kill you.'},
+ semeai:{tag:'Capturing race',concept:'Semeai (capturing race)',prompt:'Black to play and win the capturing race.',
+   hint:'Count liberties. Shorten White’s from the outside and keep your own.',
+   wrong:'Not the solution — after that, White wins the race.'} };
+function expandClassical(r){
+  const [coll,num,goal,vw,vh,bs,ws,sc]=r; const M=CLASSICAL_META[coll]||{name:coll,year:''}; const G=GOAL_TEXT[goal];
+  const steps=sc.split(',').map(st=>{ const [a,w]=st.split(':'); return {accept:sgfPts(a), reply:w?sgfPts(w)[0]:null, done:false}; });
+  steps[steps.length-1].done=true; steps[steps.length-1].reply=null;
+  const n=steps.length;
+  return {kind:'tsumego',level:5,size:19,view:[0,0,vw,vh],toPlay:BLACK,goal:'script',
+    b:sgfPts(bs),w:sgfPts(ws),script:steps,ref:{collection:M.name,problem:num},
+    text:{tag:G.tag,concept:G.concept+' · '+M.name+' ('+M.year+')',title:M.name+' '+num,
+      prompt:G.prompt+(n>1?' White answers with its strongest resistance — find all '+n+' Black moves.':''),
+      hint:G.hint, wrong:G.wrong, cont:'Good — White resists. Keep going.',
+      explain:'Classical problem from '+M.name+' ('+M.year+'), public domain. The answer was solved with KataGo: the key move wins, every plausible alternative fails, and if White moves first Black fails.'}};
+}
+const CLASSICAL=CLASSICAL_ROWS.map(expandClassical);
+
+/* ============================================================
    LIBRARY (persistent, dedup, progress memory)
    ============================================================ */
 const LS_KEY='go-trainer-lib-v1';
@@ -597,6 +783,8 @@ function addItem(p, source){
 }
 function seedKnown(){
   for(const c of CURATED){ c.id=canonId(c); if(!LIB.items[c.id]) addItem(c,'known-curated'); }
+  for(let i=0;i<CLASSICAL.length;i++){ const c=CLASSICAL[i]; c.id=canonId(c);
+    if(!LIB.items[c.id]) addItem(c,'known-'+CLASSICAL_ROWS[i][0]); }
   saveLib();
 }
 function unsolvedAt(level, knownOnly){
@@ -671,19 +859,28 @@ function starPoints(S){
   if(S===5)return [[1,1],[3,1],[1,3],[3,3],[2,2]];
   return []; }
 function cart(a){const o=[];for(const x of a)for(const y of a)o.push([x,y]);return o;}
+// A problem may carry view:[x0,y0,w,h] — show only that window of the board (classical
+// corner problems on 19x19). Real board edges get a full margin; open sides run to the border.
+function viewOf(){ const S=board.size;
+  return (mode==='play'&&current&&current.view&&current.size===S)? current.view : [0,0,S,S]; }
 function draw(){
-  const S=board.size; const px=sizePx(); cv.width=px; cv.height=px;
-  const pad=px/(S+1); const step=(px-2*pad)/(S-1>0?S-1:1);
-  const gx=i=> pad + (i% S)*step, gy=i=> pad + Math.floor(i/S)*step;
-  ctx.fillStyle=getCss('--board'); ctx.fillRect(0,0,px,px);
+  const S=board.size; const px=sizePx(); const [x0,y0,vw,vh]=viewOf();
+  const mL=x0===0?1:0.5, mR=x0+vw===S?1:0.5, mT=y0===0?1:0.5, mB=y0+vh===S?1:0.5;
+  const step=Math.min(px/(vw-1+mL+mR), px*1.15/(vh-1+mT+mB));
+  const W=Math.round(step*(vw-1+mL+mR)), H=Math.round(step*(vh-1+mT+mB)); cv.width=W; cv.height=H;
+  const ox=(mL-x0)*step, oy=(mT-y0)*step;
+  const gx=i=> ox + (i% S)*step, gy=i=> oy + Math.floor(i/S)*step;
+  const inView=(x,y)=> x>=x0&&y>=y0&&x<x0+vw&&y<y0+vh;
+  ctx.fillStyle=getCss('--board'); ctx.fillRect(0,0,W,H);
   ctx.strokeStyle=getCss('--boardline'); ctx.lineWidth=1;
-  for(let i=0;i<S;i++){ const t=pad+i*step;
-    ctx.beginPath(); ctx.moveTo(pad,t); ctx.lineTo(px-pad,t); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(t,pad); ctx.lineTo(t,px-pad); ctx.stroke(); }
+  const left=x0===0?ox:0, right=x0+vw===S?ox+(S-1)*step:W, top=y0===0?oy:0, bottom=y0+vh===S?oy+(S-1)*step:H;
+  for(let y=y0;y<y0+vh;y++){ const t=oy+y*step; ctx.beginPath(); ctx.moveTo(left,t); ctx.lineTo(right,t); ctx.stroke(); }
+  for(let x=x0;x<x0+vw;x++){ const t=ox+x*step; ctx.beginPath(); ctx.moveTo(t,top); ctx.lineTo(t,bottom); ctx.stroke(); }
   ctx.fillStyle=getCss('--boardline');
-  for(const [sx,sy] of starPoints(S)){ ctx.beginPath(); ctx.arc(pad+sx*step,pad+sy*step,Math.max(2.5,step*0.07),0,7); ctx.fill(); }
+  for(const [sx,sy] of starPoints(S)){ if(!inView(sx,sy))continue; ctx.beginPath(); ctx.arc(ox+sx*step,oy+sy*step,Math.max(2.5,step*0.07),0,7); ctx.fill(); }
   const r=step*0.46;
   for(let i=0;i<board.grid.length;i++){ const c=board.grid[i]; if(c===EMPTY)continue;
+    if(!inView(i%S,(i/S)|0)) continue;
     const x=gx(i), y=gy(i);
     const grd=ctx.createRadialGradient(x-r*0.35,y-r*0.4,r*0.1, x,y,r);
     if(c===BLACK){ grd.addColorStop(0,'#6a6a6a'); grd.addColorStop(1,'#0e0e0e'); }
@@ -692,16 +889,17 @@ function draw(){
     ctx.strokeStyle='rgba(0,0,0,.25)'; ctx.lineWidth=1; ctx.stroke(); }
   if(markPoint!=null){ const x=gx(markPoint), y=gy(markPoint);
     ctx.strokeStyle=getCss('--accent'); ctx.lineWidth=3; ctx.beginPath(); ctx.arc(x,y,r*0.95,0,7); ctx.stroke(); }
-  cv._geo={pad,step,S};
+  cv._geo={ox,oy,step,S,x0,y0,vw,vh};
 }
 function xyFromEvent(e){
   const rect=cv.getBoundingClientRect();
-  const cx=(e.touches?e.touches[0].clientX:e.clientX)-rect.left;
-  const cy=(e.touches?e.touches[0].clientY:e.clientY)-rect.top;
-  const {pad,step,S}=cv._geo;
-  const gx=Math.round((cx-pad)/step), gy=Math.round((cy-pad)/step);
-  if(gx<0||gy<0||gx>=S||gy>=S) return null;
-  if(Math.abs(cx-(pad+gx*step))>step*0.5 || Math.abs(cy-(pad+gy*step))>step*0.5) return null;
+  const sx=rect.width?cv.width/rect.width:1, sy=rect.height?cv.height/rect.height:1;
+  const cx=((e.touches?e.touches[0].clientX:e.clientX)-rect.left)*sx;
+  const cy=((e.touches?e.touches[0].clientY:e.clientY)-rect.top)*sy;
+  const {ox,oy,step,S,x0,y0,vw,vh}=cv._geo;
+  const gx=Math.round((cx-ox)/step), gy=Math.round((cy-oy)/step);
+  if(gx<x0||gy<y0||gx>=x0+vw||gy>=y0+vh) return null;
+  if(Math.abs(cx-(ox+gx*step))>step*0.5 || Math.abs(cy-(oy+gy*step))>step*0.5) return null;
   return {x:gx,y:gy,i:gy*S+gx};
 }
 
@@ -735,13 +933,14 @@ function onPlayClick(x,y,i){
   clearFeedback();
   if(p.goal==='script'){
     const stepDef=p.script[scriptStep];
-    if(!sameMove(stepDef.accept,x,y)){ tempWrong(i,p.toPlay,'Not the ladder move — keep White in atari.'); return; }
+    const st=p.text||textFor(p);
+    if(!sameMove(stepDef.accept,x,y)){ tempWrong(i,p.toPlay,st.wrong||'Not the ladder move — keep White in atari.'); return; }
     const mv=tryMove(board,i,p.toPlay); if(!mv.ok){ flash('bad','Illegal there.'); return; }
     pushHist(); board=mv.board; caps[p.toPlay]+=mv.captured.length;
     if(stepDef.reply){ const r=tryMove(board, idx(board,stepDef.reply[0],stepDef.reply[1]), other(p.toPlay));
       if(r.ok){ board=r.board; caps[other(p.toPlay)]+=r.captured.length; } }
     scriptStep++; draw(); updateMeta();
-    if(stepDef.done||scriptStep>=p.script.length){ solved(); } else { flash('good','Good — White runs. Continue.'); }
+    if(stepDef.done||scriptStep>=p.script.length){ solved(); } else { flash('good',st.cont||'Good — White runs. Continue.'); }
     return;
   }
   const mv=tryMove(board,i,p.toPlay);
@@ -851,7 +1050,7 @@ document.getElementById('resetBtn').onclick=()=>{ if(mode==='play'&&current) sho
   else { board=makeBoard(sandboxSize); turn=BLACK; hist=[]; caps={1:0,2:0}; draw(); updateMeta(); } };
 document.getElementById('hintBtn').onclick=()=>{ if(mode!=='play'||!current)return;
   const t=current.text||textFor(current);
-  const h=current.goal==='script'?(current.script[scriptStep]?('Play '+fmt(current.script[scriptStep].accept[0])):t.hint):t.hint;
+  const h=(current.goal==='script'&&current.kind!=='tsumego')?(current.script[scriptStep]?('Play '+fmt(current.script[scriptStep].accept[0])):t.hint):t.hint;
   flash('hint','💡 '+(h||'Look for the move that achieves the goal.')); };
 document.getElementById('showBtn').onclick=()=>{ if(mode!=='play'||!current)return;
   let pt; if(current.goal==='script') pt=current.script[scriptStep].accept[0];
