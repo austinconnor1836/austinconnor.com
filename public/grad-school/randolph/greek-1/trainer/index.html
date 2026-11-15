@@ -250,6 +250,7 @@ input.field:focus, textarea.field:focus, .ptable td input:focus { outline: 2px s
 .etable input { width: 100%; min-width: 6em; min-height: 40px; border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; background: var(--surface); text-align: center; }
 .etable th input { font-family: var(--ui); font-weight: 700; font-size: 14px; background: var(--surface-2); }
 .etable td input { font-family: var(--greek); font-size: 18px; }
+@media (max-width: 480px) { .etable input { min-width: 3.4em; } .etable td, .etable th { padding: 3px; } }
 
 /* ---------- accent bar ---------- */
 .accent-bar {
@@ -958,10 +959,27 @@ function gradeEnglish(given, parses) {
    catOf / DRILL_CATS / SLOT / PERSONS / variants. */
 "use strict";
 (function () {
-  // Infinitives have no person × number grid, so drop that section here.
-  const TABLE_CATS = DRILL_CATS.filter(([k]) => k !== "inf");
+  // Infinitives have no person × number grid, so drop that section here. The article (§16)
+  // is its own section: a case·number × gender grid of whole forms, not endings.
+  const TABLE_CATS = [["article", "The article (§16)"], ...DRILL_CATS.filter(([k]) => k !== "inf")];
   const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
-  const tmLabel = t => `${cap(t.tense)} ${t.mood} active`;
+
+  // H&Q §16, p. 28 (PDF 47), as transcribed in the vault note "§16 - The Article".
+  const ARTICLE = {
+    rows: ["Nom. sg.", "Gen. sg.", "Dat. sg.", "Acc. sg.", "Nom. pl.", "Gen. pl.", "Dat. pl.", "Acc. pl."],
+    cols: ["Masc.", "Fem.", "Neut."],
+    forms: [["ὁ", "ἡ", "τό"], ["τοῦ", "τῆς", "τοῦ"], ["τῷ", "τῇ", "τῷ"], ["τόν", "τήν", "τό"],
+            ["οἱ", "αἱ", "τά"], ["τῶν", "τῶν", "τῶν"], ["τοῖς", "ταῖς", "τοῖς"], ["τούς", "τᾱ́ς", "τά"]],
+  };
+  // Whole forms: accents and breathings count; macrons don't, and a grave counts as its acute (τὸν = τόν).
+  const toAcute = s => nfc(String(s).normalize("NFD").replace(/\u0300/g, "\u0301"));
+  const formAccepts = (given, forms) => forms.some(f => grade(noLength(toAcute(given)), noLength(f), "strict") === "right");
+  const articleTable = () => ({
+    id: "a:article", section: "article", tenseUnit: 1, label: "The article ὁ, ἡ, τό", instr: "Type all 24 forms of the article",
+    corner: "", rows: ARTICLE.rows, cols: ARTICLE.cols, cells: ARTICLE.forms.map(r => r.map(f => [nfc(f)])), accepts: formAccepts,
+    formation: "No vocative. ὁ, ἡ, οἱ, αἱ are proclitics: no τ- and no accent. Gen. and dat. (sg. and pl.) take a circumflex.",
+    source: "H&Q §16, p. 28 (PDF p. 47)", gradingNote: "Accents and breathings count; macrons don't, and τὸν = τόν.",
+  });
 
   // How each tense/mood is formed — transcribed from the vault's §20–§34 notes.
   const FORMATION = {
@@ -976,7 +994,7 @@ function gradeEnglish(given, parses) {
     "aorist|optative": "Unaugmented aorist stem (drop the augment), then endings that all begin with -αι- (2nd/3rd sg. and 3rd pl. have alternatives).",
   };
   const formationBlock = t => {
-    const txt = FORMATION[`${t.tense}|${t.mood}`];
+    const txt = t.formation || FORMATION[`${t.tense}|${t.mood}`];
     return txt ? h("div", { class: "formation", lang: "grc" }, h("b", {}, "Formation: "), txt) : null;
   };
 
@@ -1017,8 +1035,11 @@ function gradeEnglish(given, parses) {
   const inScope = (it, scope) => scope.mode === "only" ? it.tenseUnit === scope.unit : it.tenseUnit <= scope.unit;
 
   // One ending table per (tense, mood) that H&Q's παιδεύω prints, in scope + switched-on
-  // sections, excluding infinitives. Each cell holds the acceptable ending spellings.
+  // sections, excluding infinitives, plus the article. Each cell holds the acceptable spellings.
   function collectTables(scope, settings) {
+    const tables = [];
+    const art = articleTable();
+    if (settings.cats.includes("article") && inScope(art, scope)) tables.push(art);
     const groups = new Map();
     for (const it of drillPoolCache.book) {
       if (it.src !== "book" || it.mood === "infinitive" || it.person == null) continue;
@@ -1026,7 +1047,6 @@ function gradeEnglish(given, parses) {
       if (!groups.has(key)) groups.set(key, {});
       groups.get(key)[`${it.person}|${it.number}`] = it;
     }
-    const tables = [];
     for (const [key, slots] of groups) {
       const flat = SLOT.map(([p, n]) => slots[`${p}|${n}`]);
       if (flat.some(x => !x)) continue;
@@ -1042,7 +1062,10 @@ function gradeEnglish(given, parses) {
       }));
       if (!ok) continue;
       tables.push({ id: `e:${key}`, tense: first.tense, mood: first.mood, section: catOf(first),
-        page: first.page, sectionName: first.section, cells });
+        label: `${cap(first.tense)} ${first.mood} active`, instr: "Type the six personal endings",
+        corner: "Person", rows: PERSONS, cols: ["Singular", "Plural"], cells, accepts: endingAccepts,
+        source: `Endings from H&Q's παιδεύω ${first.section}, p. ${first.page} (PDF p. ${first.page + 19})`,
+        gradingNote: "Endings are graded without accents; iota subscripts (ῃ, ῳ) count." });
     }
     return tables;
   }
@@ -1064,24 +1087,26 @@ function gradeEnglish(given, parses) {
     const settings = tStore.get("tables-settings", { cats: TABLE_CATS.map(c => c[0]), view: "type" });
     settings.cats = (settings.cats || []).filter(c => TABLE_CATS.some(x => x[0] === c));
     if (!settings.cats.length) settings.cats = TABLE_CATS.map(c => c[0]);
+    // Switch the article on for settings saved before it existed.
+    if (!settings.hasArticle) { if (!settings.cats.includes("article")) settings.cats.unshift("article"); settings.hasArticle = true; }
     if (settings.view !== "cards") settings.view = "type";
     return settings;
   }
 
   // The filled endings grid, used by the quiz reveal and the flashcard back.
+  const headRowOf = t => h("tr", {}, h("th", {}, t.corner), t.cols.map(c => h("th", { scope: "col" }, c)));
   function endingsTableEl(t) {
-    const rows = [0, 1, 2].map(r => h("tr", {}, h("th", { scope: "row" }, PERSONS[r]),
-      [0, 1].map(c => h("td", { class: "ok", lang: "grc" }, t.cells[r][c].join(" / ")))));
+    const rows = t.rows.map((lbl, r) => h("tr", {}, h("th", { scope: "row" }, lbl),
+      t.cols.map((_, c) => h("td", { class: "ok", lang: "grc" }, t.cells[r][c].join(" / ")))));
     return h("div", { class: "ptable-wrap" }, h("table", { class: "ptable etable" },
-      h("thead", {}, h("tr", {}, h("th", {}, "Person"), h("th", { scope: "col" }, "Singular"), h("th", { scope: "col" }, "Plural"))),
-      h("tbody", {}, rows)));
+      h("thead", {}, headRowOf(t)), h("tbody", {}, rows)));
   }
 
   function tableStart() {
     const last = tStore.get("tables-scope", { unit: 3, mode: "through" });
     const settings = settingsFor();
     const count = (u, m) => collectTables({ unit: u, mode: m }, settings).length;
-    const units = Array.from({ length: 19 }, (_, i) => i + 2);   // verbs start at Unit 2
+    const units = Array.from({ length: 20 }, (_, i) => i + 1);   // the article is Unit 1; verbs start at Unit 2
     const pick = { unit: last.unit, mode: last.mode };
     const body = h("div", {});
     function draw() {
@@ -1093,10 +1118,10 @@ function gradeEnglish(given, parses) {
         h("h2", {}, "2. What should it cover?"),
         h("div", { class: "drill-scope" },
           h("button", { class: "choice", "aria-pressed": String(pick.mode === "only"), onclick: () => { pick.mode = "only"; draw(); } },
-            h("span", {}, h("b", {}, `Unit ${pick.unit} only`), h("br"), h("small", { class: "muted" }, `Only the tenses and moods new in Unit ${pick.unit}`))),
+            h("span", {}, h("b", {}, `Unit ${pick.unit} only`), h("br"), h("small", { class: "muted" }, `Only the tables new in Unit ${pick.unit}`))),
           h("button", { class: "choice", "aria-pressed": String(pick.mode === "through"), onclick: () => { pick.mode = "through"; draw(); } },
-            h("span", {}, h("b", {}, `Everything through Unit ${pick.unit}`), h("br"), h("small", { class: "muted" }, `All tenses and moods from Units 1–${pick.unit}`)))),
-        h("p", { class: "muted", style: { fontSize: "14px" } }, n ? `${n} ending table${n === 1 ? "" : "s"} to drill.` : pick.mode === "only" ? `Unit ${pick.unit} adds no new active tense or mood. Try “Everything through Unit ${pick.unit}”.` : "No ending tables for this choice yet. Units 2 and up have them."),
+            h("span", {}, h("b", {}, `Everything through Unit ${pick.unit}`), h("br"), h("small", { class: "muted" }, `All tables from Units 1–${pick.unit}`)))),
+        h("p", { class: "muted", style: { fontSize: "14px" } }, n ? `${n} ending table${n === 1 ? "" : "s"} to drill.` : pick.mode === "only" ? `Unit ${pick.unit} adds no new ending table. Try “Everything through Unit ${pick.unit}”.` : "No ending tables for this choice yet."),
         h("button", { class: "btn primary", disabled: !n, onclick: () => {
           tStore.set("tables-scope", pick);
           location.hash = `#/tables/${pick.unit}/${pick.mode}`;
@@ -1107,8 +1132,8 @@ function gradeEnglish(given, parses) {
       h("div", { class: "row" }, h("a", { href: "#/", class: "muted" }, "← Home")),
       h("h1", { style: { marginTop: "8px" } }, "Ending tables"),
       h("p", { class: "muted", style: { marginTop: 0, fontSize: "14px" } },
-        "Fill in the bare personal endings for one tense and mood — all six, in a person × number grid. ",
-        "Endings are taken from H&Q's παιδεύω paradigm. Accents aren't graded (an ending has none on its own); iota subscripts are."),
+        "Fill in the bare personal endings for one tense and mood — all six, in a person × number grid — or the full article (§16). ",
+        "Verb endings are taken from H&Q's παιδεύω paradigm. Accents aren't graded in endings (an ending has none on its own); iota subscripts are. The article's accents are graded."),
       body);
   }
 
@@ -1130,7 +1155,7 @@ function gradeEnglish(given, parses) {
     app().replaceChildren(
       h("div", { class: "row" }, h("a", { href: "#/", class: "muted" }, "← Home")),
       h("div", { class: "row", style: { marginTop: "8px" } },
-        h("h1", { style: { flex: "1" } }, scope.mode === "only" ? `New in Unit ${scope.unit}` : `Units 1–${scope.unit}`),
+        h("h1", { style: { flex: "1" } }, scope.mode === "only" ? `New in Unit ${scope.unit}` : scope.unit === 1 ? "Unit 1" : `Units 1–${scope.unit}`),
         h("a", { class: "btn small", href: "#/tables" }, "Change unit")),
       modeRow, settingsBox, score, stage);
 
@@ -1156,7 +1181,7 @@ function gradeEnglish(given, parses) {
         h("div", { class: "options", style: { marginTop: "12px" } },
           h("b", {}, "Sections"),
           h("div", { class: "row" }, TABLE_CATS.map(([k, label]) => append(toggle(settings.cats, k), [label]))),
-          h("div", { class: "muted", style: { fontSize: "13px" } }, "Endings are graded without accents; iota subscripts (ῃ, ῳ) count. Type them with the accent bar. Optional letters like (ν) can be included or left out."),
+          h("div", { class: "muted", style: { fontSize: "13px" } }, "Endings are graded without accents; iota subscripts (ῃ, ῳ) count. The article's accents and breathings count (macrons never do). Type them with the accent bar. Optional letters like (ν) can be included or left out."),
           h("div", { class: "row" },
             h("button", { class: "btn small ghost", onclick: () => confirmModal("Reset table history?",
               "Forget which tables you've missed, so every table is weighted equally again.", "Reset",
@@ -1199,45 +1224,47 @@ function gradeEnglish(given, parses) {
       ask(t);
     }
 
-    const source = t => `Endings from H&Q's παιδεύω ${t.sectionName}, p. ${t.page} (PDF p. ${t.page + 19})`;
+    const source = t => t.source;
 
     function ask(t) {
       const fb = h("div", {});
       let done = false;
       const inputs = {};
       const holder = h("div", {});
-      const headRow = () => h("tr", {}, h("th", {}, "Person"), h("th", { scope: "col" }, "Singular"), h("th", { scope: "col" }, "Plural"));
+      const headRow = () => headRowOf(t);
+      const R = t.rows.map((_, r) => r), C = t.cols.map((_, c) => c);
 
       function grid() {
-        const rows = [0, 1, 2].map(r => h("tr", {}, h("th", { scope: "row" }, PERSONS[r]),
-          [0, 1].map(c => {
+        const rows = R.map(r => h("tr", {}, h("th", { scope: "row" }, t.rows[r]),
+          C.map(c => {
             const inp = h("input", { class: "field", "data-greek": "", lang: "grc", "data-r": r, "data-c": c, autocomplete: "off",
-              autocapitalize: "off", spellcheck: "false", "aria-label": `${PERSONS[r]} ${c === 0 ? "singular" : "plural"} ending` });
+              autocapitalize: "off", spellcheck: "false", "aria-label": `${t.rows[r]} ${t.cols[c]}` });
             inputs[`${r},${c}`] = inp;
             return h("td", {}, inp);
           })));
         return h("div", { class: "ptable-wrap" }, h("table", { class: "ptable etable" }, h("thead", {}, headRow()), h("tbody", {}, rows)));
       }
 
-      const order = [[0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1]];
+      // Fill down each column, then move to the next one.
+      const order = C.flatMap(c => R.map(r => [r, c]));
       const focusCell = idx => { const [r, c] = order[idx] || []; inputs[`${r},${c}`]?.focus(); };
 
       function check() {
         if (done) return;
         done = true;
-        const values = [0, 1, 2].map(r => [0, 1].map(c => inputs[`${r},${c}`].value));
-        const results = [0, 1, 2].map(r => [0, 1].map(c => endingAccepts(values[r][c], t.cells[r][c])));
+        const values = R.map(r => C.map(c => inputs[`${r},${c}`].value));
+        const results = R.map(r => C.map(c => t.accepts(values[r][c], t.cells[r][c])));
         const allRight = results.every(row => row.every(Boolean));
         record(t, allRight);
-        const rows = [0, 1, 2].map(r => h("tr", {}, h("th", { scope: "row" }, PERSONS[r]),
-          [0, 1].map(c => {
+        const rows = R.map(r => h("tr", {}, h("th", { scope: "row" }, t.rows[r]),
+          C.map(c => {
             const td = h("td", { class: results[r][c] ? "ok" : "bad" }, values[r][c].trim() || "—");
             if (!results[r][c]) td.append(h("span", { class: "fix", lang: "grc" }, t.cells[r][c].join(" / ")));
             return td;
           })));
         holder.replaceChildren(h("div", { class: "ptable-wrap" }, h("table", { class: "ptable etable" }, h("thead", {}, headRow()), h("tbody", {}, rows))));
         fb.replaceChildren(h("div", { class: "feedback " + (allRight ? "good" : "bad") },
-          allRight ? "All six correct!" : "Not all right — the correct endings are shown in each wrong cell.",
+          allRight ? `All ${R.length * C.length} correct!` : "Not all right — the correct form is shown in each wrong cell.",
           h("div", { style: { color: "var(--ink)", fontWeight: 400 } }, formationBlock(t)),
           h("div", { style: { color: "var(--ink)", fontWeight: 400, marginTop: "8px", fontSize: "13px" } }, source(t))),
           nextBtn());
@@ -1247,10 +1274,10 @@ function gradeEnglish(given, parses) {
       holder.replaceChildren(grid());
       stage.replaceChildren(h("div", { class: "qcard" },
         h("div", { class: "qlabel" }, "Ending table"),
-        h("div", { class: "prompt" }, h("div", { class: "size-l" }, tmLabel(t)),
-          h("div", { class: "size-m muted" }, "Type the six personal endings")),
+        h("div", { class: "prompt" }, h("div", { class: "size-l", lang: "grc" }, t.label),
+          h("div", { class: "size-m muted" }, t.instr)),
         holder,
-        h("div", { class: "muted", style: { fontSize: "13px", marginTop: "6px" } }, "Enter moves to the next cell; Enter on the last one checks."),
+        h("div", { class: "muted", style: { fontSize: "13px", marginTop: "6px" } }, "Enter moves down the column, then to the next column; Enter on the last cell checks. ", t.gradingNote),
         h("div", { class: "row", style: { marginTop: "12px" } }, checkBtn),
         fb));
 
@@ -1280,11 +1307,11 @@ function gradeEnglish(given, parses) {
       const face = flipped
         ? h("div", {}, endingsTableEl(t), formationBlock(t),
             h("div", { class: "muted", style: { fontSize: "13px", marginTop: "8px" } }, source(t)))
-        : h("div", { class: "empty", style: { padding: "28px 10px" } }, h("div", { class: "size-m muted" }, "Tap to reveal the endings"));
+        : h("div", { class: "empty", style: { padding: "28px 10px" } }, h("div", { class: "size-m muted" }, "Tap to reveal the table"));
       stage.replaceChildren(
         h("div", { class: "qcard", style: { cursor: "pointer" }, onclick: () => { flipped = !flipped; drawCard(); } },
           h("div", { class: "qlabel" }, "Ending table — flashcard", h("span", { class: "muted" }, `${(pos % pass) + 1} / ${pass}`)),
-          h("div", { class: "prompt" }, h("div", { class: "size-l" }, tmLabel(t))),
+          h("div", { class: "prompt" }, h("div", { class: "size-l", lang: "grc" }, t.label)),
           face),
         h("div", { class: "row", style: { marginTop: "14px", gap: "10px" } },
           h("button", { class: "btn", onclick: e => { e.stopPropagation(); flipped = !flipped; drawCard(); } }, flipped ? "Hide" : "Flip"),
@@ -2040,7 +2067,7 @@ function homeView() {
       h("div", { class: "muted" }, "Parse, find and write verb forms — tense, mood, person, number, by unit")),
     h("a", { class: "panel deck-tile tables-tile", href: "#/tables", style: { marginTop: "12px" } },
       h("h3", {}, "Ending tables"),
-      h("div", { class: "muted" }, "Fill in the personal endings — person × number, each tense & mood, by unit")),
+      h("div", { class: "muted" }, "Fill in the personal endings (person × number, each tense & mood) and the article (§16), by unit")),
     h("a", { class: "panel deck-tile noun-tile", href: "#/ndrill", style: { marginTop: "12px" } },
       h("h3", {}, "Noun drill"),
       h("div", { class: "muted" }, "Decline every noun — case and number, by unit (built by rule)")),
