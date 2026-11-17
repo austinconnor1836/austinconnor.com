@@ -313,6 +313,37 @@ input.field:focus, textarea.field:focus, .ptable td input:focus { outline: 2px s
 }
 .vocab-tile { border-left: 4px solid var(--warn); }
 
+/* ---------- reference tables (read-only) ---------- */
+.ref-tile { border-left: 4px solid var(--muted); }
+.ref-nav { position: sticky; top: 0; z-index: 10; display: flex; gap: 6px; overflow-x: auto; max-width: 100%;
+  padding: 6px 0; margin: 10px 0 4px; background: var(--bg); border-bottom: 1px solid var(--line); scrollbar-width: thin; }
+.ref-nav .btn, .ref-jump .btn { flex: none; min-height: 44px; }
+.ref-jump { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
+.ref-unit, .ref-sec { scroll-margin-top: 120px; }
+.ref-unit > h2 { margin-top: 32px; padding-bottom: 4px; border-bottom: 2px solid var(--ink); }
+.ref-sec > h3 { font-size: 17px; margin: 22px 0 6px; color: var(--accent); }
+.ref-item { margin: 12px 0 26px; }
+.ref-item h4 { margin: 0 0 2px; font-size: 17px; font-family: var(--greek); overflow-wrap: anywhere; }
+.ref-src { font-size: 13px; margin: 0 0 8px; }
+table.ref-table { margin: 0; font-size: clamp(16px, 4.2vw, 20px); }
+.ref-table td { min-width: 0; }
+.ref-table th { white-space: nowrap; }
+.ref-end { display: block; font-size: .72em; color: var(--muted); }
+.ref-full { display: block; }
+.ref-actions .btn { min-height: 44px; }
+@media print {
+  :root:not([data-theme="light"]), :root, :root[data-theme="dark"] {
+    --bg: #fff; --surface: #fff; --surface-2: #eee; --ink: #000; --muted: #444; --line: #bbb;
+    --accent: #000; --accent-soft: #eee; --shadow: none; color-scheme: light;
+  }
+  .topbar, .ref-nav, .ref-jump, .ref-actions, #accent-bar, #modal-root { display: none !important; }
+  main { max-width: none; padding: 0; }
+  .ptable-wrap { overflow: visible; }
+  .ref-item { break-inside: avoid; }
+  .ref-unit > h2, .ref-sec > h3 { break-after: avoid; }
+  .ref-unit + .ref-unit { break-before: page; }
+}
+
 </style>
 </head>
 <body>
@@ -1087,6 +1118,8 @@ function gradeEnglish(given, parses) {
       tables.push({ id: `e:${key}`, tense: first.tense, mood: first.mood, section: catOf(first),
         label: `${cap(first.tense)} ${first.mood} active`, instr: "Type the six personal endings",
         corner: "Person", rows: PERSONS, cols: ["Singular", "Plural"], cells, accepts: endingAccepts,
+        full: [0, 1, 2].map(r => [0, 1].map(c => slots[`${r + 1}|${c === 0 ? "singular" : "plural"}`].forms)),
+        sec: first.section, lemma: first.lemma, tenseUnit: first.tenseUnit,
         source: `Endings from H&Q's παιδεύω ${first.section}, p. ${first.page} (PDF p. ${first.page + 19})`,
         gradingNote: "Endings are graded without accents; iota subscripts (ῃ, ῳ) count." });
     }
@@ -1159,6 +1192,7 @@ function gradeEnglish(given, parses) {
       h("p", { class: "muted", style: { marginTop: 0, fontSize: "14px" } },
         "Fill in the bare personal endings for one tense and mood — all six, in a person × number grid — or a full paradigm: the article (§16) and H&Q's model nouns, adjectives and pronouns. ",
         "Verb endings are taken from H&Q's παιδεύω paradigm. Accents aren't graded in endings (an ending has none on its own); iota subscripts are. In whole forms (the article, nouns, adjectives, pronouns) accents are graded."),
+      h("div", { class: "row ref-actions" }, h("a", { class: "btn", href: "#/reference" }, "Read all the tables (reference) →")),
       body);
   }
 
@@ -1375,6 +1409,111 @@ function gradeEnglish(given, parses) {
     drawModeToggle(); drawSettings(); drawScore(); render();
   }
 
+  /* Reference tables: every book table through a chosen unit, read-only, for scrolling.
+     Reuses collectTables with every section on (the quiz settings are ignored) and the
+     book's infinitives. Only H&Q's printed forms appear here — never the BUILT ones. */
+  const REF_SETTINGS = { cats: TABLE_CATS.map(c => c[0]) };
+  const VERB_SECS = new Set(DRILL_CATS.map(c => c[0]));
+  const REF_SECS = [["article", "The article"], ...DECL_CATS, ["verb", "Verbs"], ["inf", "Infinitives"]];
+  const refSecOf = t => VERB_SECS.has(t.section) && t.section !== "inf" ? "verb" : t.section;
+  const secNum = s => parseInt(String(s || "").replace(/[^0-9]/g, ""), 10) || 0;
+  const refStore = "reference-unit";
+
+  function refTables(unit) {
+    const tabs = collectTables({ unit, mode: "through" }, REF_SETTINGS);
+    const infs = drillPoolCache.book.filter(it => it.src === "book" && it.mood === "infinitive" && it.tenseUnit <= unit);
+    const byUnit = new Map();
+    for (const it of infs) { if (!byUnit.has(it.tenseUnit)) byUnit.set(it.tenseUnit, []); byUnit.get(it.tenseUnit).push(it); }
+    for (const [u, its] of byUnit) {
+      const src = [...new Set(its.map(it => `${it.section}, p. ${it.page} (PDF p. ${it.page + 19})`))].join("; ");
+      tabs.push({ id: `i:${u}`, section: "inf", tenseUnit: u, label: "Active infinitives", corner: "Tense",
+        rows: its.map(it => cap(it.tense)), cols: ["Form"], cells: its.map(it => [it.forms]),
+        source: `H&Q's ${its[0].lemma} ${src}`, sec: its[0].section });
+    }
+    const order = new Map(REF_SECS.map(([k], i) => [k, i]));
+    return tabs.map((t, i) => ({ t, i })).sort((a, b) => (a.t.tenseUnit - b.t.tenseUnit)
+      || (order.get(refSecOf(a.t)) - order.get(refSecOf(b.t)))
+      || (refSecOf(a.t) === "verb" ? secNum(a.t.sec) - secNum(b.t.sec) : 0) || (a.i - b.i)).map(x => x.t);
+  }
+
+  function refTableEl(t) {
+    const cell = (r, c) => t.full
+      ? h("td", { lang: "grc" }, h("span", { class: "ref-end" }, t.cells[r][c].map(e => "-" + e).join(" / ")),
+          h("span", { class: "ref-full" }, t.full[r][c].join(" / ")))
+      : h("td", { lang: "grc" }, t.cells[r][c].join(" / "));
+    const rows = t.rows.map((lbl, r) => h("tr", {}, h("th", { scope: "row" }, lbl), t.cols.map((_, c) => cell(r, c))));
+    return h("div", { class: "ptable-wrap" }, h("table", { class: "ptable ref-table" },
+      h("thead", {}, headRowOf(t)), h("tbody", {}, rows)));
+  }
+
+  async function referenceView(unitArg) {
+    document.title = "Reference tables · H&Q Greek";
+    if (!drillPoolCache) {
+      app().replaceChildren(h("div", { class: "empty" }, "Loading…"));
+      try { drillPoolCache = await loadDrillPool(); }
+      catch (e) { return app().replaceChildren(h("div", { class: "empty" }, "Couldn't load the tables: " + e.message)); }
+    }
+    const everything = refTables(Infinity);
+    const units = [...new Set(everything.map(t => t.tenseUnit))].sort((a, b) => a - b);
+    const unit = Number(unitArg);
+    if (!Number.isInteger(unit) || unit < 1) return refPicker(units, everything);
+    tStore.set(refStore, { unit });
+    return refShow(unit, units);
+  }
+
+  function refPicker(units, everything) {
+    const last = tStore.get(refStore, { unit: 0 }).unit;
+    const through = u => everything.filter(t => t.tenseUnit <= u).length;
+    app().replaceChildren(
+      h("div", { class: "row" }, h("a", { href: "#/", class: "muted" }, "← Home")),
+      h("h1", { style: { marginTop: "8px" } }, "Reference tables"),
+      h("p", { class: "muted", style: { marginTop: 0, fontSize: "14px" } },
+        "Every paradigm table from H&Q, read-only, on one scrolling page: the article, the nouns, adjectives and pronouns, and the verb endings with the full forms. Pick the unit you're on to see everything taught through it."),
+      units.includes(last) ? h("div", { class: "row ref-actions" },
+        h("a", { class: "btn primary", href: `#/reference/${last}` }, `Continue: through Unit ${last} →`)) : null,
+      h("h2", {}, "Show everything through Unit…"),
+      h("div", { class: "drill-units" }, units.map(u => h("a", { class: "btn", href: `#/reference/${u}`,
+        "aria-pressed": String(u === last), title: `${through(u)} tables` }, String(u)))));
+  }
+
+  function refShow(unit, units) {
+    const tabs = refTables(unit);
+    document.title = `Through Unit ${unit} · Reference tables`;
+    const shown = units.filter(u => u <= unit);
+    const jump = id => () => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };
+    const nav = shown.length > 1 ? h("nav", { class: "ref-nav", "aria-label": "Units" },
+      shown.map(u => h("button", { class: "btn small", onclick: jump(`ref-u${u}`) }, `Unit ${u}`))) : null;
+    const blocks = shown.map(u => {
+      const mine = tabs.filter(t => t.tenseUnit === u);
+      const secs = REF_SECS.filter(([k]) => mine.some(t => refSecOf(t) === k));
+      return h("section", { class: "ref-unit", id: `ref-u${u}` },
+        h("h2", {}, `Unit ${u}`),
+        secs.length > 1 ? h("div", { class: "ref-jump" }, secs.map(([k, label]) =>
+          h("button", { class: "btn small", onclick: jump(`ref-u${u}-${k}`) }, label))) : null,
+        secs.map(([k, label]) => h("div", { class: "ref-sec", id: `ref-u${u}-${k}` },
+          h("h3", {}, label),
+          mine.filter(t => refSecOf(t) === k).map(t => h("div", { class: "ref-item" },
+            h("h4", { lang: "grc" }, t.label),
+            h("p", { class: "muted ref-src" }, t.source),
+            refTableEl(t),
+            formationBlock(t))))));
+    });
+    app().replaceChildren(
+      h("div", { class: "row" }, h("a", { href: "#/", class: "muted" }, "← Home")),
+      h("div", { class: "row", style: { marginTop: "8px" } },
+        h("h1", { style: { flex: "1" } }, unit === 1 ? "Reference: Unit 1" : `Reference: Units 1–${unit}`),
+        h("div", { class: "row ref-actions" },
+          h("a", { class: "btn small", href: "#/reference" }, "Change unit"),
+          h("button", { class: "btn small", onclick: () => window.print() }, "Print"))),
+      h("p", { class: "muted", style: { marginTop: 0, fontSize: "14px" } },
+        `${tabs.length} table${tabs.length === 1 ? "" : "s"}, as printed in H&Q. Verb cells show the ending above the full form.`),
+      nav, blocks);
+    // Keep the unit bar just under the sticky top bar.
+    const bar = $(".topbar");
+    if (nav && bar) nav.style.top = bar.offsetHeight + "px";
+  }
+
+  window.referenceView = referenceView;
   window.tableDrillView = tableDrillView;
 })();
 
@@ -2093,6 +2232,9 @@ function homeView() {
     h("a", { class: "panel deck-tile tables-tile", href: "#/tables", style: { marginTop: "12px" } },
       h("h3", {}, "Ending tables"),
       h("div", { class: "muted" }, "Fill in the personal endings (person × number, each tense & mood), the article, and the noun, adjective and pronoun paradigms, by unit")),
+    h("a", { class: "panel deck-tile ref-tile", href: "#/reference", style: { marginTop: "12px" } },
+      h("h3", {}, "Reference tables"),
+      h("div", { class: "muted" }, "Read every paradigm table through your unit on one scrolling page — no quiz")),
     h("a", { class: "panel deck-tile noun-tile", href: "#/ndrill", style: { marginTop: "12px" } },
       h("h3", {}, "Noun drill"),
       h("div", { class: "muted" }, "Decline every noun — case and number, by unit (built by rule)")),
@@ -2108,6 +2250,7 @@ function route() {
   window.scrollTo(0, 0);
   if (view === "drill") return drillView(id, mode);
   if (view === "tables") return tableDrillView(id, mode);
+  if (view === "reference") return referenceView(id);
   if (view === "ndrill") return nounDrillView(id, mode);
   if (view === "vocab") return vocabView(id, mode);
   return homeView();
