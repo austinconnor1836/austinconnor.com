@@ -333,6 +333,22 @@ input.field:focus, textarea.field:focus, .ptable td input:focus { outline: 2px s
 .ref-nav .btn, .ref-jump .btn { flex: none; min-height: 44px; }
 .ref-jump { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 8px; }
 .ref-unit, .ref-sec { scroll-margin-top: 120px; }
+/* Jump menu: voice → mood → tense chips, inline at the top and behind a sticky "Jump to…" button. */
+.ref-bar { position: sticky; top: 0; z-index: 10; background: var(--bg); }
+.ref-bar { display: flex; gap: 6px; align-items: center; margin: 10px 0 4px; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.ref-bar .ref-nav { position: static; flex: 1 1 auto; min-width: 0; margin: 0; padding: 0; border: 0; }
+.ref-bar .ref-menu-btn { min-height: 44px; flex: none; display: inline-flex; align-items: center; list-style: none; cursor: pointer; }
+.ref-menu-btn::-webkit-details-marker { display: none; }
+.ref-menu-pop { position: absolute; left: 0; right: 0; top: 100%; max-height: 70vh; overflow-y: auto; background: var(--bg);
+  border: 1px solid var(--line); border-radius: 12px; padding: 8px 12px 12px; box-shadow: var(--shadow); }
+.ref-menu-group { margin: 8px 0 2px; font-size: 12px; font-weight: 650; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.ref-menu-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 4px 0; }
+.ref-menu-row > b { flex: 0 0 100%; font-size: 13px; font-weight: 600; }
+.ref-menu-row .btn { min-height: 44px; flex: none; }
+.ref-menu-inline { margin: 8px 0 4px; }
+.ref-top { display: inline-flex; align-items: center; min-height: 44px; font-size: 13px; margin: -14px 0 18px; }
+.ref-group { scroll-margin-top: 130px; }
+.ref-anchor { display: block; width: 0; height: 0; }
 .ref-unit > h2 { margin-top: 32px; padding-bottom: 4px; border-bottom: 2px solid var(--ink); }
 .ref-sec > h3 { font-size: 17px; margin: 22px 0 6px; color: var(--accent); }
 .ref-item { margin: 12px 0 26px; }
@@ -353,7 +369,7 @@ table.ref-table { margin: 0; font-size: clamp(16px, 4.2vw, 20px); }
     --bg: #fff; --surface: #fff; --surface-2: #eee; --ink: #000; --muted: #444; --line: #bbb;
     --accent: #000; --accent-soft: #eee; --shadow: none; color-scheme: light;
   }
-  .topbar, .ref-nav, .ref-jump, .ref-actions, #accent-bar, #modal-root { display: none !important; }
+  .topbar, .ref-nav, .ref-jump, .ref-actions, .ref-bar, .ref-menu-inline, .ref-top, #accent-bar, #modal-root { display: none !important; }
   main { max-width: none; padding: 0; }
   .ptable-wrap { overflow: visible; }
   .ref-item { break-inside: avoid; }
@@ -1841,10 +1857,12 @@ function gradeEnglish(given, parses) {
     }
     const everything = refTables(Infinity);
     const units = [...new Set(everything.map(t => t.tenseUnit))].sort((a, b) => a - b);
-    const unit = Number(unitArg);
+    // #/reference/<unit>?p=<anchor> opens the unit scrolled to that paradigm (a shareable link).
+    const [uPart, query = ""] = String(unitArg || "").split("?");
+    const unit = Number(uPart);
     if (!Number.isInteger(unit) || unit < 1) return refPicker(units, everything);
     tStore.set(refStore, { unit });
-    return refShow(unit, units);
+    return refShow(unit, units, new URLSearchParams(query).get("p"));
   }
 
   function refPicker(units, everything) {
@@ -1870,15 +1888,60 @@ function gradeEnglish(given, parses) {
     formationBlock(t));
   // A book table and the copies that follow it -> one group (the copies sit in the book table's .members).
   const refGroups = list => list.filter(t => !t.group);
+  // Stable anchors for the jump menu, one per tense + mood + voice: #/reference/<unit>?p=impf-ind-pass,
+  // perf-inf-pass. An infinitive table (several tenses) also answers to inf-<voice>-u<unit>.
+  const AB = { present: "pres", imperfect: "impf", future: "fut", aorist: "aor", perfect: "perf", pluperfect: "plpf",
+    indicative: "ind", subjunctive: "subj", optative: "opt", active: "act", passive: "pass" };
+  const anchorOf = t => t.section === "inf" ? `inf-${AB[t.voice || "active"]}-u${t.tenseUnit}`
+    : t.tense ? `${AB[t.tense]}-${AB[t.mood]}-${AB[t.voice || "active"]}` : null;
+  const TENSES = ["present", "imperfect", "future", "aorist", "perfect", "pluperfect"], MOODS = ["indicative", "subjunctive", "optative"];
 
-  function refShow(unit, units) {
+  function refShow(unit, units, target) {
     const only = tStore.get(refVerbStore, { only: false }).only === true;
     const tabs = refTables(unit, only);
     document.title = `Through Unit ${unit} · Reference tables`;
     const shown = units.filter(u => u <= unit);
-    const jump = id => () => { const el = document.getElementById(id); if (el) el.scrollIntoView({ behavior: "smooth", block: "start" }); };
-    const nav = shown.length > 1 ? h("nav", { class: "ref-nav", "aria-label": "Units" },
+    // Scroll so the target clears the sticky bars; the URL becomes #/reference/<unit>?p=<anchor> without re-routing.
+    const goTo = id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      const stick = ($(".topbar")?.offsetHeight || 0) + ($(".ref-bar")?.offsetHeight || 0) + 8;
+      window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - stick, behavior: "auto" });   // instant: the page is very long
+    };
+    const jump = id => () => goTo(id);
+    const jumpP = p => e => {
+      e.preventDefault();
+      try { history.replaceState(null, "", `#/reference/${unit}?p=${p}`); } catch { /* sandboxed */ }
+      $(".ref-menu")?.removeAttribute("open");
+      goTo(`ref-${p}`);
+    };
+    // Jump menu: voice → mood → tense, then the infinitives, then the declined sections (by unit).
+    const groups = tabs.filter(t => t.members);
+    const chip = (p, label, full) => h("a", { class: "btn small", href: `#/reference/${unit}?p=${p}`, onclick: jumpP(p),
+      "aria-label": full || label, title: full || label }, label);
+    const menuBody = () => [
+      ...["active", "passive"].filter(v => groups.some(g => (g.voice || "active") === v)).map(v => [
+        h("div", { class: "ref-menu-group" }, cap(v)),
+        ...MOODS.map(m => {
+          const here = TENSES.map(tn => groups.find(g => g.tense === tn && g.mood === m && (g.voice || "active") === v)).filter(Boolean);
+          return here.length ? h("div", { class: "ref-menu-row" }, h("b", {}, cap(m)),
+            here.map(g => chip(anchorOf(g), cap(g.tense), `${cap(g.tense)} ${m} ${v}`))) : null;
+        }),
+        (() => { const tns = TENSES.filter(tn => groups.some(g => g.section === "inf" && (g.voice || "active") === v && g.rows.includes(cap(tn))));
+          return tns.length ? h("div", { class: "ref-menu-row" }, h("b", {}, "Infinitive"),
+            tns.map(tn => chip(`${AB[tn]}-inf-${AB[v]}`, cap(tn), `${cap(tn)} infinitive ${v}`))) : null; })()]),
+      (() => { const decl = REF_SECS.filter(([k]) => k !== "verb" && k !== "inf");
+        const rows = decl.map(([k, label]) => [label, shown.filter(u => tabs.some(t => t.tenseUnit === u && refSecOf(t) === k)), k]).filter(r => r[1].length);
+        return rows.length ? [h("div", { class: "ref-menu-group" }, "Article, nouns, adjectives, pronouns"),
+          ...rows.map(([label, us, k]) => h("div", { class: "ref-menu-row" }, h("b", {}, label),
+            us.map(u => chip(`u${u}-${k}`, `Unit ${u}`, `${label}, Unit ${u}`))))] : []; })()];
+    const menu = h("details", { class: "ref-menu" }, h("summary", { class: "btn small ref-menu-btn" }, "Jump to…"),
+      h("nav", { class: "ref-menu-pop", "aria-label": "Paradigms" }, menuBody()));
+    const units_ = shown.length > 1 ? h("nav", { class: "ref-nav", "aria-label": "Units" },
       shown.map(u => h("button", { class: "btn small", onclick: jump(`ref-u${u}`) }, `Unit ${u}`))) : null;
+    const nav = h("div", { class: "ref-bar" }, menu, units_);
+    const toTop = () => h("a", { class: "ref-top muted", href: `#/reference/${unit}`,
+      onclick: e => { e.preventDefault(); try { history.replaceState(null, "", `#/reference/${unit}`); } catch { /* sandboxed */ } window.scrollTo({ top: 0, behavior: "auto" }); } }, "↑ Top");
     const blocks = shown.map(u => {
       const mine = tabs.filter(t => t.tenseUnit === u);
       const secs = REF_SECS.filter(([k]) => mine.some(t => refSecOf(t) === k));
@@ -1889,9 +1952,12 @@ function gradeEnglish(given, parses) {
         secs.map(([k, label]) => h("div", { class: "ref-sec", id: `ref-u${u}-${k}` },
           h("h3", {}, label),
           refGroups(mine.filter(t => refSecOf(t) === k)).map(g => !g.members ? refItemEl(g)
-            : h("div", { class: "ref-group" }, refItemEl(g), g.members.map(refItemEl),
+            // Infinitive tenses get their own (empty) anchors just above the table: not flex items, so no layout change.
+            : [g.section === "inf" ? g.rows.map(r => h("span", { id: `ref-${AB[r.toLowerCase()]}-inf-${AB[g.voice || "active"]}`, class: "ref-anchor" })) : null,
+               h("div", { class: "ref-group", id: `ref-${anchorOf(g)}` }, refItemEl(g), g.members.map(refItemEl),
                 g.missing.length ? h("p", { class: "muted ref-src ref-missing", lang: "grc" }, "Not shown: ",
-                  g.missing.map(x => `${x.lemma}: ${x.reason}`).join(" · ")) : null)))));
+                  g.missing.map(x => `${x.lemma}: ${x.reason}`).join(" · ")) : null), toTop()]),
+          k === "verb" || k === "inf" ? null : toTop())));
     });
     const nBuilt = tabs.filter(t => t.built).length;
     const verbToggle = h("div", { class: "row ref-actions" }, [[false, `Verbs through Unit ${unit}`], [true, `Unit ${unit} verbs only`]].map(([o, label]) =>
@@ -1908,10 +1974,12 @@ function gradeEnglish(given, parses) {
         `${tabs.length - nBuilt} table${tabs.length - nBuilt === 1 ? "" : "s"}, as printed in H&Q`
         + (nBuilt ? `, each followed by a copy for every verb in the vocabulary (${nBuilt} ⚙ built by rule from the verb's principal parts)` : "")
         + ". Verb cells show the ending above the full form."),
-      verbToggle, nav, blocks);
-    // Keep the unit bar just under the sticky top bar.
+      verbToggle, h("nav", { class: "ref-menu-inline", "aria-label": "Paradigms" }, menuBody()), nav, blocks);
+    // Keep the jump/unit bar just under the sticky top bar.
     const bar = $(".topbar");
-    if (nav && bar) nav.style.top = bar.offsetHeight + "px";
+    if (bar) nav.style.top = bar.offsetHeight + "px";
+    // After layout, and once more after the browser's own scroll restoration on a reload.
+    if (target) { requestAnimationFrame(() => goTo(`ref-${target}`)); setTimeout(() => goTo(`ref-${target}`), 200); }
   }
 
   window.referenceView = referenceView;
