@@ -1,5 +1,6 @@
 // Runs the trainer page's own script in a Node vm (no DOM needed: nothing renders until a route fires)
-// and hands back what it serves: the verb-drill pool and the ending tables for any unit scope.
+// and hands back what it serves: the verb-drill pool, the ending tables for any unit scope and the
+// Reference page's tables (which add the infinitives).
 import fs from "node:fs";
 import vm from "node:vm";
 
@@ -24,5 +25,6 @@ export async function loadTrainer(file = TRAINER) {
   const t = ctx.__trainer;
   const pool = await t.loadDrillPool();
   t.setPool(pool);
-  return { html, pool, tables: scope => ctx.trainerTables(scope), coverage: t.TRAINER_COVERAGE };
+  return { html, pool, tables: scope => ctx.trainerTables(scope), refTables: unit => ctx.trainerRefTables(unit),
+    coverage: t.TRAINER_COVERAGE };
 }

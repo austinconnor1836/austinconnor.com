@@ -279,6 +279,14 @@ input.field:focus, textarea.field:focus, .ptable td input:focus { outline: 2px s
 /* ---------- verb drill ---------- */
 .drill-tile { border-left: 4px solid var(--accent); }
 .tables-tile { border-left: 4px solid var(--ink); }
+.sounds { margin-top: 10px; font-size: 14px; line-height: 1.45; overflow-wrap: break-word; }
+.sounds-k { font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.sounds-line { margin-top: 2px; }
+.sounds-line.tagged { display: grid; grid-template-columns: max-content minmax(0, 1fr); column-gap: 8px; align-items: baseline; }
+.sounds-tag { min-width: 2.2em; font-size: 12px; font-weight: 600; color: var(--muted); }
+.sounds-item { white-space: nowrap; }
+.sounds-note { margin-top: 4px; font-size: 12px; font-style: italic; color: var(--muted); }
+.ref-item .sounds { margin: 0 0 8px; }
 .formation { margin-top: 10px; padding: 10px 12px; background: var(--surface-2); border-left: 3px solid var(--accent); border-radius: 8px; font-size: 14px; line-height: 1.5; }
 .formation b { color: var(--accent); }
 .noun-tile { border-left: 4px solid var(--good, #4a9d6b); }
@@ -1138,6 +1146,156 @@ function gradeEnglish(given, parses) {
     return txt ? h("div", { class: "formation", lang: "grc" }, h("b", {}, "Formation: "), txt) : null;
   };
 
+  // "Sounds like": what each table's forms mean in English, shown with the model word on the quiz prompt,
+  // the reveal, both flashcard faces and the Reference page. English never gives a Greek ending away.
+  // Glosses follow Austin's vault notes (Hansen & Quinn/Unit N/§….md) and the verb drill's English;
+  // "she" stands for the 3rd singular and "y'all" for the 2nd plural, as in the drills.
+  // coverage.mjs fails the build if any served table (in any unit) comes back without a line here.
+  const EN_SUBJ = ["I", "you", "she", "we", "y'all", "they"];
+  const EN_BE = ["am", "are", "is", "are", "are", "are"], EN_WAS = ["was", "were", "was", "were", "were", "were"];
+  const EN_HAVE = ["have", "have", "has", "have", "have", "have"];
+  // Model verbs: base, 3rd sg., -ing, simple past, past participle.
+  const EN_VERB = new Map(Object.entries({
+    "παιδεύω": ["educate", "educates", "educating", "educated", "educated"],
+    "γράφω": ["write", "writes", "writing", "wrote", "written"],
+    "φυλάττω": ["guard", "guards", "guarding", "guarded", "guarded"],
+    "κελεύω": ["order", "orders", "ordering", "ordered", "ordered"],
+  }).map(([k, [base, s, ing, past, pp]]) => [nfc(k), { base, s, ing, past, pp }]));
+  // One English rendering per tense|mood|voice, by slot (0–5 = 1st–3rd sg., 1st–3rd pl.). Aspect shows.
+  const EN_FINITE = {
+    "present|indicative|active": (v, i) => `${i === 2 ? v.s : v.base} / ${EN_BE[i]} ${v.ing}`,
+    "imperfect|indicative|active": (v, i) => `${EN_WAS[i]} ${v.ing}`,
+    "future|indicative|active": v => `will ${v.base}`,
+    "aorist|indicative|active": v => v.past,
+    "perfect|indicative|active": (v, i) => `${EN_HAVE[i]} ${v.pp}`,
+    "pluperfect|indicative|active": v => `had ${v.pp}`,
+    "present|subjunctive|active": v => `may be ${v.ing}`,
+    "aorist|subjunctive|active": v => `may ${v.base}`,
+    "present|optative|active": v => `might be ${v.ing}`,
+    "aorist|optative|active": v => `might ${v.base}`,
+    "present|indicative|passive": (v, i) => `${EN_BE[i]} (being) ${v.pp}`,
+    "imperfect|indicative|passive": (v, i) => `${EN_WAS[i]} being ${v.pp}`,
+    "aorist|indicative|passive": (v, i) => `${EN_WAS[i]} ${v.pp}`,
+    "future|indicative|passive": v => `will be ${v.pp}`,
+    "perfect|indicative|passive": (v, i) => `${EN_HAVE[i]} been ${v.pp}`,
+    "pluperfect|indicative|passive": v => `had been ${v.pp}`,
+    "present|subjunctive|passive": v => `may be (being) ${v.pp}`,
+    "aorist|subjunctive|passive": v => `may be ${v.pp}`,
+    "present|optative|passive": v => `might be (being) ${v.pp}`,
+    "aorist|optative|passive": v => `might be ${v.pp}`,
+  };
+  const EN_INF = {
+    "present|active": v => `to be ${v.ing} / to ${v.base}`, "aorist|active": v => `to ${v.base} (simple)`,
+    "perfect|active": v => `to have ${v.pp}`, "future|active": v => `to be going to ${v.base}`,
+    "present|passive": v => `to be (being) ${v.pp}`, "aorist|passive": v => `to be ${v.pp} (simple)`,
+    "perfect|passive": v => `to have been ${v.pp}`, "future|passive": v => `to be going to be ${v.pp}`,
+  };
+  const EN_MOOD_NOTE = "(that) …: conventional purpose-clause rendering; the clause decides.";
+  // Declined tables, by label. { sg, pl }: a noun phrase ("the" is added unless bare); { cases }: the
+  // English per case; { lines }: written out whole. Endings charts take the model word of their section.
+  const EN_DECL = new Map(Object.entries({
+    "1st-declension endings (Unit 1 feminines)": { sg: "art", pl: "arts" },
+    "τέχνη": { sg: "art", pl: "arts" }, "ψῡχή": { sg: "soul", pl: "souls" }, "χώρᾱ": { sg: "land", pl: "lands" },
+    "ἀγορᾱ́": { sg: "market place", pl: "market places" },
+    "2nd-declension endings (masc./fem. and neuter)": { sg: "word", pl: "words" },
+    "λόγος": { sg: "word", pl: "words" }, "ἄνθρωπος": { sg: "man", pl: "men" }, "ἀδελφός": { sg: "brother", pl: "brothers" },
+    "νῆσος": { sg: "island", pl: "islands" }, "δῶρον": { sg: "gift", pl: "gifts" }, "ἔργον, ἔργου, τό": { sg: "work", pl: "works" },
+    "1st-declension endings: feminines with short alpha": { sg: "sea", pl: "seas" },
+    "θάλαττα \"sea\"": { sg: "sea", pl: "seas" }, "μοῦσα \"muse\"": { sg: "muse", pl: "muses" },
+    "γέφῡρα \"bridge\"": { sg: "bridge", pl: "bridges" }, "μοῖρα \"fate\"": { sg: "fate", pl: "fates" },
+    "1st-declension endings: masculines": { sg: "citizen", pl: "citizens" },
+    "πολῑ́της \"citizen\"": { sg: "citizen", pl: "citizens" }, "ποιητής \"poet\"": { sg: "poet", pl: "poets" },
+    "νεᾱνίᾱς \"young man\"": { sg: "young man", pl: "young men" },
+    "ἀγαθός, ἀγαθή, ἀγαθόν": { sg: "good man", pl: "good men" }, "ἄξιος, ἀξίᾱ, ἄξιον": { sg: "worthy man", pl: "worthy men" },
+    "ἄδικος, ἄδικον": { sg: "unjust man", pl: "unjust men" },
+    "φύλαξ": { sg: "guard", pl: "guards" }, "αἴξ": { sg: "goat", pl: "goats" }, "ἐλπίς": { sg: "hope", pl: "hopes" },
+    "χάρις": { sg: "grace", pl: "graces" }, "σῶμα": { sg: "body", pl: "bodies" },
+    "ὅς, ἥ, ὅ": { cases: { nom: "who/which", gen: "of whom/whose", dat: "to/for whom", acc: "whom/which" } },
+    "ἐκεῖνος, ἐκείνη, ἐκεῖνο": { cases: { nom: "that", gen: "of that", dat: "to/for that", acc: "that (obj.)" },
+      plCases: { nom: "those", gen: "of those", dat: "to/for those", acc: "those (obj.)" } },
+    "πᾶς, πᾶσα, πᾶν": { cases: { nom: "every man", gen: "of every man", dat: "to/for every man", acc: "every man (obj.)", voc: "O every man" },
+      plCases: { nom: "all men", gen: "of all men", dat: "to/for all men", acc: "all men (obj.)", voc: "O all men" } },
+    "ὅδε, ἥδε, τόδε": { cases: { nom: "this (here)", gen: "of this", dat: "to/for this", acc: "this (obj.)" },
+      plCases: { nom: "these (here)", gen: "of these", dat: "to/for these", acc: "these (obj.)" } },
+    "οὗτος, αὕτη, τοῦτο": { cases: { nom: "this", gen: "of this", dat: "to/for this", acc: "this (obj.)" },
+      plCases: { nom: "these", gen: "of these", dat: "to/for these", acc: "these (obj.)" } },
+    "μήτηρ": { sg: "mother", pl: "mothers" }, "ἀνήρ": { sg: "man", pl: "men" }, "γένος": { sg: "race", pl: "races" },
+    "Σωκράτης": { sg: "Socrates", bare: true }, "πόλις": { sg: "city", pl: "cities" }, "βασιλεύς": { sg: "king", pl: "kings" },
+    "εὐδαίμων, εὔδαιμον": { sg: "happy man", pl: "happy men" }, "εὐγενής, εὐγενές": { sg: "noble man", pl: "noble men" },
+    "αὐτός, αὐτή, αὐτό": { cases: { nom: "-self (she herself)", gen: "of her/him/it", dat: "to/for her/him/it", acc: "her/him/it" },
+      plCases: { nom: "-selves (they themselves)", gen: "of them", dat: "to/for them", acc: "them" } },
+    "τίς, τί": { cases: { nom: "who?/what?", gen: "of whom?/whose?", dat: "to/for whom?", acc: "whom?/what?" } },
+    "τις, τι": { cases: { nom: "someone/something", gen: "of someone", dat: "to/for someone", acc: "someone (obj.)" },
+      plCases: { nom: "some (people)", gen: "of some", dat: "to/for some", acc: "some (obj.)" } },
+    "Personal pronouns": { lines: [["I", "I · of me · to/for me · me"], ["you", "you · of you · to/for you · you (obj.)"],
+      ["we", "we · of us · to/for us · us"], ["y'all", "y'all · of y'all · to/for y'all · y'all (obj.)"]] },
+    "Reflexive pronoun, 1st person": { lines: [["Sg.", "of myself · to/for myself · myself"], ["Pl.", "of ourselves · to/for ourselves · ourselves"]] },
+    "Reflexive pronoun, 2nd person": { lines: [["Sg.", "of yourself · to/for yourself · yourself"], ["Pl.", "of yourselves · to/for yourselves · yourselves"]] },
+    "Reflexive pronoun, 3rd person": { lines: [["Sg.", "of herself · to/for herself · herself (him-, itself)"], ["Pl.", "of themselves · to/for themselves · themselves"]] },
+    "πολύς, πολλή, πολύ": { cases: { nom: "much", gen: "of much", dat: "to/for much", acc: "much (obj.)" },
+      plCases: { nom: "many", gen: "of many", dat: "to/for many", acc: "many (obj.)" } },
+    "ναῦς": { sg: "ship", pl: "ships" }, "μέγας, μεγάλη, μέγα": { sg: "great man", pl: "great men" },
+    "ἡδύς, ἡδεῖα, ἡδύ": { sg: "sweet man", pl: "sweet men" }, "ἡδῑ́ων, ἥδῑον": { sg: "sweeter man", pl: "sweeter men" },
+    "εἷς, μία, ἕν (one)": { cases: { nom: "one", gen: "of one", dat: "to/for one", acc: "one (obj.)" } },
+    "δύο (two)": { cases: { nom: "two", gen: "of two", dat: "to/for two", acc: "two (obj.)" } },
+    "τρεῖς, τρία (three)": { cases: { nom: "three", gen: "of three", dat: "to/for three", acc: "three (obj.)" } },
+    "τέτταρες, τέτταρα (four)": { cases: { nom: "four", gen: "of four", dat: "to/for four", acc: "four (obj.)" } },
+    "οὐδείς, οὐδεμία, οὐδέν": { cases: { nom: "no one/nothing", gen: "of no one", dat: "to/for no one", acc: "no one/nothing (obj.)" } },
+    "μηδείς, μηδεμία, μηδέν": { cases: { nom: "no one/nothing", gen: "of no one", dat: "to/for no one", acc: "no one/nothing (obj.)" } },
+    "ὅστις, ἥτις, ὅτι": { cases: { nom: "whoever/whatever", gen: "of whomever", dat: "to/for whomever", acc: "whomever/whatever" } },
+    "νοῦς": { sg: "mind", pl: "minds" }, "ἄστυ": { sg: "town", pl: "towns" },
+  }).map(([k, v]) => [nfc(k), v]));
+  const CASE_OF = { Nom: "nom", Gen: "gen", Dat: "dat", Acc: "acc", Voc: "voc" };
+  const nounCases = (w, bare) => { const the = bare ? w : `the ${w}`;
+    return { nom: the, gen: `of ${the}`, dat: `to/for ${the}`, acc: `${the} (obj.)`, voc: `O ${w}` }; };
+  function declSounds(t) {
+    const e = EN_DECL.get(nfc(t.label));
+    if (!e) return null;
+    if (e.lines) return { lines: e.lines, note: e.note || null };
+    const sgC = e.cases || nounCases(e.sg, e.bare), plC = e.plCases || (e.pl ? nounCases(e.pl, e.bare) : e.cases);
+    // Each row names its case(s) and maybe its number; a row without a number covers both when the
+    // columns are Singular/Plural (πόλις) or include a plural column (the §37 endings charts).
+    const bothCols = t.cols.some(c => /plural/i.test(c));
+    const sg = [], pl = [];
+    for (const row of t.rows) {
+      const cs = (row.match(/Nom|Gen|Dat|Acc|Voc/g) || []).map(c => CASE_OF[c]);
+      const nums = /sg\./.test(row) ? ["sg"] : /pl\./.test(row) ? ["pl"] : bothCols ? ["sg", "pl"] : ["sg"];
+      for (const n of nums) {
+        const C = n === "sg" ? sgC : plC;
+        if (!C) continue;
+        const txt = cs.map(c => C[c]).filter(Boolean).join(" / ");
+        if (txt) (n === "sg" ? sg : pl).push(txt);
+      }
+    }
+    const plain = !pl.length;   // numerals, Σωκράτης etc.: one line, no Sg./Pl. tag
+    const lines = [sg.length ? [plain ? "" : "Sg.", sg.join(" · ")] : null, pl.length ? ["Pl.", pl.join(" · ")] : null].filter(Boolean);
+    return lines.length ? { lines, note: e.note || null } : null;
+  }
+  function soundsLike(t) {
+    if (t.id === "a:article") return { lines: [["", "the · of the · to/for the · the (obj.)"]], note: "No vocative; the same English in every gender and number." };
+    if (t.section === "inf") {
+      const v = EN_VERB.get(nfc(t.lemma || ""));
+      const words = v && t.rows.map(r => EN_INF[`${r.toLowerCase()}|${t.voice || "active"}`]?.(v));
+      return words && words.every(Boolean) ? { lines: [["", words.join(" · ")]], note: null } : null;
+    }
+    if (t.tense) {
+      const v = EN_VERB.get(nfc(t.lemma || "")), f = EN_FINITE[`${t.tense}|${t.mood}|${t.voice || "active"}`];
+      if (!v || !f) return null;
+      const that = t.mood === "subjunctive" || t.mood === "optative" ? "(that) " : "";
+      const cell = i => `${EN_SUBJ[i]} ${f(v, i)}`;
+      return { lines: [["Sg.", that + [0, 1, 2].map(cell).join(" · ")], ["Pl.", that + [3, 4, 5].map(cell).join(" · ")]],
+        note: that ? EN_MOOD_NOTE : null };
+    }
+    return declSounds(t);
+  }
+  const soundsEl = t => !t.sounds ? null : h("div", { class: "sounds", lang: "en" },
+    h("div", { class: "sounds-k" }, "Sounds like"),
+    t.sounds.lines.map(([tag, txt]) => h("div", { class: tag ? "sounds-line tagged" : "sounds-line" },
+      tag ? h("span", { class: "sounds-tag" }, tag) : null,
+      // Each item stays on one line where it can, so a phone breaks the line at the " · " between items.
+      h("span", {}, txt.split(" · ").flatMap((x, i) => [i ? " · " : null, h("span", { class: x.length > 30 ? "" : "sounds-item" }, x)])))),
+    t.sounds.note ? h("div", { class: "sounds-note" }, t.sounds.note) : null);
+
   const tStore = {
     get(key, dflt) { try { return Object.assign(dflt, JSON.parse(localStorage.getItem(key) || "{}")); } catch { return dflt; } },
     set(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* private mode */ } },
@@ -1234,6 +1392,7 @@ function gradeEnglish(given, parses) {
         source: `H&Q's ${first.lemma} ${book}` + (asked < 6 ? "; the 3rd plural is in H&Q's Appendix" : ""),
         gradingNote: "Whole forms: accents and breathings count; macrons don't, and a grave counts as an acute." });
     }
+    for (const t of tables) t.sounds = soundsLike(t);
     return tables;
   }
 
@@ -1458,7 +1617,7 @@ function gradeEnglish(given, parses) {
       stage.replaceChildren(h("div", { class: "qcard" },
         h("div", { class: "qlabel" }, "Ending table"),
         h("div", { class: "prompt" }, h("div", { class: "size-l", lang: "grc" }, t.label),
-          h("div", { class: "size-m muted" }, t.instr)),
+          h("div", { class: "size-m muted" }, t.instr), soundsEl(t)),
         holder,
         h("div", { class: "muted", style: { fontSize: "13px", marginTop: "6px" } }, "Enter moves down the column, then to the next column; Enter on the last cell checks. ", t.gradingNote),
         h("div", { class: "row", style: { marginTop: "12px" } }, checkBtn),
@@ -1494,7 +1653,7 @@ function gradeEnglish(given, parses) {
       stage.replaceChildren(
         h("div", { class: "qcard", style: { cursor: "pointer" }, onclick: () => { flipped = !flipped; drawCard(); } },
           h("div", { class: "qlabel" }, "Ending table — flashcard", h("span", { class: "muted" }, `${(pos % pass) + 1} / ${pass}`)),
-          h("div", { class: "prompt" }, h("div", { class: "size-l", lang: "grc" }, t.label)),
+          h("div", { class: "prompt" }, h("div", { class: "size-l", lang: "grc" }, t.label), soundsEl(t)),
           face),
         h("div", { class: "row", style: { marginTop: "14px", gap: "10px" } },
           h("button", { class: "btn", onclick: e => { e.stopPropagation(); flipped = !flipped; drawCard(); } }, flipped ? "Hide" : "Flip"),
@@ -1558,7 +1717,8 @@ function gradeEnglish(given, parses) {
       const src = [...new Set(its.map(it => `${it.section}, ${pagesRef(it.pages || String(it.page))}`))].join("; ");
       tabs.push({ id: `i:${k}`, section: "inf", tenseUnit: Number(u), voice, label: `${cap(voice)} infinitives` + (lemma === "παιδεύω" ? "" : ` of ${lemma}`), corner: "Tense",
         rows: its.map(it => cap(it.tense)), cols: ["Form"], cells: its.map(it => [it.forms]),
-        source: `H&Q's ${lemma} ${src}`, sec: its[0].section });
+        source: `H&Q's ${lemma} ${src}`, sec: its[0].section, lemma });
+      tabs[tabs.length - 1].sounds = soundsLike(tabs[tabs.length - 1]);
     }
     const order = new Map(REF_SECS.map(([k], i) => [k, i]));
     return tabs.map((t, i) => ({ t, i })).sort((a, b) => (a.t.tenseUnit - b.t.tenseUnit)
@@ -1626,6 +1786,7 @@ function gradeEnglish(given, parses) {
           mine.filter(t => refSecOf(t) === k).map(t => h("div", { class: "ref-item" },
             h("h4", { lang: "grc" }, t.label),
             h("p", { class: "muted ref-src" }, t.source),
+            soundsEl(t),
             refTableEl(t),
             formationBlock(t))))));
     });
@@ -1648,6 +1809,7 @@ function gradeEnglish(given, parses) {
   window.tableDrillView = tableDrillView;
   // For scripts/greek-trainer/coverage.mjs: the tables the trainer serves, with every section and voice on.
   window.trainerTables = scope => collectTables(scope, REF_SETTINGS);
+  window.trainerRefTables = unit => refTables(unit);
 })();
 
 /* Noun drill: an endless quiz on the noun declensions built by rule from H&Q's
