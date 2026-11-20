@@ -1,6 +1,6 @@
 // Runs the trainer page's own script in a Node vm (no DOM needed: nothing renders until a route fires)
 // and hands back what it serves: the verb-drill pool, the ending tables for any unit scope and the
-// Reference page's tables (which add the infinitives).
+// Reference page's tables (which add the infinitives and the vocabulary verbs' copies), plus the vocabulary.
 import fs from "node:fs";
 import vm from "node:vm";
 
@@ -20,11 +20,11 @@ export async function loadTrainer(file = TRAINER) {
   ctx.window = ctx;
   ctx.addEventListener = noop;
   vm.createContext(ctx);
-  vm.runInContext(m[1] + "\n;globalThis.__trainer = { loadDrillPool, setPool: p => { drillPoolCache = p; }, TRAINER_COVERAGE };",
+  vm.runInContext(m[1] + "\n;globalThis.__trainer = { loadDrillPool, setPool: p => { drillPoolCache = p; }, TRAINER_COVERAGE, VOCAB_DATA, DRILL_BUILT };",
     ctx, { filename: "trainer/index.html" });
   const t = ctx.__trainer;
   const pool = await t.loadDrillPool();
   t.setPool(pool);
-  return { html, pool, tables: scope => ctx.trainerTables(scope), refTables: unit => ctx.trainerRefTables(unit),
-    coverage: t.TRAINER_COVERAGE };
+  return { html, pool, tables: scope => ctx.trainerTables(scope), refTables: (unit, only) => ctx.trainerRefTables(unit, only),
+    refVerbUnits: ctx.trainerRefVerbUnits, vocab: t.VOCAB_DATA, built: t.DRILL_BUILT, coverage: t.TRAINER_COVERAGE };
 }
