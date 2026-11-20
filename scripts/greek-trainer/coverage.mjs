@@ -93,7 +93,9 @@ function soundsAudit(trainer) {
 
 // Reference page: each vocabulary verb's copy of every served παιδεύω table (check 6).
 function verbAudit(trainer) {
-  const lemmaOf = e => nfc(e.greek.split(",")[0].trim());
+  // The headword is PP I, or PP II when H&Q prints a dash for PP I (ἐρήσομαι). Macrons/notes in brackets dropped.
+  const lemmaOf = e => { const ps = e.greek.split(",").map(x => x.replace(/\(.*?\)|\*/g, "").trim().split(/\s+or\s+/)[0]);
+    return nfc(/^[—–-]+$/.test(ps[0]) ? ps[1] : ps[0]); };
   const sixParts = e => e.greek.split(",").length >= 6;
   const vocabVerbs = trainer.vocab.entries.filter(e => e.cat === "verb" && sixParts(e));
   const built = new Set(trainer.built.verbs.map(v => nfc(v.lemma)));
