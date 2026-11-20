@@ -519,10 +519,24 @@ or if the line contains Greek.
 | The article | 1 | 1 |
 | Nouns: 1st declension | 14 | 14 |
 | Nouns: 2nd declension | 8 | 8 |
-| Verb ending tables | 26 | 26 |
-| Infinitives (Reference page) | 6 | 6 |
+| Verb ending tables | 308 | 308 |
+| Infinitives (Reference page) | 49 | 49 |
 | Adjectives | 14 | 14 |
 | Nouns: 3rd declension | 13 | 13 |
 | Pronouns | 14 | 14 |
-| **All** | **96** | **96** |
+| **All** | **421** | **421** |
+
+## Vocabulary verbs on the Reference page
+
+Each of the 23 παιδεύω tables on the Reference page is followed by a copy for every verb in the vocabulary
+(H&Q's own table where it prints one, otherwise ⚙ built by rule by `build_vocab_drill.py`). A verb that lacks a paradigm
+(a dash in H&Q's principal parts, a deponent, a rule not built yet) is listed under the tables with the reason. Verbs in Units ≤ 5
+fail the build if a copy is missing without a reason.
+
+| Vocabulary unit | Verbs | Copies | Not shown (with reason) |
+|---|---|---|---|
+| 2 | 3 | 69 | 0 |
+| 3 | 4 | 92 | 0 |
+| 4 | 4 | 78 | 14 |
+| 5 | 4 | 92 | 0 |
 
