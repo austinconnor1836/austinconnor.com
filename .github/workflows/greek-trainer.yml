@@ -1,0 +1,17 @@
+name: Greek trainer coverage
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      # No install needed: the check uses only Node built-ins. It also runs as `prebuild` on every Vercel build.
+      - run: node scripts/greek-trainer/coverage.mjs

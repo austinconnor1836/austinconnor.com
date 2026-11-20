@@ -4,10 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/greek-trainer/coverage.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "sync:greek": "bash scripts/sync-greek-questions.sh"
+    "sync:greek": "bash scripts/sync-greek-questions.sh",
+    "test": "node scripts/greek-trainer/coverage.mjs",
+    "coverage:greek": "node scripts/greek-trainer/coverage.mjs --write"
   },
   "dependencies": {
     "next": "16.4.3",
