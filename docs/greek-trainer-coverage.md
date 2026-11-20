@@ -508,3 +508,21 @@ tables** actually serve. Finite verb paradigms need both; infinitives need the d
 | §152 | νοῦς, νοῦ, ὁ (contracted 2nd declension) | tables | – | ✓ |  |
 | §153 | ἄστυ, ἄστεως, τό | tables | – | ✓ |  |
 
+## English “Sounds like” lines
+
+Every table the trainer serves, in any unit, shows what its forms mean in English (the model word, by person or by case)
+on the quiz prompt, the reveal, both flashcard faces and the Reference page. The check fails if a served table has no line,
+or if the line contains Greek.
+
+| Kind | Tables | With English |
+|---|---|---|
+| The article | 1 | 1 |
+| Nouns: 1st declension | 14 | 14 |
+| Nouns: 2nd declension | 8 | 8 |
+| Verb ending tables | 26 | 26 |
+| Infinitives (Reference page) | 6 | 6 |
+| Adjectives | 14 | 14 |
+| Nouns: 3rd declension | 13 | 13 |
+| Pronouns | 14 | 14 |
+| **All** | **96** | **96** |
+
