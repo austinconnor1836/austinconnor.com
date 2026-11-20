@@ -519,12 +519,12 @@ or if the line contains Greek.
 | The article | 1 | 1 |
 | Nouns: 1st declension | 14 | 14 |
 | Nouns: 2nd declension | 8 | 8 |
-| Verb ending tables | 308 | 308 |
-| Infinitives (Reference page) | 49 | 49 |
+| Verb ending tables | 1227 | 1227 |
+| Infinitives (Reference page) | 209 | 209 |
 | Adjectives | 14 | 14 |
 | Nouns: 3rd declension | 13 | 13 |
 | Pronouns | 14 | 14 |
-| **All** | **421** | **421** |
+| **All** | **1500** | **1500** |
 
 ## Vocabulary verbs on the Reference page
 
@@ -539,4 +539,19 @@ fail the build if a copy is missing without a reason.
 | 3 | 4 | 92 | 0 |
 | 4 | 4 | 78 | 14 |
 | 5 | 4 | 92 | 0 |
+| 6 | 4 | 81 | 11 |
+| 7 | 3 | 69 | 0 |
+| 8 | 2 | 25 | 23 |
+| 9 | 4 | 92 | 0 |
+| 10 | 6 | 125 | 14 |
+| 11 | 6 | 89 | 51 |
+| 12 | 7 | 58 | 105 |
+| 13 | 7 | 53 | 112 |
+| 14 | 7 | 77 | 87 |
+| 15 | 6 | 57 | 88 |
+| 16 | 6 | 75 | 67 |
+| 17 | 7 | 69 | 95 |
+| 18 | 9 | 87 | 123 |
+| 19 | 9 | 69 | 140 |
+| 20 | 7 | 53 | 111 |
 
