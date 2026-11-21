@@ -555,3 +555,32 @@ fail the build if a copy is missing without a reason.
 | 19 | 9 | 69 | 140 |
 | 20 | 7 | 53 | 111 |
 
+## Principal parts page
+
+The Principal parts page (`#/parts`) lists all 128 vocabulary verbs, one per row, with H&Q's six principal parts
+(a dash where a part doesn't exist). A compound or single form H&Q lists without parts says so and names the verb it follows.
+The check fails if a vocabulary verb is missing, or a row doesn't have six part cells.
+
+| Vocabulary unit | Verbs | With six parts | Listed without parts |
+|---|---|---|---|
+| 1 | 2 | 0 | 2 |
+| 2 | 4 | 4 | 0 |
+| 3 | 4 | 4 | 0 |
+| 4 | 4 | 4 | 0 |
+| 5 | 4 | 4 | 0 |
+| 6 | 4 | 4 | 0 |
+| 7 | 3 | 3 | 0 |
+| 8 | 2 | 2 | 0 |
+| 9 | 4 | 4 | 0 |
+| 10 | 6 | 6 | 0 |
+| 11 | 6 | 6 | 0 |
+| 12 | 10 | 7 | 3 |
+| 13 | 8 | 7 | 1 |
+| 14 | 13 | 7 | 6 |
+| 15 | 10 | 6 | 4 |
+| 16 | 9 | 6 | 3 |
+| 17 | 7 | 7 | 0 |
+| 18 | 11 | 9 | 2 |
+| 19 | 10 | 9 | 1 |
+| 20 | 7 | 7 | 0 |
+
