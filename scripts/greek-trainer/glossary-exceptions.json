@@ -1,0 +1,7 @@
+{
+  "note": "Vocabulary entries (Unit N/Vocabulary.md, as in VOCAB_DATA) that H&Q's back-of-book Greek-English Vocabulary does not list under the same headword. Each needs a reason; coverage.mjs check 8 fails on any other vocabulary word missing from GLOSSARY_DATA, and on a stale exception.",
+  "exceptions": [
+    { "greek": "παιδεύει", "reason": "Unit 1 teaches the 3rd sg. form only; the glossary lists the verb under παιδεύω, παιδεύσω, … (Unit 2)" },
+    { "greek": "πέμπει", "reason": "Unit 1 teaches the 3rd sg. form only; the glossary lists the verb under πέμπω, πέμψω, … (Unit 2)" }
+  ]
+}
