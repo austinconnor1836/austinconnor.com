@@ -408,6 +408,23 @@ table.pp-table { width: 100%; border-collapse: collapse; }
 .ref-top { display: inline-flex; align-items: center; min-height: 44px; font-size: 13px; margin: -14px 0 18px; }
 .ref-group { scroll-margin-top: 130px; }
 .ref-anchor { display: block; width: 0; height: 0; }
+/* Per-verb jumps: "▾" beside a paradigm chip opens its verbs; "By verb…" picks the verb first. */
+.ref-item, .ref-item > .ref-anchor { scroll-margin-top: 130px; }
+.ref-split { display: inline-flex; flex: none; gap: 0; }
+.ref-split > .btn:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+.ref-split > .ref-verbs-btn { min-width: 44px; min-height: 44px; padding: 0 10px; margin-left: -1px; border-top-left-radius: 0; border-bottom-left-radius: 0; }
+.ref-verbs-btn[aria-expanded="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.ref-verb-panel { margin: 2px 0 10px; padding: 8px 10px; border: 1px solid var(--accent); border-radius: 10px; background: var(--accent-soft); }
+.ref-verb-panel > b { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+.ref-verb-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.ref-verb-chips .btn { min-height: 44px; flex: none; font-family: var(--greek); font-size: 17px; }
+.ref-verb-chips .btn[lang="en"] { font-family: var(--ui); font-size: 14px; }
+.ref-verb-chips .btn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.ref-verb-pick { margin: 4px 0 6px; }
+.ref-verb-pick > summary { min-height: 44px; display: inline-flex; align-items: center; list-style: none; cursor: pointer; margin-bottom: 6px; }
+.ref-verb-pick > summary::-webkit-details-marker { display: none; }
+.btn.ref-off { opacity: .4; cursor: not-allowed; border-style: dashed; display: inline-flex; align-items: center; }
+.ref-off-note { font-size: 12px; margin: 6px 0 0; overflow-wrap: anywhere; }
 .ref-unit > h2 { margin-top: 32px; padding-bottom: 4px; border-bottom: 2px solid var(--ink); }
 .ref-sec > h3 { font-size: 17px; margin: 22px 0 6px; color: var(--accent); }
 .ref-item { margin: 12px 0 26px; }
@@ -2144,7 +2161,8 @@ function gradeEnglish(given, parses) {
     const unit = Number(uPart);
     if (!Number.isInteger(unit) || unit < 1) return refPicker(units, everything);
     tStore.set(refStore, { unit });
-    return refShow(unit, units, new URLSearchParams(query).get("p"));
+    const q = new URLSearchParams(query);
+    return refShow(unit, units, q.get("p"), q.get("v"));
   }
 
   function refPicker(units, everything) {
@@ -2162,7 +2180,9 @@ function gradeEnglish(given, parses) {
         "aria-pressed": String(u === last), title: `${through(u)} tables` }, String(u)))));
   }
 
-  const refItemEl = t => h("div", { class: "ref-item" },
+  // plan (refJumpPlan) supplies the table's per-verb anchor and, for an infinitive table, one empty anchor per tense.
+  const refItemEl = (t, plan) => h("div", { class: "ref-item", id: plan?.idOf?.get(t) || null },
+    (plan?.spans?.get(t) || []).map(id => h("span", { id, class: "ref-anchor" })),
     h("h4", { lang: "grc" }, t.label),
     h("p", { class: "muted ref-src" }, t.source),
     soundsEl(t),
@@ -2177,10 +2197,88 @@ function gradeEnglish(given, parses) {
   const anchorOf = t => t.section === "inf" ? `inf-${AB[t.voice || "active"]}-u${t.tenseUnit}`
     : t.tense ? `${AB[t.tense]}-${AB[t.mood]}-${AB[t.voice || "active"]}` : null;
   const TENSES = ["present", "imperfect", "future", "aorist", "perfect", "pluperfect"], MOODS = ["indicative", "subjunctive", "optative"];
+  // Per-verb anchors: every verb table gets ref-<paradigm>--<verb>, e.g. ref-impf-ind-pass--pempo, linked as
+  // #/reference/<unit>?p=impf-ind-pass&v=pempo. The verb slug is an ASCII transliteration of the lemma, fixed
+  // across scopes: slugs are assigned once over παιδεύω + every vocabulary verb, and a clash (εἰμί / εἶμι)
+  // gets -2, -3 … in vocabulary order.
+  const GR = { α: "a", β: "b", γ: "g", δ: "d", ε: "e", ζ: "z", η: "e", θ: "th", ι: "i", κ: "k", λ: "l", μ: "m", ν: "n", ξ: "x",
+    ο: "o", π: "p", ρ: "r", σ: "s", ς: "s", τ: "t", υ: "u", φ: "ph", χ: "ch", ψ: "ps", ω: "o" };
+  const translit = lemma => {
+    const d = nfc(lemma).toLowerCase().normalize("NFD");
+    const rough = /^[αεηιουω]+̔/.test(d.replace(/[̀-̓̕-ͯ]/g, ""));
+    const s = d.replace(/[̀-ͯ]/g, "").replace(/γ(?=[γκξχ])/g, "n").replace(/./g, c => GR[c] ?? (/[a-z0-9]/.test(c) ? c : "-"));
+    return ((rough ? "h" : "") + s).replace(/-+/g, "-").replace(/^-|-$/g, "") || "verb";
+  };
+  let verbSlugs = null;
+  const verbSlug = lemma => {
+    if (!verbSlugs) {
+      verbSlugs = new Map();
+      const used = new Set();
+      for (const l of [MODEL, ...DRILL_BUILT.verbs.map(v => nfc(v.lemma))]) {
+        if (verbSlugs.has(l)) continue;
+        let s = translit(l), n = 1;
+        while (used.has(n > 1 ? `${s}-${n}` : s)) n++;
+        if (n > 1) s = `${s}-${n}`;
+        used.add(s); verbSlugs.set(l, s);
+      }
+    }
+    if (!verbSlugs.has(nfc(lemma))) { let s = translit(lemma), n = 1; const used = new Set(verbSlugs.values());
+      while (used.has(n > 1 ? `${s}-${n}` : s)) n++; verbSlugs.set(nfc(lemma), n > 1 ? `${s}-${n}` : s); }
+    return verbSlugs.get(nfc(lemma));
+  };
+  const infTenseP = (row, voice) => `${AB[row.toLowerCase()]}-inf-${AB[voice || "active"]}`;
+  // The page's anchors, worked out before anything renders (coverage.mjs check 11 reads the same plan):
+  //   idOf: table -> its element id; spans: table -> [ids of the per-tense infinitive anchors inside it];
+  //   verbs: paradigm p -> [{ lemma, slug, id, reason }] in menu order (παιδεύω first, then page order;
+  //   id null = no table, greyed with the reason); paraIds: every paradigm-level anchor id.
+  function refJumpPlan(tabs) {
+    const idOf = new Map(), spans = new Map(), verbs = new Map(), paraIds = new Set();
+    const add = (p, e) => { if (!verbs.has(p)) verbs.set(p, []); const l = verbs.get(p); if (!l.some(x => x.lemma === e.lemma)) l.push(e); };
+    const groups = tabs.filter(t => t.members);
+    for (const g of groups) {
+      const P = anchorOf(g);
+      paraIds.add(`ref-${P}`);
+      for (const t of [g, ...g.members]) idOf.set(t, `ref-${P}--${verbSlug(t.lemma)}`);
+      const copyOf = new Map(g.members.map(t => [nfc(t.lemma), t]));
+      const entries = [{ lemma: nfc(g.lemma), table: g, reason: null },
+        ...(g.verbCopies || []).map(c => ({ lemma: nfc(c.lemma), table: c.table || copyOf.get(nfc(c.lemma)) || null,
+          reason: c.reason || g.missing?.find(x => nfc(x.lemma) === nfc(c.lemma))?.reason || null }))];
+      if (g.section === "inf") {
+        g.rows.forEach((r, i) => {
+          const tp = infTenseP(r, g.voice);
+          paraIds.add(`ref-${tp}`);
+          for (const e of entries) {
+            const ok = e.table && !e.table.dash?.[e.table.rows.indexOf(r)];
+            add(tp, { lemma: e.lemma, slug: verbSlug(e.lemma), id: ok ? `ref-${tp}--${verbSlug(e.lemma)}` : null,
+              reason: ok ? null : (e.table?.dash?.[e.table.rows.indexOf(r)] || e.reason || "no table") });
+          }
+        });
+        for (const t of [g, ...g.members]) spans.set(t, t.rows.map(r => `ref-${infTenseP(r, g.voice)}--${verbSlug(t.lemma)}`));
+      } else {
+        for (const e of entries) add(P, { lemma: e.lemma, slug: verbSlug(e.lemma), id: e.table ? idOf.get(e.table) : null,
+          reason: e.table ? null : e.reason || "no table" });
+      }
+    }
+    // A verb table outside any group (a book table for a verb out of scope in "Unit N only") still gets an anchor,
+    // and joins its paradigm's verb list after the copies.
+    for (const t of tabs) if (!t.group && !t.members && (t.tense || t.section === "inf")) {
+      const P = anchorOf(t);
+      idOf.set(t, `ref-${P}--${verbSlug(t.lemma)}`);
+      if (t.section === "inf") spans.set(t, t.rows.map(r => `ref-${infTenseP(r, t.voice)}--${verbSlug(t.lemma)}`));
+      else if (verbs.has(P)) {
+        const l = verbs.get(P), i = l.findIndex(x => x.lemma === nfc(t.lemma));
+        const e = { lemma: nfc(t.lemma), slug: verbSlug(t.lemma), id: idOf.get(t), reason: null };
+        if (i >= 0) l[i] = e; else l.push(e);
+      }
+    }
+    return { idOf, spans, verbs, paraIds };
+  }
 
-  function refShow(unit, units, target) {
+  function refShow(unit, units, target, verb) {
     const only = tStore.get(refVerbStore, { only: false }).only === true;
     const tabs = refTables(unit, only);
+    const plan = refJumpPlan(tabs);
+    const itemEl = t => refItemEl(t, plan);
     document.title = `Through Unit ${unit} · Reference tables`;
     const shown = units.filter(u => u <= unit);
     // Scroll so the target clears the sticky bars; the URL becomes #/reference/<unit>?p=<anchor> without re-routing.
@@ -2191,34 +2289,85 @@ function gradeEnglish(given, parses) {
       window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - stick, behavior: "auto" });   // instant: the page is very long
     };
     const jump = id => () => goTo(id);
-    const jumpP = p => e => {
+    const jumpP = (p, v) => e => {
       e.preventDefault();
-      try { history.replaceState(null, "", `#/reference/${unit}?p=${p}`); } catch { /* sandboxed */ }
+      try { history.replaceState(null, "", `#/reference/${unit}?p=${p}${v ? `&v=${v}` : ""}`); } catch { /* sandboxed */ }
       $(".ref-menu")?.removeAttribute("open");
-      goTo(`ref-${p}`);
+      if (openP) { openP = null; fillMenus(); }   // the menu reopens with its verb lists folded
+      goTo(v && document.getElementById(`ref-${p}--${v}`) ? `ref-${p}--${v}` : `ref-${p}`);
     };
     // Jump menu: voice → mood → tense, then the infinitives, then the declined sections (by unit).
+    // Per verb: "▾" beside a paradigm opens its verbs (παιδεύω first); "By verb" picks a verb first, and then every
+    // paradigm chip goes to that verb's table. A verb without a table for a paradigm is greyed, with H&Q's reason.
     const groups = tabs.filter(t => t.members);
-    const chip = (p, label, full) => h("a", { class: "btn small", href: `#/reference/${unit}?p=${p}`, onclick: jumpP(p),
-      "aria-label": full || label, title: full || label }, label);
+    const lemmaOf = new Map([...plan.verbs.values()].flat().map(x => [x.slug, x.lemma]));
+    const pickable = [...new Map([...plan.verbs.values()].flat().filter(x => x.id).map(x => [x.slug, x.lemma])).entries()];
+    let pick = null, openP = null, pickOpen = false;   // a ?v= link lands on the verb but leaves the menu paradigm-first
+    const verbOf = (p, v) => plan.verbs.get(p)?.find(x => x.slug === v);
+    const offChip = (label, reason, full) => h("span", { class: "btn small ref-off", "aria-disabled": "true", role: "link",
+      title: `${full || label}: ${reason}`, "aria-label": `${full || label} (no table: ${reason})` }, label);
+    const chip = (p, label, full) => {
+      if (pick && plan.verbs.has(p)) {
+        const x = verbOf(p, pick), lem = lemmaOf.get(pick);
+        if (!x?.id) return offChip(label, x?.reason || `no table for ${lem}`, full);
+        return h("a", { class: "btn small", href: `#/reference/${unit}?p=${p}&v=${pick}`, onclick: jumpP(p, pick),
+          "aria-label": `${full || label} of ${lem}`, title: `${full || label} of ${lem}` }, label);
+      }
+      const a = h("a", { class: "btn small", href: `#/reference/${unit}?p=${p}`, onclick: jumpP(p),
+        "aria-label": full || label, title: full || label }, label);
+      if (pick || !(plan.verbs.get(p)?.length > 1)) return a;
+      return h("span", { class: "ref-split" }, a, h("button", { class: "btn small ref-verbs-btn", "aria-expanded": String(openP === p),
+        "aria-label": `Verbs: ${full || label}`, title: `Verbs: ${full || label}`,
+        onclick: () => { openP = openP === p ? null : p; fillMenus(); } }, openP === p ? "▴" : "▾"));
+    };
+    const reasonsNote = xs => { const rs = [...new Set(xs.filter(x => !x.id).map(x => x.reason))];
+      return rs.length ? h("p", { class: "muted ref-off-note" }, "Greyed, no table: ",
+        rs.map(r => `${xs.filter(x => !x.id && x.reason === r).map(x => x.lemma).join(", ")} (${r})`).join(" · ")) : null; };
+    // The verbs of the paradigm whose "▾" is open, shown under its row.
+    const verbPanel = (ps, full) => {
+      const p = ps.find(q => q === openP);
+      if (!p) return null;
+      const xs = plan.verbs.get(p) || [];
+      return h("div", { class: "ref-verb-panel" }, h("b", {}, `${full(p)}: which verb?`),
+        h("div", { class: "ref-verb-chips", lang: "grc" }, xs.map(x => x.id
+          ? h("a", { class: "btn small", href: `#/reference/${unit}?p=${p}&v=${x.slug}`, onclick: jumpP(p, x.slug),
+              "aria-label": `${full(p)} of ${x.lemma}` }, x.lemma)
+          : offChip(x.lemma, x.reason, `${full(p)} of ${x.lemma}`))),
+        reasonsNote(xs));
+    };
+    const verbPicker = () => pickable.length > 1 ? h("details", { class: "ref-verb-pick", open: pickOpen || null, ontoggle: e => { pickOpen = e.currentTarget.open; } },
+      h("summary", { class: "btn small" }, pick ? `By verb: ${lemmaOf.get(pick)}` : "By verb…"),
+      h("div", { class: "ref-verb-chips", lang: "grc" },
+        h("button", { class: "btn small", "aria-pressed": String(!pick), lang: "en", onclick: () => { pick = null; fillMenus(); } }, "Any verb"),
+        pickable.map(([slug, lem]) => h("button", { class: "btn small", "aria-pressed": String(pick === slug),
+          onclick: () => { pick = slug; openP = null; fillMenus(); } }, lem))),
+      pick ? reasonsNote([...plan.verbs.values()].map(l => l.find(x => x.slug === pick) || null).filter(Boolean)
+        .filter((x, i, a) => a.findIndex(y => y.reason === x.reason) === i)) : null) : null;
     const menuBody = () => [
+      verbPicker(),
       ...["active", "passive"].filter(v => groups.some(g => (g.voice || "active") === v)).map(v => [
         h("div", { class: "ref-menu-group" }, cap(v)),
         ...MOODS.map(m => {
           const here = TENSES.map(tn => groups.find(g => g.tense === tn && g.mood === m && (g.voice || "active") === v)).filter(Boolean);
-          return here.length ? h("div", { class: "ref-menu-row" }, h("b", {}, cap(m)),
-            here.map(g => chip(anchorOf(g), cap(g.tense), `${cap(g.tense)} ${m} ${v}`))) : null;
+          return here.length ? [h("div", { class: "ref-menu-row" }, h("b", {}, cap(m)),
+            here.map(g => chip(anchorOf(g), cap(g.tense), `${cap(g.tense)} ${m} ${v}`))),
+            verbPanel(here.map(anchorOf), p => { const g = here.find(g => anchorOf(g) === p); return `${cap(g.tense)} ${m} ${v}`; })] : null;
         }),
         (() => { const tns = TENSES.filter(tn => groups.some(g => g.section === "inf" && (g.voice || "active") === v && g.rows.includes(cap(tn))));
-          return tns.length ? h("div", { class: "ref-menu-row" }, h("b", {}, "Infinitive"),
-            tns.map(tn => chip(`${AB[tn]}-inf-${AB[v]}`, cap(tn), `${cap(tn)} infinitive ${v}`))) : null; })()]),
+          return tns.length ? [h("div", { class: "ref-menu-row" }, h("b", {}, "Infinitive"),
+            tns.map(tn => chip(`${AB[tn]}-inf-${AB[v]}`, cap(tn), `${cap(tn)} infinitive ${v}`))),
+            verbPanel(tns.map(tn => `${AB[tn]}-inf-${AB[v]}`), p => `${cap(TENSES.find(tn => p.startsWith(AB[tn] + "-")))} infinitive ${v}`)] : null; })()]),
       (() => { const decl = REF_SECS.filter(([k]) => k !== "verb" && k !== "inf");
         const rows = decl.map(([k, label]) => [label, shown.filter(u => tabs.some(t => t.tenseUnit === u && refSecOf(t) === k)), k]).filter(r => r[1].length);
         return rows.length ? [h("div", { class: "ref-menu-group" }, "Article, nouns, adjectives, pronouns"),
           ...rows.map(([label, us, k]) => h("div", { class: "ref-menu-row" }, h("b", {}, label),
             us.map(u => chip(`u${u}-${k}`, `Unit ${u}`, `${label}, Unit ${u}`))))] : []; })()];
-    const menu = h("details", { class: "ref-menu" }, h("summary", { class: "btn small ref-menu-btn" }, "Jump to…"),
-      h("nav", { class: "ref-menu-pop", "aria-label": "Paradigms" }, menuBody()));
+    const inlineMenu = h("nav", { class: "ref-menu-inline", "aria-label": "Paradigms" });
+    const popMenu = h("nav", { class: "ref-menu-pop", "aria-label": "Paradigms" });
+    const fillMenus = () => { const top = popMenu.scrollTop; inlineMenu.replaceChildren(...[menuBody()].flat(Infinity).filter(Boolean));
+      popMenu.replaceChildren(...[menuBody()].flat(Infinity).filter(Boolean)); popMenu.scrollTop = top; };
+    fillMenus();
+    const menu = h("details", { class: "ref-menu" }, h("summary", { class: "btn small ref-menu-btn" }, "Jump to…"), popMenu);
     const units_ = shown.length > 1 ? h("nav", { class: "ref-nav", "aria-label": "Units" },
       shown.map(u => h("button", { class: "btn small", onclick: jump(`ref-u${u}`) }, `Unit ${u}`))) : null;
     const nav = h("div", { class: "ref-bar" }, menu, units_);
@@ -2233,10 +2382,10 @@ function gradeEnglish(given, parses) {
           h("button", { class: "btn small", onclick: jump(`ref-u${u}-${k}`) }, label))) : null,
         secs.map(([k, label]) => h("div", { class: "ref-sec", id: `ref-u${u}-${k}` },
           h("h3", {}, label),
-          refGroups(mine.filter(t => refSecOf(t) === k)).map(g => !g.members ? refItemEl(g)
+          refGroups(mine.filter(t => refSecOf(t) === k)).map(g => !g.members ? itemEl(g)
             // Infinitive tenses get their own (empty) anchors just above the table: not flex items, so no layout change.
             : [g.section === "inf" ? g.rows.map(r => h("span", { id: `ref-${AB[r.toLowerCase()]}-inf-${AB[g.voice || "active"]}`, class: "ref-anchor" })) : null,
-               h("div", { class: "ref-group", id: `ref-${anchorOf(g)}` }, refItemEl(g), g.members.map(refItemEl),
+               h("div", { class: "ref-group", id: `ref-${anchorOf(g)}` }, itemEl(g), g.members.map(itemEl),
                 g.missing.length ? h("p", { class: "muted ref-src ref-missing", lang: "grc" }, "Not shown: ",
                   g.missing.map(x => `${x.lemma}: ${x.reason}`).join(" · ")) : null), toTop()]),
           k === "verb" || k === "inf" ? null : toTop())));
@@ -2257,12 +2406,15 @@ function gradeEnglish(given, parses) {
         `${tabs.length - nBuilt} table${tabs.length - nBuilt === 1 ? "" : "s"}, as printed in H&Q`
         + (nBuilt ? `, each followed by a copy for every verb in the vocabulary (${nBuilt} ⚙ built by rule from the verb's principal parts)` : "")
         + ". Verb cells show the ending above the full form."),
-      verbToggle, h("nav", { class: "ref-menu-inline", "aria-label": "Paradigms" }, menuBody()), nav, blocks);
+      verbToggle, inlineMenu, nav, blocks);
     // Keep the jump/unit bar just under the sticky top bar.
     const bar = $(".topbar");
     if (bar) nav.style.top = bar.offsetHeight + "px";
     // After layout, and once more after the browser's own scroll restoration on a reload.
-    if (target) { requestAnimationFrame(() => goTo(`ref-${target}`)); setTimeout(() => goTo(`ref-${target}`), 200); }
+    if (target) {
+      const id = verb && document.getElementById(`ref-${target}--${verb}`) ? `ref-${target}--${verb}` : `ref-${target}`;
+      requestAnimationFrame(() => goTo(id)); setTimeout(() => goTo(id), 200);
+    }
   }
 
   window.referenceView = referenceView;
@@ -2271,6 +2423,13 @@ function gradeEnglish(given, parses) {
   window.trainerTables = scope => collectTables(scope, REF_SETTINGS);
   window.trainerRefTables = (unit, only) => refTables(unit, only);
   window.trainerRefVerbUnits = REF_VERB_UNITS;
+  // For coverage.mjs check 11: the Reference page's per-verb anchors and the Jump menu's verb links, as rendered.
+  window.trainerRefJump = (unit, only) => {
+    const tabs = refTables(unit, only), plan = refJumpPlan(tabs);
+    return { tables: tabs.filter(t => t.tense || t.section === "inf").map(t => ({ label: t.label, lemma: t.lemma, id: plan.idOf.get(t) || null,
+      spans: plan.spans.get(t) || [] })), paraIds: [...plan.paraIds],
+      links: [...plan.verbs].flatMap(([p, xs]) => xs.map(x => ({ p, v: x.slug, lemma: x.lemma, id: x.id, reason: x.reason }))) };
+  };
   window.trainerFormation = t => ({ text: formationText(t), stem: stemInfo(t), lines: t.section === "inf" && t.lemma ? infFormation(t) : null });  // for coverage.mjs (check 9)
 })();
 
