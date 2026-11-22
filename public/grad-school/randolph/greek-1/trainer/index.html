@@ -375,6 +375,36 @@ table.pp-table { width: 100%; border-collapse: collapse; }
 /* The narrowest phones (< 375px): 20px still fits the widest form in a half-width cell. */
 @media (max-width: 374px) { .pp-part { font-size: 20px; } }
 @media print { .pp-tools { display: none !important; } }
+/* ---------- vocabulary list (#/words): every vocab word for one unit or Units 1–N ---------- */
+.wl-nav .btn.small { min-height: 44px; }
+.wl-tools { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-top: 12px; }
+.wl-tools .btn { min-height: 44px; font-size: 15px; padding: 0 12px; }
+.wl-tools select.field { width: auto; min-height: 44px; font-size: 15px; padding: 6px 8px; }
+.wl-search { width: 100%; min-height: 52px; font-size: 20px; margin-top: 10px; }
+.wl-search::placeholder { font-family: var(--ui); font-size: 16px; }
+.wl-count { font-size: 16px; margin: 8px 0 0; }
+.wl-unit > h2 { margin: 30px 0 4px; padding-bottom: 6px; border-bottom: 2px solid var(--ink); font-size: 26px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.wl-unit > h2 small { font-size: 16px; font-weight: 600; color: var(--muted); }
+.wl-pos { margin: 18px 0 0; font-size: 15px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+table.wl-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+.wl-table th { text-align: left; font-size: 15px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+.wl-table td { padding: 12px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+.wl-gr { font-family: var(--greek); font-size: 22px; line-height: 1.45; width: 46%; overflow-wrap: anywhere; }
+.wl-gr .wl-lemma { font-weight: 700; }
+.wl-en { font-size: 17.5px; line-height: 1.45; overflow-wrap: anywhere; }
+.wl-kind { font-size: 15.5px; color: var(--muted); }
+.wl-u { width: 4.8em; text-align: right; }
+.wl-ref { display: inline-flex; align-items: center; min-height: 44px; font-size: 15px; font-weight: 600; margin-top: 2px; }
+@media (max-width: 640px) {
+  .wl-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .wl-table, .wl-table tbody, .wl-table tr, .wl-table td { display: block; }
+  .wl-table tr { position: relative; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .wl-table td { padding: 0; border: 0; width: auto; }
+  .wl-gr { padding-right: 4.4em !important; }
+  .wl-en { font-size: 17px; margin-top: 2px; }
+  .wl-u { position: absolute; top: 14px; right: 0; text-align: right; }
+}
+@media print { .wl-tools, .wl-search, .wl-ref { display: none !important; } }
 /* Artifact theme toggle: data-theme must win over the OS media query, both ways. */
 :root[data-theme="dark"] {
   --bg: #151917; --surface: #1f2522; --surface-2: #29302c; --ink: #e8ece9;
@@ -2442,6 +2472,17 @@ function gradeEnglish(given, parses) {
       spans: plan.spans.get(t) || [] })), paraIds: [...plan.paraIds],
       links: [...plan.verbs].flatMap(([p, xs]) => xs.map(x => ({ p, v: x.slug, lemma: x.lemma, id: x.id, reason: x.reason }))) };
   };
+  // For the Vocabulary list (#/words): a vocabulary verb's link to its own table on the Reference page, at the verb's
+  // unit: its present indicative there (else its first indicative), #/reference/<unit>?p=pres-ind-act&v=<slug>. null = the
+  // verb has no table (a compound or irregular verb the builder doesn't make). coverage.mjs checks every link lands.
+  window.trainerRefVerbHref = (lemma, unit) => {
+    lemma = nfc(lemma);
+    if (lemma === MODEL) return `#/reference/${unit}?p=pres-ind-act&v=${verbSlug(lemma)}`;
+    const v = DRILL_BUILT.verbs.find(x => nfc(x.lemma) === lemma);
+    const ind = v ? v.paradigms.filter(x => x.mood === "indicative" && x.tenseUnit <= v.unit) : [];
+    const p = ind.find(x => x.tense === "present") || ind[0];
+    return p ? `#/reference/${v.unit}?p=${AB[p.tense]}-ind-${AB[p.voice || "active"]}&v=${verbSlug(lemma)}` : null;
+  };
   window.trainerFormation = t => ({ text: formationText(t), stem: stemInfo(t), lines: t.section === "inf" && t.lemma ? infFormation(t) : null });  // for coverage.mjs (check 9)
 })();
 
@@ -3303,7 +3344,8 @@ function partsShow(scope) {
       h("div", { class: "row ref-actions" },
         h("a", { class: "btn small", href: "#/parts" }, "Change unit"),
         h("a", { class: "btn small", href: `#/reference/${scope.unit}` }, "Reference tables"),
-        h("a", { class: "btn small", href: "#/glossary" }, "Glossary"))),
+        h("a", { class: "btn small", href: "#/glossary" }, "Glossary"),
+        h("a", { class: "btn small", href: `#/words?u=${scope.unit}&mode=${scope.mode}` }, "Vocabulary list"))),
     h("div", { class: "pp-tools" }, search, hideBtn),
     count, list);
   draw();
@@ -3460,6 +3502,7 @@ function glossaryView() {
   state.cleanup = () => { ro && ro.disconnect(); clearTimeout(timer); };
   app().replaceChildren(
     h("div", { class: "row" }, h("a", { href: "#/", class: "muted" }, "← Home"), h("span", { class: "spacer" }),
+      h("a", { class: "btn small", href: "#/words" }, "Vocabulary list"),
       h("a", { class: "btn small", href: "#/parts" }, "Principal parts")),
     h("h1", { style: { marginTop: "8px" } }, "Glossary"),
     h("p", { class: "muted", style: { marginTop: 0, fontSize: "14px" } },
@@ -3468,6 +3511,98 @@ function glossaryView() {
     head, list);
   draw();
   search.focus({ preventScroll: true });
+}
+
+/* Vocabulary list: every word in VOCAB_DATA (the vault's Unit N/Vocabulary.md, the same data as the vocabulary
+   quiz and the Principal parts page), for "Unit N only" or "Units 1–N", in full dictionary form. Nothing here
+   builds Greek. #/words?u=5&mode=only|through[&q=…]: the URL holds the scope, so it bookmarks and Back works.
+   Search folds accents like the Glossary (glFold): περι finds περί. */
+const WL_POS = [["noun", "Nouns"], ["verb", "Verbs"], ["adjective", "Adjectives"], ["preposition", "Prepositions"], ["little", "Adverbs, conjunctions and other words"]];
+const wlMaxUnit = () => VOCAB_DATA.entries.reduce((m, e) => Math.max(m, e.unit), 1);
+const wordsInScope = (unit, mode) => VOCAB_DATA.entries.filter(e => (mode === "only" ? e.unit === unit : e.unit <= unit));
+window.trainerWordsInScope = (unit, mode) => wordsInScope(unit, mode).map(e => ({ id: e.id, unit: e.unit, greek: e.greek, cat: e.cat,
+  href: e.cat === "verb" ? wlVerbHref(e) : null }));   // for scripts/greek-trainer/coverage.mjs
+function wlVerbHref(e) {
+  const r = partsRows().find(x => x.id === e.id);
+  return r && r.parts && window.trainerRefVerbHref ? window.trainerRefVerbHref(r.lemma, e.unit) : null;
+}
+const wlHash = s => `#/words?u=${s.unit}&mode=${s.mode}${s.q ? `&q=${encodeURIComponent(s.q)}` : ""}`;
+
+function wordsView(query) {
+  const max = wlMaxUnit();
+  const q = new URLSearchParams(query || "");
+  const saved = vocabStore.get("words-scope", { unit: 1, mode: "through" });
+  const s = {
+    unit: Math.min(max, Math.max(1, Number(q.get("u")) || Number(saved.unit) || 1)),
+    mode: (q.get("mode") || saved.mode) === "only" ? "only" : "through",
+    q: (q.get("q") || "").trim(),
+  };
+  vocabStore.set("words-scope", { unit: s.unit, mode: s.mode });
+  // Canonical URL without adding a history entry (a bare #/words lands on the last scope).
+  if (location.hash !== wlHash(s)) { try { history.replaceState(null, "", wlHash(s)); } catch { /* sandboxed */ } }
+  const scopeTxt = s.mode === "only" ? `Unit ${s.unit} only` : s.unit === 1 ? "Unit 1" : `Units 1–${s.unit}`;
+  document.title = `Vocabulary · ${scopeTxt}`;
+  const words = wordsInScope(s.unit, s.mode).map(e => ({ e, gk: glFold(e.greek).key, en: nfc(`${e.gloss} ${e.kind || ""}`).toLowerCase() }));
+  const list = h("div", { class: "wl-results" });
+  const count = h("p", { class: "muted wl-count", "aria-live": "polite" });
+  const matches = w => {
+    if (!s.q) return true;
+    if (GL_GREEK.test(s.q)) { const k = glFold(s.q).key; return !!k && w.gk.includes(k); }
+    return w.en.includes(s.q.toLowerCase());
+  };
+  const rowEl = ({ e }) => {
+    const parts = splitParts(nfc(e.greek));
+    const href = e.cat === "verb" ? wlVerbHref(e) : null;
+    return h("tr", { id: `wl-${e.id.replace(":", "-")}` },
+      h("td", { class: "wl-gr", lang: "grc" }, h("span", { class: "wl-lemma" }, parts[0]), parts.length > 1 ? `, ${parts.slice(1).join(", ")}` : ""),
+      h("td", { class: "wl-en" }, e.gloss, e.kind ? h("span", { class: "wl-kind" }, ` (${e.kind})`) : null,
+        href ? h("div", {}, h("a", { class: "wl-ref", href }, "Reference tables →")) : null),
+      h("td", { class: "wl-u" }, h("span", { class: "pp-tag" }, `U${e.unit}`)));
+  };
+  const tableEl = ws => h("div", { class: "pp-wrap" }, h("table", { class: "wl-table" },
+    h("thead", {}, h("tr", {}, h("th", { scope: "col" }, "Greek"), h("th", { scope: "col" }, "English"), h("th", { scope: "col", class: "wl-u" }, "Unit"))),
+    h("tbody", {}, ws.map(rowEl))));
+  // Within a unit: by part of speech, in a fixed order; book order inside each group.
+  const byPos = ws => WL_POS.map(([cat, label]) => [label, ws.filter(w => w.e.cat === cat)]).filter(([, xs]) => xs.length)
+    .concat([["Other", ws.filter(w => !WL_POS.some(([c]) => c === w.e.cat))]].filter(([, xs]) => xs.length))
+    .map(([label, xs]) => [h("h3", { class: "wl-pos" }, `${label} · ${xs.length}`), tableEl(xs)]);
+  const plural = n => `${n} word${n === 1 ? "" : "s"}`;
+  function draw() {
+    const shown = words.filter(matches);
+    count.replaceChildren(s.q ? `${shown.length} of ${plural(words.length)} match “${s.q}” · ${scopeTxt}` : `${plural(words.length)} · ${scopeTxt}`);
+    if (!shown.length) return list.replaceChildren(h("div", { class: "empty" }, s.q ? `Nothing in ${scopeTxt} matches “${s.q}”.` : "No vocabulary for this choice yet."));
+    const units = [...new Set(shown.map(w => w.e.unit))];
+    list.replaceChildren(units.map(u => {
+      const ws = shown.filter(w => w.e.unit === u);
+      return h("section", { class: "wl-unit", id: `wl-u${u}` },
+        h("h2", {}, `Unit ${u}`, h("small", {}, s.q ? `${ws.length} of ${words.filter(w => w.e.unit === u).length}` : plural(ws.length))),
+        byPos(ws));
+    }));
+  }
+  const go = patch => { location.hash = wlHash({ ...s, ...patch }); };   // a new history entry: Back returns here
+  let timer = 0;
+  const search = h("input", { class: "field wl-search", type: "search", "data-greek": "", lang: "grc", value: s.q,
+    placeholder: "Filter: Greek (accents optional) or English", "aria-label": "Filter the vocabulary",
+    autocomplete: "off", autocapitalize: "off", autocorrect: "off", spellcheck: "false", enterkeyhint: "search",
+    oninput: e => { clearTimeout(timer); const v = e.target.value; timer = setTimeout(() => {
+      s.q = v.trim(); draw();
+      try { history.replaceState(null, "", wlHash(s)); } catch { /* sandboxed */ }
+    }, 30); } });
+  const unitSel = h("select", { class: "field", "aria-label": "Unit", onchange: e => go({ unit: Number(e.target.value) }) },
+    Array.from({ length: max }, (_, i) => h("option", { value: String(i + 1), selected: s.unit === i + 1 }, `Unit ${i + 1}`)));
+  const modeBtn = (mode, label) => h("button", { class: "btn", "aria-pressed": String(s.mode === mode), onclick: () => s.mode !== mode && go({ mode }) }, label);
+  state.cleanup = () => clearTimeout(timer);
+  app().replaceChildren(
+    h("div", { class: "row wl-nav" }, h("a", { href: "#/", class: "muted" }, "← Home"), h("span", { class: "spacer" }),
+      h("a", { class: "btn small", href: "#/glossary" }, "Glossary"),
+      h("a", { class: "btn small", href: `#/parts/${s.unit}/${s.mode}` }, "Principal parts")),
+    h("h1", { style: { marginTop: "8px" } }, `Vocabulary: ${s.mode === "only" ? `Unit ${s.unit}` : scopeTxt}`),
+    h("p", { class: "muted", style: { marginTop: 0, fontSize: "14px" } },
+      "Every word from H&Q's unit vocabulary lists in full dictionary form: nouns with genitive and article, adjectives with all their endings, verbs with their principal parts."),
+    h("div", { class: "wl-tools", role: "group", "aria-label": "Units" },
+      unitSel, modeBtn("only", `Unit ${s.unit} only`), modeBtn("through", `Units 1–${s.unit} (cumulative)`)),
+    search, count, list);
+  draw();
 }
 
 // ---- home + router: the artifact bundles the verb drill and the vocabulary quiz.
@@ -3495,6 +3630,9 @@ function homeView() {
     h("a", { class: "panel deck-tile gloss-tile", href: "#/glossary", style: { marginTop: "12px" } },
       h("h3", {}, "Glossary"),
       h("div", { class: "muted" }, "Look up any word in H&Q's Greek–English Vocabulary: type plain letters (περι → περί) or English")),
+    h("a", { class: "panel deck-tile words-tile", href: "#/words", style: { marginTop: "12px" } },
+      h("h3", {}, "Vocabulary list"),
+      h("div", { class: "muted" }, "Every vocabulary word for one unit, or Units 1–N, in full dictionary form, with a filter")),
     h("a", { class: "panel deck-tile vocab-tile", href: "#/vocab", style: { marginTop: "12px" } },
       h("h3", {}, "Vocabulary quiz"),
       h("div", { class: "muted" }, "Every H&Q word — Greek ↔ English, by unit and category")));
@@ -3505,6 +3643,7 @@ function route() {
   const bar = $("#accent-bar"); if (bar) bar.hidden = true;
   const [view, id, mode] = location.hash.replace(/^#\/?/, "").split("/");
   window.scrollTo(0, 0);
+  if (/^words(\?|$)/.test(view)) return wordsView(location.hash.split("?")[1] || "");
   if (view === "drill") return drillView(id, mode);
   if (view === "tables") return tableDrillView(id, mode);
   if (view === "reference") return referenceView(id);
