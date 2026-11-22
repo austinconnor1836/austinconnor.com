@@ -56,6 +56,11 @@
 //      (παιδεύω's and every per-verb copy, infinitives included) has no per-verb anchor (ref-<paradigm>--<verb>), two
 //      anchors collide, or a Jump-menu verb link (#/reference/N?p=…&v=…) points at an element that isn't rendered.
 //      Every paradigm with a verb list must list παιδεύω first, and a greyed (no-table) verb must carry a reason.
+//  12. any table cell, anywhere (Reference tables and copies, quiz tables, units 1–20), is empty or renders the bare
+//      word "Appendix"; or a perfect/pluperfect middle/passive indicative table has no 3rd plural. A consonant-stem
+//      3rd plural must be H&Q's Appendix compound (pp. 665–666): PP V − μαι + μένοι + εἰσί(ν) (perfect) / ἦσαν
+//      (pluperfect), citing "H&Q Appendix p. 665/666" in the source line, and the quiz must accept it with or
+//      without the movable ν and with the participle's gendered forms ("…μένοι, -αι, -α εἰσί(ν)").
 // Units above supportedThrough are reported (and listed on the unit screens), not failed.
 import fs from "node:fs";
 import { loadTrainer, TRAINER } from "./load-trainer.mjs";
@@ -248,6 +253,51 @@ function glossaryAudit(trainer) {
   for (const k of exceptions.keys()) if (!used.has(k)) bad.push(`glossary-exceptions.json lists “${k}”, which is in the glossary now or not in the vocabulary: remove it`);
   return { bad, entries: g.length, vocab: trainer.vocab.entries.length, found, exact, exceptions: exceptions.size,
     uncertain: g.filter(e => e.uncertain).length };
+}
+
+// Check 12: no "Appendix" placeholders; every perfect/pluperfect M/P table has its 3rd plural.
+function appendixAudit(trainer) {
+  const bad = [];
+  if (/h\("td"[^;]*?"Appendix"\)/.test(trainer.html)) bad.push("index.html still renders a table cell reading \"Appendix\"");
+  const builtPP = new Map(trainer.built.verbs.map(v => [nfc(v.lemma), v.pp.map(nfc)]));
+  const bookPP = new Map(trainer.partsRows(20, "through").filter(r => r.parts).map(r => [nfc(r.lemma), r.parts.map(nfc)]));
+  const deAcc = s => nfc(s).normalize("NFD").replace(/[\u0300\u0301\u0342]/g, "").normalize("NFC");
+  const seen = new Set();
+  let mp = 0, compounds = 0;
+  const check = (t, where) => {
+    if (!t.cells) return;
+    t.cells.forEach((row, r) => row.forEach((cell, c) => {
+      if (t.dash?.[r]) return;
+      const vals = [cell, t.full?.[r]?.[c]].filter(x => x != null).flat();
+      if (!cell || !cell.length) bad.push(`${where}: ${t.rows[r]} ${t.cols[c]} is empty`);
+      else if (vals.some(v => /Appendix/i.test(v))) bad.push(`${where}: ${t.rows[r]} ${t.cols[c]} shows “Appendix”`);
+    }));
+    const isMP = (t.voice === "passive" || t.voice === "middle") && t.mood === "indicative" && /^(perfect|pluperfect)$/.test(t.tense);
+    if (!isMP || seen.has(t.id)) return;
+    seen.add(t.id); mp++;
+    const f3 = t.full?.[2]?.[1] || t.cells?.[2]?.[1];
+    if (!f3 || !f3.length) return bad.push(`${where}: no 3rd plural`);
+    if (!f3.some(f => /μένοι /.test(f))) return;
+    compounds++;
+    const aux = t.tense === "perfect" ? "εἰσί(ν)" : "ἦσαν";
+    const pp5 = (bookPP.get(nfc(t.lemma)) || builtPP.get(nfc(t.lemma)))?.[4];
+    const want = String(pp5 || "").split(/\s+or\s+/).map(x => x.replace(/\([^)]*\)/g, "").trim())
+      .filter(x => /μαι$/.test(x)).map(x => deAcc(deAcc(x).slice(0, -3) + "μένοι " + aux));
+    for (const f of f3) {
+      if (!want.includes(deAcc(f)) || !/μένοι /.test(f)) bad.push(`${where}: 3rd plural ${f} isn't PP V ${pp5} − μαι + μένοι ${aux}`);
+    }
+    if (!new RegExp(`H&Q Appendix p\\. ${t.tense === "perfect" ? 665 : 666} \\(PDF p\\. ${t.tense === "perfect" ? 692 : 693}\\)`).test(t.source || ""))
+      bad.push(`${where}: the source line doesn't cite H&Q Appendix p. ${t.tense === "perfect" ? 665 : 666}`);
+    if (t.accepts) {
+      const m = f3[0].replace(/ .*$/, ""), fem = m.replace(/οι$/, "αι"), neu = m.replace(/οι$/, "α"), a = aux.replace("(ν)", "");
+      for (const g of [`${m} ${a}`, `${m} ${a}${t.tense === "perfect" ? "ν" : ""}`, `${m}, -αι, -α ${aux}`, `${m}, ${fem}, ${neu} ${a}`])
+        if (!t.accepts(g, f3)) bad.push(`${where}: the quiz doesn't accept “${g}”`);
+    }
+  };
+  for (const t of trainer.refTables(Infinity)) check(t, `Reference “${t.label}” (${t.id})`);
+  for (let u = 1; u <= 20; u++) for (const t of trainer.tables({ unit: u, mode: "through" })) check(t, `Unit ${u} quiz “${t.label}” (${t.id})`);
+  if (!compounds) bad.push("no consonant-stem 3rd plural compound found at all");
+  return { bad, mp, compounds };
 }
 
 // Check 10: one infinitive table per verb and voice, holding every infinitive tense taught so far.
@@ -475,6 +525,7 @@ const glossary = glossaryAudit(trainer);
 const formation = formationAudit(trainer);
 const infinitives = infinitiveAudit(trainer);
 const jumps = jumpAudit(trainer);
+const appendix = appendixAudit(trainer);
 const docText = doc(rows, onlyTables, onlyDrill, sounds, verbs, parts, glossary, formation);
 
 if (WRITE) {
@@ -512,6 +563,7 @@ for (const b of glossary.bad) failures.push(b);
 for (const b of formation.bad) failures.push(b);
 for (const b of infinitives.bad) failures.push(b);
 for (const b of jumps.bad) failures.push(b);
+for (const b of appendix.bad) failures.push(b);
 const live = loadTrainerCoverage(trainer.html);
 if (!WRITE && JSON.stringify(live) !== JSON.stringify(block))
   failures.push("index.html's TRAINER_COVERAGE is out of date: run `node scripts/greek-trainer/coverage.mjs --write`");
@@ -531,4 +583,5 @@ if (failures.length) {
   process.exit(1);
 }
 console.log(`greek-trainer: Reference per-verb anchors: ${jumps.tables} verb tables, ${jumps.links} Jump-menu verb links checked (Units 1–20, both scopes).`);
+console.log(`greek-trainer: ${appendix.mp} perfect/pluperfect M/P tables checked, ${appendix.compounds} with H&Q's Appendix 3rd plural compound.`);
 console.log("greek-trainer coverage check passed.");
