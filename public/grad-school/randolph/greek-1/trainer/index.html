@@ -1228,33 +1228,147 @@ function gradeEnglish(given, parses) {
       : "Accents and breathings count; macrons don't, and a grave counts as an acute. Where two forms are printed, either is right." }));
 
   // How each tense/mood/voice is formed — transcribed from the vault's §20–§34, §29 and §43a–c notes.
+  // Every stem names the principal part it comes from, as "(PP VI ἐπαιδεύθην − augment − ην → παιδευθ-)",
+  // using the table's OWN verb's part (πέμπω's copy cites ἐπέμφθην), so the copies are right too.
+  // s = stemInfo(t): s.cite is that parenthetical; s.stem / s.aug are the bare and augmented stems from the forms.
   const FORMATION = {
-    "present|indicative|active": "Principal Part I − ω = present stem, then the primary active endings.",
-    "imperfect|indicative|active": "Augment ἐ- + present stem (PP I), then the secondary active endings.",
-    "future|indicative|active": "Principal Part II − ω = future stem, then the same endings as the present (no augment — the future is a primary tense).",
-    "aorist|indicative|active": "Principal Part III − α = augmented aorist stem (the augment is already built in), then the aorist active endings.",
-    "perfect|indicative|active": "PP IV − α = perfect stem (no augment; reduplication builds it), then the same endings as the aorist — except 3rd pl. -ᾱσι(ν).",
-    "pluperfect|indicative|active": "Augment ἐ- + perfect active stem (PP IV − α), then -η, -ης, -ει(ν), -εμεν, -ετε, -εσαν: η in the singular, ε in the plural, except 3rd sg. -ει(ν).",
-    "present|subjunctive|active": "Present stem (PP I − ω), then the present endings with the thematic vowel lengthened (ο → ω, ε → η).",
-    "aorist|subjunctive|active": "Unaugmented aorist stem (PP III − α, drop the augment), then the same endings as the present subjunctive.",
-    "present|optative|active": "Present stem, then endings that all begin with -οι- (thematic ο + optative ι).",
-    "aorist|optative|active": "Unaugmented aorist stem (drop the augment), then endings that all begin with -αι- (2nd/3rd sg. and 3rd pl. have alternatives).",
-    "present|indicative|passive": "Present stem (PP I) + thematic vowel ε/ο + the primary passive markers (-μαι, -σαι, -ται, -μεθα, -σθε, -νται). 2nd sg. *-εσαι loses its σ → -ῃ / -ει.",
-    "imperfect|indicative|passive": "Augment + present stem + thematic vowel + the secondary passive markers (-μην, -σο, -το, -μεθα, -σθε, -ντο). 2nd sg. *-εσο → -ου.",
-    "aorist|indicative|passive": "PP VI − ην = augmented aorist passive stem (ἐπαιδευθ-), then -ην, -ης, -η, -ημεν, -ητε, -ησαν: active person markers; the θη stem shows the voice.",
-    "future|indicative|passive": "Unaugmented aorist passive stem + -ησ- (παιδευθησ-), then the present passive endings.",
-    "perfect|indicative|passive": "PP V − μαι = perfect passive stem (πεπαιδευ-), then the bare primary markers, no thematic vowel. 2nd sg. keeps its σ.",
-    "pluperfect|indicative|passive": "Augment + perfect passive stem (ἐπεπαιδευ-), then the bare secondary markers.",
-    "present|subjunctive|passive": "Present stem + the primary passive markers on a lengthened thematic vowel: -ωμαι, -ῃ, -ηται, -ωμεθα, -ησθε, -ωνται.",
-    "present|optative|passive": "Present stem + -οι- + the secondary passive markers: -οιμην, -οιο, -οιτο, -οιμεθα, -οισθε, -οιντο.",
-    "aorist|subjunctive|passive": "Unaugmented aorist passive stem (παιδευθ-) + the active subjunctive endings, always with a circumflex on the ending's first vowel.",
-    "aorist|optative|passive": "Unaugmented aorist passive stem + -ειη- endings (-είην, -είης, -είη); the plural has two equal sets (-εῖμεν / -είημεν …). The accent never goes back past the ι.",
+    "present|indicative|active": s => `Present stem ${s.cite}, then the primary active endings.`,
+    "imperfect|indicative|active": s => `${s.vowel ? "Augment (the first vowel lengthens)" : "Augment ἐ-"} + present stem ${s.cite}, then the secondary active endings.`,
+    "future|indicative|active": s => `Future stem ${s.cite}, then the same endings as the present (no augment — the future is a primary tense).`,
+    "aorist|indicative|active": s => `Augmented aorist stem ${s.cite} (the augment is already built in), then ${s.second ? "the imperfect's secondary active endings (a 2nd aorist)" : "the aorist active endings"}.`,
+    "perfect|indicative|active": s => `Perfect stem ${s.cite} (no augment; reduplication builds it), then the same endings as the aorist — except 3rd pl. -ᾱσι(ν).`,
+    "pluperfect|indicative|active": s => `${s.vowel ? "Augment" : "Augment ἐ-"} + perfect active stem ${s.cite}, then -η, -ης, -ει(ν), -εμεν, -ετε, -εσαν: η in the singular, ε in the plural, except 3rd sg. -ει(ν).`,
+    "present|subjunctive|active": s => `Present stem ${s.cite}, then the present endings with the thematic vowel lengthened (ο → ω, ε → η).`,
+    "aorist|subjunctive|active": s => `Unaugmented aorist stem ${s.cite}, then the same endings as the present subjunctive.`,
+    "present|optative|active": s => `Present stem ${s.cite}, then endings that all begin with -οι- (thematic ο + optative ι).`,
+    "aorist|optative|active": s => `Unaugmented aorist stem ${s.cite}, then ${s.second ? "the present optative's endings, all beginning with -οι- (a 2nd aorist)" : "endings that all begin with -αι- (2nd/3rd sg. and 3rd pl. have alternatives)"}.`,
+    "present|indicative|passive": s => `Present stem ${s.cite} + thematic vowel ε/ο + the primary passive markers (-μαι, -σαι, -ται, -μεθα, -σθε, -νται). 2nd sg. *-εσαι loses its σ → -ῃ / -ει.`,
+    "imperfect|indicative|passive": s => `Augment + present stem ${s.cite} + thematic vowel + the secondary passive markers (-μην, -σο, -το, -μεθα, -σθε, -ντο). 2nd sg. *-εσο → -ου.`,
+    "aorist|indicative|passive": s => `Augmented aorist passive stem ${s.cite}, then -ην, -ης, -η, -ημεν, -ητε, -ησαν: active person markers; the ${s.theta ? "θη" : "η"} shows the voice.`,
+    "future|indicative|passive": s => `Unaugmented aorist passive stem ${s.cite} + -ησ-${s.fut ? ` (${s.fut})` : ""}, then the present passive endings.`,
+    "perfect|indicative|passive": s => `Perfect passive stem ${s.cite}, then the bare primary markers, no thematic vowel. 2nd sg. keeps its σ.`,
+    "pluperfect|indicative|passive": s => `Augment + perfect passive stem ${s.cite}${s.aug ? ` = ${s.aug}` : ""}, then the bare secondary markers.`,
+    "present|subjunctive|passive": s => `Present stem ${s.cite} + the primary passive markers on a lengthened thematic vowel: -ωμαι, -ῃ, -ηται, -ωμεθα, -ησθε, -ωνται.`,
+    "present|optative|passive": s => `Present stem ${s.cite} + -οι- + the secondary passive markers: -οιμην, -οιο, -οιτο, -οιμεθα, -οισθε, -οιντο.`,
+    "aorist|subjunctive|passive": s => `Unaugmented aorist passive stem ${s.cite} + the active subjunctive endings, always with a circumflex on the ending's first vowel.`,
+    "aorist|optative|passive": s => `Unaugmented aorist passive stem ${s.cite} + -ειη- endings (-είην, -είης, -είη); the plural has two equal sets (-εῖμεν / -είημεν …). The accent never goes back past the ι.`,
   };
-  const CONSONANT_FORMATION = "Consonant stem: the stem consonant meets the σ, σθ or τ of the bare ending and the cluster changes (§43.14). The 3rd plural is in H&Q's Appendix.";
+  // Which principal part each tense/voice is built on (H&Q §19).
+  const PP_ROMAN = ["I", "II", "III", "IV", "V", "VI"];
+  const ppNumOf = (tense, voice) => {
+    const mp = voice === "passive" || voice === "middle";
+    if (tense === "present" || tense === "imperfect") return 1;
+    if (tense === "perfect" || tense === "pluperfect") return mp ? 5 : 4;
+    if (tense === "future") return voice === "passive" ? 6 : 2;
+    if (tense === "aorist") return voice === "passive" ? 6 : 3;
+    return 0;
+  };
+  // Non-indicative aorists and the future passive use the aorist stem with its augment removed.
+  const unaugmented = (tense, mood, voice) => (tense === "aorist" && mood !== "indicative") || (tense === "future" && voice === "passive");
+  // A verb's six principal parts as H&Q prints them (the Principal parts page's rows, "A or B" kept),
+  // falling back to DRILL_BUILT's parts.
+  const ppsOf = lemma => {
+    if (!ppsOf.map) {
+      ppsOf.map = new Map(DRILL_BUILT.verbs.map(v => [nfc(v.lemma), v.pp.map(nfc)]));
+      for (const r of partsRows()) if (r.parts) ppsOf.map.set(nfc(r.lemma), r.parts.map(nfc));
+    }
+    return ppsOf.map.get(nfc(lemma)) || null;
+  };
+  const ppDash = s => !s || /^[—–-]+$/.test(String(s).trim());
+  // "ἐβλάβην or ἐβλάφθην", "ἔστησα (trans.) or ἔστην (intrans.)", "ἐλῶ (ἐλάω)" → the alternative forms.
+  const ppAlts = s => String(s).split(/\s+or\s+/).map(x => x.replace(/\([^)]*\)/g, "").trim()).filter(Boolean);
+  // Accents off, breathings and macrons kept (a stem is shown as ἐπαιδευθ-, τῑμα-); split into letters with their marks.
+  const stripAcc = s => nfc(s).normalize("NFD").replace(/[\u0300\u0301\u0342]/g, "").normalize("NFC");
+  const letters = s => nfc(s).normalize("NFD").match(/\P{M}\p{M}*/gu) || [];
+  const dropLetters = (s, k) => { const L = letters(s); return L.slice(0, L.length - k).join("").normalize("NFC"); };
+  // Loose "same stem once the augment is off": compare after the leading vowels (ἐπαιδευθ ~ παιδευθ, ᾑρεθ ~ αἱρεθ, ἠχθ ~ ἀχθ).
+  const afterVowels = s => deAccent(s).normalize("NFD").replace(/^[αεηιουω\u0345]+/, "");
+  const sameUnaug = (augmented, bare) => { const a = afterVowels(augmented), b = afterVowels(bare); return !!b && (a === b || a.endsWith(b)); };
+  // What H&Q's §19 takes off each principal part to leave its stem.
+  const PP_ENDS = [null, ["ομαι", "ω"], ["ομαι", "ω"], ["αμην", "ομην", "ον", "α"], ["α"], ["μαι"], ["ην"]];
+  const THEMATIC_OPT = [[["οιμι"], ["οιμεν"]], [["οις"], ["οιτε"]], [["οι"], ["οιεν"]]];   // a 2nd aorist's optative
+  // Each table form minus its ending (the model's endings, or extra grids), with counts.
+  function formStems(t, extra = []) {
+    const grids = [t.ends || (t.full ? t.cells : null), ...extra].filter(Boolean), forms = t.full || (t.ends ? t.cells : null);
+    const count = new Map();
+    if (!grids.length || !forms) return count;
+    forms.forEach((row, r) => row.forEach((fs, c) => (fs || []).forEach(f => {
+      for (const g of grids) {
+        const e = (g[r]?.[c] || []).map(x => deAccent(x)).find(x => deAccent(f).endsWith(x));
+        if (e == null) continue;
+        const st = dropLetters(stripAcc(f), letters(e).length);
+        if (st) count.set(st, (count.get(st) || 0) + 1);
+        break;
+      }
+    })));
+    return count;
+  }
+  // { n, pp, cite, stems, fut, aug, theta, second } for a verb table; null for a table with no tense.
+  // cite is "(PP VI ἐπαιδεύθην − augment − ην → παιδευθ-)"; without an arrow when the forms don't show one clean stem.
+  function stemInfo(t) {
+    if (!t.tense) return null;
+    const voice = t.voice || "active", n = ppNumOf(t.tense, voice), R = PP_ROMAN[n - 1];
+    const pp = (ppsOf(t.lemma) || [])[n - 1];
+    const out = { n, pp: pp || null, cite: `(PP ${R}${ppDash(pp) ? "" : " " + pp})`, stems: [], fut: "", aug: "", theta: true, second: false, vowel: false };
+    if (ppDash(pp)) return out;   // coverage.mjs fails any table built on a dashed part
+    const alts = ppAlts(pp).map(a => {
+      const part = stripAcc(a.replace(/^-/, "")), dp = deAccent(part);
+      const end = PP_ENDS[n].find(e => dp.endsWith(e) && dp.length > e.length);
+      return { a, end, base: end ? dropLetters(part, letters(end).length) : null, cf: n === 2 && /(ῶ|οῦμαι)$/.test(nfc(a)) };
+    }).filter(x => x.base)
+      // "ἤνεγκα or ἤνεγκον": one stem; keep the alternative whose ending the table's 1st sg. shows.
+      .filter((x, i, xs) => { const twin = xs.find(y => y.base === x.base); if (twin === x) return true;
+        const f1 = deAccent((t.full || t.cells || [])[0]?.[0]?.[0] || ""); return f1.endsWith(x.end) && !f1.endsWith(twin.end); });
+    out.vowel = /^[αεηιουω]/.test(deAccent(alts[0]?.base || ""));
+    if (n === 6) out.theta = alts.every(x => /θ$/.test(deAccent(x.base)));
+    const forms = (t.full || t.cells || []).flat().filter(Boolean).flat();
+    const unaug = unaugmented(t.tense, t.mood, voice);
+    const used = [];
+    if (unaug) {
+      const counts = formStems(t, t.tense === "aorist" && t.mood === "optative" && voice === "active" ? [THEMATIC_OPT] : []);
+      for (let [st] of counts) {
+        if (t.tense === "future") { if (!deAccent(st).endsWith("ησ")) continue; st = dropLetters(st, 2); }
+        const alt = alts.find(x => sameUnaug(x.base, st));
+        if (alt && !used.some(u => u.stem === st)) used.push({ ...alt, stem: st });
+      }
+    } else if (n === 1 && alts.length === 1 && /[αεο]$/.test(deAccent(alts[0].base)) && /^(ω|ομαι)$/.test(alts[0].end)) {
+      const x = alts[0];   // a contract verb: the stem vowel contracts with each ending (§72–73)
+      out.stems = [x.base];
+      out.cite = `(PP ${R} ${x.a} − ${x.end} → ${x.base}-; the ${deAccent(x.base).slice(-1)} contracts with each ending)`;
+      return out;
+    } else {
+      const inside = t.tense === "imperfect" || t.tense === "pluperfect";
+      const fits = (x, f) => inside ? afterVowels(f).includes(afterVowels(x.base)) : deAccent(f).startsWith(deAccent(x.base));
+      const ok = alts.filter(x => forms.some(f => fits(x, f)));
+      if (forms.length && forms.every(f => ok.some(x => fits(x, f)))) used.push(...ok.map(x => ({ ...x, stem: x.base })));
+    }
+    if (!used.length) { if (unaug) out.cite = `(PP ${R} ${pp} − augment)`; return out; }
+    const aug = unaug ? "augment − " : "", one = used.every(u => u.end === used[0].end);
+    out.stems = used.map(u => u.stem);
+    out.second = used.every(u => u.end === "ον" || u.end === "ομην");
+    out.cite = one ? `(PP ${R} ${used.map(u => u.a).join(" or ")} − ${aug}${used[0].end} → ${out.stems.map(s => s + "-").join(" / ")})`
+      : `(PP ${R} ${used.map(u => `${u.a} − ${aug}${u.end} → ${u.stem}-`).join(", or ")})`;
+    if (t.tense === "future") out.fut = out.stems.map(s => s + "ησ-").join(" / ");
+    if (t.tense === "pluperfect") { const a = [...formStems(t).keys()]; if (a.join() !== out.stems.join()) out.aug = a.map(s => s + "-").join(" / "); }
+    // ἐρῶ, ἀγγελῶ: a future that contracts like ποιέω.
+    if (used.some(u => u.cf)) out.cite = out.cite.replace(/\)$/, "; an ε-contract future)");
+    return out;
+  }
+  // A consonant-stem perfect passive (§43.14), shown as whole forms.
+  const consonantFormation = lemma => {
+    const pp = (ppsOf(lemma) || [])[4];
+    return `Consonant stem (PP V${ppDash(pp) ? "" : " " + pp}): the stem consonant meets the σ, σθ or τ of the bare ending and the cluster changes (§43.14). The 3rd plural is in H&Q's Appendix.`;
+  };
+  const formationText = t => {
+    if (t.formation) return t.formation;
+    const f = FORMATION[`${t.tense}|${t.mood}|${t.voice || "active"}`];
+    return f ? f(stemInfo(t)) : null;
+  };
   const formationBlock = t => {
-    const txt = t.formation || FORMATION[`${t.tense}|${t.mood}|${t.voice || "active"}`];
+    const txt = formationText(t);
     return txt ? h("div", { class: "formation", lang: "grc" }, h("b", {}, "Formation: "), txt) : null;
   };
+
 
   // "Sounds like": what each table's forms mean in English, shown with the model word on the quiz prompt,
   // the reveal, both flashcard faces and the Reference page. English never gives a Greek ending away.
@@ -1500,7 +1614,7 @@ function gradeEnglish(given, parses) {
         source: `Endings from H&Q's ${first.lemma} ${book}`,
         gradingNote: "Endings are graded without accents; iota subscripts (ῃ, ῳ) count." });
       else tables.push({ ...common, cells: full.map(r => r.map(f => f && f.map(nfc))), accepts: declFormAccepts,
-        instr: `Type all ${asked} forms`, formation: isPaid ? null : CONSONANT_FORMATION,
+        instr: `Type all ${asked} forms`, formation: isPaid ? null : consonantFormation(first.lemma),
         source: `H&Q's ${first.lemma} ${book}` + (asked < 6 ? "; the 3rd plural is in H&Q's Appendix" : ""),
         gradingNote: "Whole forms: accents and breathings count; macrons don't, and a grave counts as an acute." });
     }
@@ -1852,7 +1966,7 @@ function gradeEnglish(given, parses) {
     const source = builtSrc(v, p, ok ? m : {}) + (appx ? "; the 3rd plural is in H&Q's Appendix" : "") + senseNote(v, keyOf(m));
     common.enAs = v.enAs || null;
     const t = ok ? { ...common, cells, full, source }
-      : { ...common, cells: full, source, formation: appx ? CONSONANT_FORMATION : null };
+      : { ...common, cells: full, source, formation: appx ? consonantFormation(v.lemma) : null, ends: m.cells };
     t.sounds = soundsLike(t);
     return t;
   }
@@ -2084,6 +2198,7 @@ function gradeEnglish(given, parses) {
   window.trainerTables = scope => collectTables(scope, REF_SETTINGS);
   window.trainerRefTables = (unit, only) => refTables(unit, only);
   window.trainerRefVerbUnits = REF_VERB_UNITS;
+  window.trainerFormation = t => ({ text: formationText(t), stem: stemInfo(t) });  // for coverage.mjs (check 9)
 })();
 
 /* Noun drill: an endless quiz on the noun declensions built by rule from H&Q's

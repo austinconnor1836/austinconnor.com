@@ -27,5 +27,5 @@ export async function loadTrainer(file = TRAINER) {
   const pool = await t.loadDrillPool();
   t.setPool(pool);
   return { html, pool, tables: scope => ctx.trainerTables(scope), refTables: (unit, only) => ctx.trainerRefTables(unit, only),
-    refVerbUnits: ctx.trainerRefVerbUnits, partsRows: (unit, mode) => ctx.trainerPartsRows(unit, mode), vocab: t.VOCAB_DATA, glossary: t.GLOSSARY_DATA, glossarySearch: q => ctx.trainerGlossarySearch(q), built: t.DRILL_BUILT, coverage: t.TRAINER_COVERAGE };
+    refVerbUnits: ctx.trainerRefVerbUnits, formation: t => ctx.trainerFormation(t), partsRows: (unit, mode) => ctx.trainerPartsRows(unit, mode), vocab: t.VOCAB_DATA, glossary: t.GLOSSARY_DATA, glossarySearch: q => ctx.trainerGlossarySearch(q), built: t.DRILL_BUILT, coverage: t.TRAINER_COVERAGE };
 }
