@@ -1359,12 +1359,65 @@ function gradeEnglish(given, parses) {
     const pp = (ppsOf(lemma) || [])[4];
     return `Consonant stem (PP V${ppDash(pp) ? "" : " " + pp}): the stem consonant meets the σ, σθ or τ of the bare ending and the cluster changes (§43.14). The 3rd plural is in H&Q's Appendix.`;
   };
+  // Infinitive tables (one row per tense, each on its own principal part): one Formation clause per row, in the
+  // same "PP VI ἐπαιδεύθην − augment − ην → παιδευθ-" format, from the table's own verb's part (§26, §30, §43).
+  // INF_RULE: the infinitive ending added to the stem, and H&Q's accent rule for it.
+  const INF_RULE = {
+    "present|active": [["ειν", "recessive accent"]],
+    "aorist|active": [["εῖν", "a 2nd aorist: circumflex on the ending"], ["αι", "accent fixed on the penult"]],
+    "perfect|active": [["έναι", "accent on the penult"]],
+    "present|passive": [["εσθαι", "recessive accent"]],
+    "aorist|passive": [["ῆναι", "circumflex on the penult"]],
+    "perfect|passive": [["σθαι", "accent on the penult; circumflex if the penult is long"]],
+  };
+  function infFormationLine(lemma, tense, voice, form) {
+    const n = ppNumOf(tense, voice), R = PP_ROMAN[n - 1], pp = (ppsOf(lemma) || [])[n - 1];
+    const row = cap(tense), f = deAccent(form);
+    if (ppDash(pp)) return `${row}: PP ${R} (a dash in H&Q) → ${form}`;
+    const rules = INF_RULE[`${tense}|${voice}`] || [];
+    const unaug = tense === "aorist";
+    const alts = ppAlts(pp).map(a => {
+      const part = stripAcc(a.replace(/^-/, "")), dp = deAccent(part);
+      const end = PP_ENDS[n].find(e => dp.endsWith(e) && dp.length > e.length);
+      return { a, end, base: end ? dropLetters(part, letters(end).length) : null };
+    }).filter(x => x.base);
+    // Prefer the alternative (and the ending) the form actually shows: stem + ending = the form, accents aside.
+    let best = null;
+    for (const x of alts) for (const [e, rule] of rules) {
+      if (tense === "aorist" && voice === "active" && (e === "εῖν") !== (x.end === "ον")) continue;
+      const stem = unaug ? (f.endsWith(deAccent(e)) ? dropLetters(stripAcc(form), letters(e).length) : null) : x.base;
+      if (!stem || (unaug && !sameUnaug(x.base, stem))) continue;
+      const exact = deAccent(stem + e) === f;
+      if (!best || (exact && !best.exact)) best = { x, e, rule, stem, exact };
+    }
+    if (!best) return `${row}: PP ${R} ${pp}${unaug ? " − augment" : ""} → ${form}${rules[0] ? ` (${rules[rules.length - 1][1]})` : ""}`;
+    const { x, e, rule, stem, exact } = best;
+    const head = `${row}: PP ${R} ${x.a} − ${unaug ? "augment − " : ""}${x.end} → ${stem}- + -${e}`;
+    if (exact) return `${head} (${rule})`;
+    const why = tense === "perfect" && voice === "passive"
+      ? `a consonant stem: the consonant meets the σθ of -σθαι and the cluster changes, §43.14; accent on the penult`
+      : /[αεο]$/.test(deAccent(stem)) && tense === "present" ? `the ${deAccent(stem).slice(-1)} contracts with the ending; accent recessive on the uncontracted form` : rule;
+    return `${head} → ${form} (${why})`;
+  }
+  // The Formation clauses for an infinitive table: one per row that has a form (a "—" row has none).
+  const infFormation = t => t.rows.map((r, i) => {
+    const form = !t.dash?.[i] && t.cells[i]?.[0]?.[0];
+    if (!form) return null;
+    const vc = t.voice || "active";
+    return infFormationLine(t.lemma, r.toLowerCase(), vc, nfc(form));
+  }).filter(Boolean);
   const formationText = t => {
     if (t.formation) return t.formation;
+    if (t.section === "inf" && t.lemma) { const ls = infFormation(t); return ls.length ? ls.join(" · ") : null; }
     const f = FORMATION[`${t.tense}|${t.mood}|${t.voice || "active"}`];
     return f ? f(stemInfo(t)) : null;
   };
   const formationBlock = t => {
+    if (t.section === "inf" && t.lemma && !t.formation) {
+      const ls = infFormation(t);
+      return ls.length ? h("div", { class: "formation", lang: "grc" }, h("b", {}, "Formation: "),
+        ls.flatMap((l, i) => [i ? h("br") : null, l])) : null;
+    }
     const txt = formationText(t);
     return txt ? h("div", { class: "formation", lang: "grc" }, h("b", {}, "Formation: "), txt) : null;
   };
@@ -1501,7 +1554,7 @@ function gradeEnglish(given, parses) {
     const as = (tense, mood, voice) => (t.enAs?.[`${tense}|${mood}|${voice}`] || `${tense}|${mood}|${voice}`).split("|");
     if (t.section === "inf") {
       const v = EN_VERB.get(nfc(t.lemma || ""));
-      const words = v && t.rows.map(r => { const [tn, , vc] = as(r.toLowerCase(), "infinitive", t.voice || "active"); return EN_INF[`${tn}|${vc}`]?.(v); });
+      const words = v && t.rows.filter((_, i) => !t.dash?.[i]).map(r => { const [tn, , vc] = as(r.toLowerCase(), "infinitive", t.voice || "active"); return EN_INF[`${tn}|${vc}`]?.(v); });
       return words && words.every(Boolean) ? { lines: [["", words.join(" · ")]], note: null } : null;
     }
     if (t.tense) {
@@ -1971,21 +2024,28 @@ function gradeEnglish(given, parses) {
     return t;
   }
 
+  // Every row of the παιδεύω table, in order; a tense the verb lacks is a "—" row carrying the builder's reason.
   function infCopy(m, v, bookInf) {
-    const rows = [], cells = [], srcs = [];
-    for (const row of m.rows) {
+    const rows = [], cells = [], srcs = [], dash = [], builtSecs = [];
+    for (const [i, row] of m.rows.entries()) {
       const tense = row.toLowerCase(), key = keyOf(m, tense);
       const book = bookInf.find(it => it.lemma === v.lemma && it.tense === tense && (it.voice || "active") === (m.voice || "active"));
       const p = v.paradigms.find(p => `${p.tense}|${p.mood}|${p.voice || "active"}` === key);
-      if (book) { rows.push(row); cells.push([book.forms]); srcs.push(`${row}: H&Q's ${v.lemma} ${book.section}, ${pagesRef(book.pages || String(book.page))}`); }
-      else if (p) { rows.push(row); cells.push([p.forms[0].map(nfc)]); }
+      rows.push(row);
+      if (book) { cells.push([book.forms]); dash.push(null); srcs.push(`${row}: H&Q's ${v.lemma} ${book.section}, ${pagesRef(book.pages || String(book.page))}`); }
+      else if (p) { cells.push([p.forms[0].map(nfc)]); dash.push(null); builtSecs.push([row, m.rowSecs?.[i] || m.sec]); }
+      else { cells.push([null]); dash.push(v.skips?.[key] || "not built"); }
     }
-    if (!rows.length) return null;
-    const built = rows.length - srcs.length;
+    if (dash.every(Boolean)) return null;
+    const built = builtSecs.length;
+    const secs = [...new Set(builtSecs.map(([, s]) => s))];
+    const rules = secs.length > 1 ? `H&Q's rules (${secs.map(s => `${builtSecs.filter(b => b[1] === s).map(b => b[0].toLowerCase()).join(", ")} ${s}`).join("; ")})`
+      : `H&Q's ${secs[0]} rules`;
     const t = { id: `${m.id}|v:${v.lemma}`, section: "inf", tenseUnit: m.tenseUnit, voice: m.voice, corner: m.corner, cols: m.cols,
       label: `${cap(m.voice)} infinitives of ${v.lemma}`, rows, cells, sec: m.sec, lemma: v.lemma, vocabUnit: v.unit, built: built > 0, enAs: v.enAs || null,
-      source: [built ? `⚙ Built by rule from ${v.lemma}'s principal parts (Unit ${v.unit} vocabulary) + H&Q's ${m.sec} rules; not printed in H&Q`
-        + senseNote(v, keyOf(m, m.rows[0].toLowerCase())) : null, ...srcs].filter(Boolean).join(". ") };
+      dash: dash.some(Boolean) ? dash : null,
+      source: [built ? `⚙ Built by rule from ${v.lemma}'s principal parts (Unit ${v.unit} vocabulary) + ${rules}; not printed in H&Q`
+        + senseNote(v, keyOf(m, builtSecs[0][0].toLowerCase())) : null, ...srcs].filter(Boolean).join(". ") };
     t.sounds = soundsLike(t);
     return t;
   }
@@ -2002,7 +2062,7 @@ function gradeEnglish(given, parses) {
         let t = null, reason = null;
         if (m.section === "inf") {
           t = infCopy(m, v, bookInf);
-          const lacking = m.rows.filter(r => !t || !t.rows.includes(r));
+          const lacking = m.rows.filter((r, i) => !t || t.dash?.[i]);
           if (lacking.length) reason = lacking.map(r => `${r.toLowerCase()}: ${v.skips?.[keyOf(m, r.toLowerCase())] || "not built"}`).join("; ");
         } else {
           const book = tabs.find(b => b.lemma === v.lemma && b.tense === m.tense && b.mood === m.mood && (b.voice || "active") === (m.voice || "active"));
@@ -2013,7 +2073,8 @@ function gradeEnglish(given, parses) {
         }
         m.verbCopies.push({ lemma: v.lemma, unit: v.unit, table: t, reason });
         if (t) { t.group = m.id; m.members.push(t); if (t.built) copies.push(t); }
-        if (reason || !t) m.missing.push({ lemma: v.lemma, reason: reason || "not built" });
+        // An infinitive copy shows a lacking tense as a "—" row with its reason, so only a verb with no copy is listed.
+        if (m.section === "inf" ? !t : reason || !t) m.missing.push({ lemma: v.lemma, reason: reason || "not built" });
       }
     }
     return copies;
@@ -2021,20 +2082,31 @@ function gradeEnglish(given, parses) {
 
   function refTables(unit, only = false) {
     const tabs = collectTables({ unit, mode: "through" }, REF_SETTINGS);
-    const infs = drillPoolCache.book.filter(it => it.src === "book" && it.mood === "infinitive" && it.tenseUnit <= unit);
-    // One table per unit, voice and verb (the Unit 5 consonant stems print their own perfect passive infinitives).
-    const byUnit = new Map();
+    // παιδεύω's infinitives only: the Unit 5 consonant stems' printed perfect passives (γεγράφθαι …, p. 124) are
+    // rows of those verbs' copies (infCopy), not tables of their own.
+    const infs = drillPoolCache.book.filter(it => it.src === "book" && it.mood === "infinitive" && it.tenseUnit <= unit && nfc(it.lemma) === MODEL);
+    // "Through Unit N": ONE table per voice holding every infinitive taught through N (active: present and aorist
+    // from Unit 2, perfect from Unit 3), placed in the earliest unit's Infinitives section. "Unit N only" keeps one
+    // table per unit, so each unit shows what it adds.
+    const INF_ORDER = ["present", "future", "aorist", "perfect"];
+    const byKey = new Map();
     for (const it of infs) {
-      const k = `${it.tenseUnit}|${it.voice || "active"}|${it.lemma}`;
-      if (!byUnit.has(k)) byUnit.set(k, []);
-      byUnit.get(k).push(it);
+      const k = only ? `${it.tenseUnit}|${it.voice || "active"}` : it.voice || "active";
+      if (!byKey.has(k)) byKey.set(k, []);
+      byKey.get(k).push(it);
     }
-    for (const [k, its] of byUnit) {
-      const [u, voice, lemma] = k.split("|");
-      const src = [...new Set(its.map(it => `${it.section}, ${pagesRef(it.pages || String(it.page))}`))].join("; ");
-      tabs.push({ id: `i:${k}`, section: "inf", tenseUnit: Number(u), voice, label: `${cap(voice)} infinitives` + (lemma === "παιδεύω" ? "" : ` of ${lemma}`), corner: "Tense",
+    for (const its0 of byKey.values()) {
+      const its = its0.slice().sort((a, b) => INF_ORDER.indexOf(a.tense) - INF_ORDER.indexOf(b.tense) || a.tenseUnit - b.tenseUnit);
+      const u = Math.min(...its.map(it => it.tenseUnit)), voice = its[0].voice || "active", lemma = its[0].lemma;
+      // Per-row attribution: rows from the same § and page share a citation.
+      const cite = it => `${it.section}, ${pagesRef(it.pages || String(it.page))}`;
+      const cites = [...new Set(its.map(cite))];
+      const src = cites.length === 1 ? cites[0]
+        : cites.map(c => `${its.filter(it => cite(it) === c).map(it => it.tense).join(", ")} ${c}`).join("; ");
+      const secs = [...new Set(its.map(it => it.section))];
+      tabs.push({ id: `i:${u}|${voice}|${lemma}`, section: "inf", tenseUnit: u, voice, label: `${cap(voice)} infinitives`, corner: "Tense",
         rows: its.map(it => cap(it.tense)), cols: ["Form"], cells: its.map(it => [it.forms]),
-        source: `H&Q's ${lemma} ${src}`, sec: its[0].section, lemma });
+        source: `H&Q's ${lemma} ${cites.length === 1 ? "" : ": "}${src}`.replace(" : ", ": "), sec: secs.join(" and "), rowSecs: its.map(it => it.section), lemma });
       tabs[tabs.length - 1].sounds = soundsLike(tabs[tabs.length - 1]);
     }
     const copies = addVerbCopies(tabs, unit, only);
@@ -2047,7 +2119,8 @@ function gradeEnglish(given, parses) {
   }
 
   function refTableEl(t) {
-    const cell = (r, c) => !t.cells[r][c] ? h("td", { class: "appx muted" }, "Appendix")
+    const cell = (r, c) => t.dash?.[r] ? h("td", { class: "muted" }, "— ", h("small", {}, `(${t.dash[r]})`))
+      : !t.cells[r][c] ? h("td", { class: "appx muted" }, "Appendix")
       : t.full
       ? h("td", { lang: "grc" }, h("span", { class: "ref-end" }, t.cells[r][c].map(e => "-" + e).join(" / ")),
           h("span", { class: "ref-full" }, t.full[r][c].join(" / ")))
@@ -2198,7 +2271,7 @@ function gradeEnglish(given, parses) {
   window.trainerTables = scope => collectTables(scope, REF_SETTINGS);
   window.trainerRefTables = (unit, only) => refTables(unit, only);
   window.trainerRefVerbUnits = REF_VERB_UNITS;
-  window.trainerFormation = t => ({ text: formationText(t), stem: stemInfo(t) });  // for coverage.mjs (check 9)
+  window.trainerFormation = t => ({ text: formationText(t), stem: stemInfo(t), lines: t.section === "inf" && t.lemma ? infFormation(t) : null });  // for coverage.mjs (check 9)
 })();
 
 /* Noun drill: an endless quiz on the noun declensions built by rule from H&Q's

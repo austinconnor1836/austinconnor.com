@@ -520,40 +520,40 @@ or if the line contains Greek.
 | Nouns: 1st declension | 14 | 14 |
 | Nouns: 2nd declension | 8 | 8 |
 | Verb ending tables | 1227 | 1227 |
-| Infinitives (Reference page) | 209 | 209 |
+| Infinitives (Reference page) | 145 | 145 |
 | Adjectives | 14 | 14 |
 | Nouns: 3rd declension | 13 | 13 |
 | Pronouns | 14 | 14 |
-| **All** | **1500** | **1500** |
+| **All** | **1436** | **1436** |
 
 ## Vocabulary verbs on the Reference page
 
-Each of the 23 παιδεύω tables on the Reference page is followed by a copy for every verb in the vocabulary
+Each of the 22 παιδεύω tables on the Reference page is followed by a copy for every verb in the vocabulary
 (H&Q's own table where it prints one, otherwise ⚙ built by rule by `build_vocab_drill.py`). A verb that lacks a paradigm
 (a dash in H&Q's principal parts, a deponent, a rule not built yet) is listed under the tables with the reason. Verbs in Units ≤ 5
 fail the build if a copy is missing without a reason.
 
 | Vocabulary unit | Verbs | Copies | Not shown (with reason) |
 |---|---|---|---|
-| 2 | 3 | 69 | 0 |
-| 3 | 4 | 92 | 0 |
-| 4 | 4 | 78 | 14 |
-| 5 | 4 | 92 | 0 |
-| 6 | 4 | 81 | 11 |
-| 7 | 3 | 69 | 0 |
-| 8 | 2 | 25 | 23 |
-| 9 | 4 | 92 | 0 |
-| 10 | 6 | 125 | 14 |
-| 11 | 6 | 89 | 51 |
-| 12 | 7 | 58 | 105 |
-| 13 | 7 | 53 | 112 |
-| 14 | 7 | 77 | 87 |
-| 15 | 6 | 57 | 88 |
-| 16 | 6 | 75 | 67 |
-| 17 | 7 | 69 | 95 |
-| 18 | 9 | 87 | 123 |
-| 19 | 9 | 69 | 140 |
-| 20 | 7 | 53 | 111 |
+| 2 | 3 | 66 | 0 |
+| 3 | 4 | 88 | 0 |
+| 4 | 4 | 75 | 14 |
+| 5 | 4 | 88 | 0 |
+| 6 | 4 | 77 | 11 |
+| 7 | 3 | 66 | 0 |
+| 8 | 2 | 24 | 22 |
+| 9 | 4 | 88 | 0 |
+| 10 | 6 | 119 | 14 |
+| 11 | 6 | 85 | 49 |
+| 12 | 7 | 57 | 101 |
+| 13 | 7 | 51 | 109 |
+| 14 | 7 | 73 | 86 |
+| 15 | 6 | 54 | 85 |
+| 16 | 6 | 70 | 66 |
+| 17 | 7 | 67 | 92 |
+| 18 | 9 | 84 | 118 |
+| 19 | 9 | 67 | 133 |
+| 20 | 7 | 51 | 106 |
 
 ## Principal parts page
 
@@ -593,17 +593,21 @@ The check fails if a vocabulary word can't be found, or typing its first word wi
 
 ## Formation lines name their principal part
 
-Every served verb table (1227 of them, 1207 distinct lines) has a “Formation:” line, and every stem in it names
+Every served verb table (1601 of them, 1581 distinct lines) has a “Formation:” line, and every stem in it names
 the principal part it comes from, in that table's own verb: “Unaugmented aorist passive stem (PP VI ἐπαιδεύθην − augment − ην → παιδευθ-)”.
 The check fails if a stem has no PP, the PP is the wrong one for the tense and voice, the cited form isn't the verb's own part
-(or is a dash in H&Q), or the stem shown isn't the part minus its ending.
+(or is a dash in H&Q), or the stem shown isn't the part minus its ending. Infinitive tables get one clause per row
+(“Perfect: PP IV πεπαίδευκα − α → πεπαιδευκ- + -έναι (accent on the penult)”), each held to its own tense's part.
+
+Infinitives (check 10): “through Unit N” shows ONE infinitive table per verb and voice, with every infinitive tense
+taught through N as a row (a “—” row with the reason when the verb lacks the part); duplicates fail.
 
 | Principal part | Citations |
 |---|---|
-| PP I | 515 |
+| PP I | 649 |
 | PP II | 66 |
-| PP III | 180 |
-| PP IV | 126 |
-| PP V | 113 |
-| PP VI | 227 |
+| PP III | 238 |
+| PP IV | 192 |
+| PP V | 172 |
+| PP VI | 284 |
 

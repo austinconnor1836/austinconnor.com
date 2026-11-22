@@ -44,7 +44,14 @@
 //      present/imperfect I, future II, aorist III, perfect/pluperfect active IV, M/P V, aorist/future passive VI);
 //      cites a form that isn't that verb's own part as H&Q prints it (πέμπω's copy must cite ἐπέμφθην, not
 //      ἐπαιδεύθην) or a part H&Q prints as a dash; or shows a stem that isn't the part minus its ending (minus the
-//      augment, for the unaugmented stems).
+//      augment, for the unaugmented stems). Infinitive tables (παιδεύω's and every per-verb copy) need one Formation
+//      clause per row that has a form, in row order, as "Perfect: PP IV πεπαίδευκα − α → πεπαιδευκ- + -έναι (…)",
+//      held to the same rules for that row's tense and voice.
+//  10. on the Reference page "through Unit N" (every N, 1–20), a verb's infinitive table for a voice leaves out an
+//      infinitive tense taught through N (H&Q's printed παιδεύω infinitives with unit ≤ N): every tense must be a row,
+//      with its form or a "—" carrying the builder's reason. A verb may have only ONE infinitive table per voice
+//      (through N), and only one per voice and unit in "Unit N only" — no stray duplicates. A form H&Q prints for a
+//      vocabulary verb (γεγράφθαι, p. 124) must be that row of the verb's table, citing its page.
 // Units above supportedThrough are reported (and listed on the unit screens), not failed.
 import fs from "node:fs";
 import { loadTrainer, TRAINER } from "./load-trainer.mjs";
@@ -208,6 +215,48 @@ function glossaryAudit(trainer) {
     uncertain: g.filter(e => e.uncertain).length };
 }
 
+// Check 10: one infinitive table per verb and voice, holding every infinitive tense taught so far.
+function infinitiveAudit(trainer) {
+  const bad = [];
+  const book = trainer.pool.book.filter(it => it.src === "book" && it.mood === "infinitive");
+  const PAI = nfc("παιδεύω");
+  for (let n = 1; n <= 20; n++) for (const only of [false, true]) {
+    const mode = only ? `“Unit ${n} verbs only”` : `“through Unit ${n}”`;
+    const infs = trainer.refTables(n, only).filter(t => t.section === "inf");
+    const seen = new Map();
+    for (const t of infs) {
+      const k = `${nfc(t.lemma)}|${t.voice || "active"}` + (only ? `|${t.tenseUnit}` : "");
+      if (seen.has(k)) bad.push(`Reference ${mode}: ${t.lemma} has two ${t.voice || "active"} infinitive tables${only ? ` in Unit ${t.tenseUnit}` : ""} (“${seen.get(k)}” and “${t.label}”)`);
+      seen.set(k, t.label);
+      const dup = t.rows.find((r, i) => t.rows.indexOf(r) !== i);
+      if (dup) bad.push(`Reference ${mode}: “${t.label}” has the ${dup} row twice`);
+    }
+    if (only) continue;
+    for (const voice of ["active", "passive"]) {
+      const taught = [...new Set(book.filter(it => nfc(it.lemma) === PAI && (it.voice || "active") === voice && it.tenseUnit <= n).map(it => it.tense))];
+      if (!taught.length) continue;
+      const model = infs.filter(t => nfc(t.lemma) === PAI && (t.voice || "active") === voice);
+      if (model.length !== 1) { bad.push(`Reference ${mode}: παιδεύω has ${model.length} ${voice} infinitive tables, want 1`); continue; }
+      for (const t of [model[0], ...(model[0].members || [])]) {
+        const rows = t.rows.map(r => r.toLowerCase());
+        for (const tn of taught) if (!rows.includes(tn)) bad.push(`Reference ${mode}: “${t.label}” leaves out the ${tn} ${voice} infinitive (taught by Unit ${n})`);
+        t.rows.forEach((r, i) => { const has = t.cells[i]?.[0]?.length && t.cells[i][0][0];
+          if (!has && !t.dash?.[i]) bad.push(`Reference ${mode}: “${t.label}” row ${r} has neither a form nor a reason`); });
+      }
+    }
+  }
+  // H&Q's own forms for vocabulary verbs (the §43.14 perfect passives) sit in the verb's table and cite their page.
+  const all = trainer.refTables(Infinity).filter(t => t.section === "inf");
+  for (const it of book.filter(it => nfc(it.lemma) !== nfc("παιδεύω"))) {
+    const voice = it.voice || "active", t = all.find(t => nfc(t.lemma) === nfc(it.lemma) && (t.voice || "active") === voice);
+    const i = t ? t.rows.findIndex(r => r.toLowerCase() === it.tense) : -1;
+    if (i < 0) { bad.push(`Reference: H&Q's printed ${it.tense} ${voice} infinitive of ${it.lemma} is in no table`); continue; }
+    if (nfc(t.cells[i][0][0]) !== nfc(it.forms[0])) bad.push(`Reference “${t.label}”: ${it.tense} shows ${t.cells[i][0][0]}, not H&Q's ${it.forms[0]}`);
+    if (!new RegExp(`${it.tense[0].toUpperCase() + it.tense.slice(1)}: H&Q's .*p\\. ${it.page}\\b`).test(t.source)) bad.push(`Reference “${t.label}”: the ${it.tense} row doesn't cite H&Q p. ${it.page}`);
+  }
+  return { bad };
+}
+
 // Check 9: every Formation line names its stem's principal part, the right one, and the verb's own.
 const ROMAN = ["I", "II", "III", "IV", "V", "VI"];
 const expectedPP = (tense, voice) => {   // H&Q §19, written out independently of the trainer's ppNumOf
@@ -224,6 +273,7 @@ function formationAudit(trainer) {
   let lines = 0;
   const texts = new Set();
   for (const t of trainer.refTables(Infinity)) {
+    if (t.section === "inf") { infFormationAudit(t); continue; }
     if (!t.tense) continue;
     const voice = t.voice || "active", where = `Unit ${t.tenseUnit} “${t.label}” (${t.id})`;
     const { text } = trainer.formation(t);
@@ -261,6 +311,35 @@ function formationAudit(trainer) {
         }
       }
     }
+  }
+  // Infinitive tables: one clause per row with a form, "Row: PP N PART − [augment − ]END → STEM- + -ENDING …".
+  function infFormationAudit(t) {
+    const voice = t.voice || "active", where = `Unit ${t.tenseUnit} “${t.label}” (${t.id})`;
+    const { lines: ls } = trainer.formation(t);
+    const want = t.rows.filter((_, i) => !t.dash?.[i]);
+    if (!ls || ls.length !== want.length) { bad.push(`${where}: ${ls ? ls.length : 0} Formation clauses for ${want.length} rows`); return; }
+    const parts = printed.get(nfc(t.lemma)) || builtPP.get(nfc(t.lemma));
+    ls.forEach((line, i) => {
+      lines++; texts.add(line);
+      const tense = want[i].toLowerCase(), n = expectedPP(tense, voice);
+      const m = line.match(/^(\w+): PP (VI|V|IV|III|II|I) (.*)$/);
+      if (!m || m[1] !== want[i]) { bad.push(`${where}: clause ${i + 1} isn't “${want[i]}: PP …”: “${line}”`); return; }
+      perPP[m[2]] = (perPP[m[2]] || 0) + 1;
+      if (m[2] !== ROMAN[n - 1]) bad.push(`${where}: the ${tense} cites PP ${m[2]}, but the ${tense} ${voice} infinitive is built on PP ${ROMAN[n - 1]}`);
+      const part = parts?.[n - 1];
+      if (!parts) { bad.push(`${where}: no principal parts on file for ${t.lemma}`); return; }
+      if (isDashPart(part)) { bad.push(`${where}: the ${tense} is built on PP ${ROMAN[n - 1]}, which H&Q prints as a dash for ${t.lemma}`); return; }
+      const alts = String(part).split(/\s+or\s+/).map(x => x.replace(/\([^)]*\)/g, "").trim()).filter(Boolean).map(nfc);
+      const body = nfc(m[3]);
+      if (!alts.some(a => body.startsWith(a))) bad.push(`${where}: the ${tense} cites “PP ${m[2]} ${body}”, not ${t.lemma}'s own PP ${ROMAN[n - 1]} (${part})`);
+      const seg = body.match(/^(.+?) − (augment − )?(\S+) → (\S+)- \+ -/);
+      if (!seg) return;   // no clean stem (a fallback clause names the part and the form only)
+      const f = bare(seg[1]).replace(/^-/, ""), end = bare(seg[3]), st = bare(seg[4]);
+      const base = f.endsWith(end) ? f.slice(0, f.length - end.length) : null;
+      const strip = x => x.replace(/^[αεηιουω\u0345]+/, "");
+      if (base == null || (seg[2] ? !strip(base).endsWith(strip(st)) : base !== st))
+        bad.push(`${where}: “${line}” — ${st}- isn't ${seg[1]} minus ${seg[2] ? "the augment and " : ""}-${end}`);
+    });
   }
   return { bad, lines, texts: texts.size, perPP };
 }
@@ -339,7 +418,10 @@ function doc(rows, onlyTables, onlyDrill, sounds, verbs, parts, glossary, format
     `Every served verb table (${formation.lines} of them, ${formation.texts} distinct lines) has a “Formation:” line, and every stem in it names`,
     "the principal part it comes from, in that table's own verb: “Unaugmented aorist passive stem (PP VI ἐπαιδεύθην − augment − ην → παιδευθ-)”.",
     "The check fails if a stem has no PP, the PP is the wrong one for the tense and voice, the cited form isn't the verb's own part",
-    "(or is a dash in H&Q), or the stem shown isn't the part minus its ending.", "",
+    "(or is a dash in H&Q), or the stem shown isn't the part minus its ending. Infinitive tables get one clause per row",
+    "(“Perfect: PP IV πεπαίδευκα − α → πεπαιδευκ- + -έναι (accent on the penult)”), each held to its own tense's part.", "",
+    "Infinitives (check 10): “through Unit N” shows ONE infinitive table per verb and voice, with every infinitive tense",
+    "taught through N as a row (a “—” row with the reason when the verb lacks the part); duplicates fail.", "",
     "| Principal part | Citations |", "|---|---|");
   for (const r of ROMAN) if (formation.perPP[r]) L.push(`| PP ${r} | ${formation.perPP[r]} |`);
   L.push("");
@@ -356,6 +438,7 @@ const verbs = verbAudit(trainer);
 const parts = partsAudit(trainer);
 const glossary = glossaryAudit(trainer);
 const formation = formationAudit(trainer);
+const infinitives = infinitiveAudit(trainer);
 const docText = doc(rows, onlyTables, onlyDrill, sounds, verbs, parts, glossary, formation);
 
 if (WRITE) {
@@ -391,6 +474,7 @@ for (const b of verbs.bad) failures.push(b);
 for (const b of parts.bad) failures.push(b);
 for (const b of glossary.bad) failures.push(b);
 for (const b of formation.bad) failures.push(b);
+for (const b of infinitives.bad) failures.push(b);
 const live = loadTrainerCoverage(trainer.html);
 if (!WRITE && JSON.stringify(live) !== JSON.stringify(block))
   failures.push("index.html's TRAINER_COVERAGE is out of date: run `node scripts/greek-trainer/coverage.mjs --write`");
