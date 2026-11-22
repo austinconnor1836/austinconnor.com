@@ -52,6 +52,10 @@
 //      with its form or a "—" carrying the builder's reason. A verb may have only ONE infinitive table per voice
 //      (through N), and only one per voice and unit in "Unit N only" — no stray duplicates. A form H&Q prints for a
 //      vocabulary verb (γεγράφθαι, p. 124) must be that row of the verb's table, citing its page.
+//  11. on the Reference page (every unit 1–20, both "through Unit N" and "Unit N only"), a rendered verb table
+//      (παιδεύω's and every per-verb copy, infinitives included) has no per-verb anchor (ref-<paradigm>--<verb>), two
+//      anchors collide, or a Jump-menu verb link (#/reference/N?p=…&v=…) points at an element that isn't rendered.
+//      Every paradigm with a verb list must list παιδεύω first, and a greyed (no-table) verb must carry a reason.
 // Units above supportedThrough are reported (and listed on the unit screens), not failed.
 import fs from "node:fs";
 import { loadTrainer, TRAINER } from "./load-trainer.mjs";
@@ -143,6 +147,37 @@ function verbAudit(trainer) {
   }
   if (!groups.length) bad.push("the Reference page shows no vocabulary-verb copies at all");
   return { bad, perUnit, groups: groups.length };
+}
+
+// Reference page per-verb anchors and the Jump menu's verb links (check 11).
+function jumpAudit(trainer) {
+  const bad = [];
+  let tables = 0, links = 0;
+  for (let u = 1; u <= 20; u++) for (const only of [false, true]) {
+    const where = `Reference ${only ? `“Unit ${u} only”` : `“through Unit ${u}”`}`;
+    const j = trainer.refJump(u, only);
+    const ids = new Map();
+    const note = (id, what) => { if (ids.has(id)) bad.push(`${where}: anchor ${id} is used twice (${ids.get(id)}; ${what})`); else ids.set(id, what); };
+    for (const id of j.paraIds) note(id, "paradigm");
+    for (const t of j.tables) {
+      tables++;
+      if (!t.id) { bad.push(`${where}: “${t.label}” has no per-verb anchor`); continue; }
+      if (!/^ref-[a-z0-9-]+--[a-z0-9-]+$/.test(t.id)) bad.push(`${where}: “${t.label}” has a non-ASCII or malformed anchor ${t.id}`);
+      note(t.id, t.label);
+      for (const s of t.spans) note(s, `${t.label} (tense anchor)`);
+    }
+    const byP = new Map();
+    for (const l of j.links) {
+      links++;
+      if (!j.paraIds.includes(`ref-${l.p}`)) bad.push(`${where}: the menu's verb list for ${l.p} has no paradigm anchor ref-${l.p}`);
+      if (l.id && !ids.has(l.id)) bad.push(`${where}: the Jump menu links ${l.lemma} (${l.p}&v=${l.v}) to ${l.id}, which isn't rendered`);
+      if (l.id && l.id !== `ref-${l.p}--${l.v}`) bad.push(`${where}: ${l.lemma}'s link ${l.p}&v=${l.v} resolves to ${l.id}, not ref-${l.p}--${l.v}`);
+      if (!l.id && !l.reason) bad.push(`${where}: ${l.lemma} is greyed for ${l.p} with no reason`);
+      if (!byP.has(l.p)) byP.set(l.p, l);
+    }
+    for (const [p, first] of byP) if (first.lemma !== nfc("παιδεύω")) bad.push(`${where}: the verb list for ${p} starts with ${first.lemma}, not παιδεύω`);
+  }
+  return { bad, tables, links };
 }
 
 // Principal parts page (check 7): every vocabulary verb, six parts each (or a recorded no-parts reason).
@@ -439,6 +474,7 @@ const parts = partsAudit(trainer);
 const glossary = glossaryAudit(trainer);
 const formation = formationAudit(trainer);
 const infinitives = infinitiveAudit(trainer);
+const jumps = jumpAudit(trainer);
 const docText = doc(rows, onlyTables, onlyDrill, sounds, verbs, parts, glossary, formation);
 
 if (WRITE) {
@@ -475,6 +511,7 @@ for (const b of parts.bad) failures.push(b);
 for (const b of glossary.bad) failures.push(b);
 for (const b of formation.bad) failures.push(b);
 for (const b of infinitives.bad) failures.push(b);
+for (const b of jumps.bad) failures.push(b);
 const live = loadTrainerCoverage(trainer.html);
 if (!WRITE && JSON.stringify(live) !== JSON.stringify(block))
   failures.push("index.html's TRAINER_COVERAGE is out of date: run `node scripts/greek-trainer/coverage.mjs --write`");
@@ -493,4 +530,5 @@ if (failures.length) {
   console.error("greek-trainer coverage check FAILED:\n" + failures.map(f => "  - " + f).join("\n"));
   process.exit(1);
 }
+console.log(`greek-trainer: Reference per-verb anchors: ${jumps.tables} verb tables, ${jumps.links} Jump-menu verb links checked (Units 1–20, both scopes).`);
 console.log("greek-trainer coverage check passed.");
