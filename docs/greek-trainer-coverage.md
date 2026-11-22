@@ -584,3 +584,10 @@ The check fails if a vocabulary verb is missing, or a row doesn't have six part 
 | 19 | 10 | 9 | 1 |
 | 20 | 7 | 7 | 0 |
 
+## Glossary
+
+The Glossary page (`#/glossary`) searches H&Q's back-of-book Greek–English Vocabulary (pp. 775–792): 583 entries,
+1 flagged as low-confidence transcriptions. 533 of the 535 vocabulary words match a glossary headword
+(496 character for character); 2 are listed in `glossary-exceptions.json` with a reason.
+The check fails if a vocabulary word can't be found, or typing its first word without accents doesn't return it as an exact hit.
+
