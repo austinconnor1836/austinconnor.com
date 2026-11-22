@@ -15,7 +15,7 @@ tables** actually serve. Finite verb paradigms need both; infinitives need the d
 | 2 | 10 | 10 | 0 | 4 | 1325 | covered |
 | 3 | 12 | 12 | 0 | 6 | 1680 | covered |
 | 4 | 12 | 12 | 0 | 12 | 0 | covered |
-| 5 | 24 | 24 | 0 | 16 | 96 | covered |
+| 5 | 24 | 24 | 0 | 16 | 102 | covered |
 | 6 | 7 | 6 | 1 | 6 | 0 | partial |
 | 7 | 14 | 2 | 12 | 1 | 258 | partial |
 | 8 | 17 | 1 | 16 | 1 | 0 | partial |
