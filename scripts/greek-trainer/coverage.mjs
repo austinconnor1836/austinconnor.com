@@ -64,6 +64,9 @@
 //  13. the Vocabulary list (#/words) leaves out a vocabulary word: for every unit that has vocabulary (VOCAB_DATA),
 //      "Unit N only" must show exactly that unit's words and "Units 1–N" every word through N; and a verb's
 //      "Reference tables →" link must land on a rendered per-verb anchor (#/reference/N?p=…&v=…), in both scopes.
+//  14. on the Reference page (every unit 1–20, both scopes), the Verb · Tense · Mood · Voice jump form offers a
+//      combo that doesn't resolve to a rendered table id (ref-<paradigm>--<verb>), or leaves a verb table that it
+//      can't reach, or lists a verb with no table at all.
 // Units above supportedThrough are reported (and listed on the unit screens), not failed.
 import fs from "node:fs";
 import { loadTrainer, TRAINER } from "./load-trainer.mjs";
@@ -186,6 +189,30 @@ function jumpAudit(trainer) {
     for (const [p, first] of byP) if (first.lemma !== nfc("παιδεύω")) bad.push(`${where}: the verb list for ${p} starts with ${first.lemma}, not παιδεύω`);
   }
   return { bad, tables, links };
+}
+
+// The Reference page's four-dropdown jump form (check 14): every combo it can offer lands on a rendered table.
+function jumpFormAudit(trainer) {
+  const bad = [];
+  let combos = 0;
+  for (let u = 1; u <= 20; u++) for (const only of [false, true]) {
+    const where = `Reference ${only ? `“Unit ${u} only”` : `“through Unit ${u}”`}`;
+    const j = trainer.refJump(u, only), f = trainer.refJumpForm(u, only);
+    const rendered = new Set([...j.tables.map(t => t.id), ...j.tables.flatMap(t => t.spans)].filter(Boolean));
+    const reachable = new Set();
+    for (const c of f.combos) {
+      combos++;
+      const what = `${c.lemma} ${c.tense} ${c.mood} ${c.voice}`;
+      if (!c.id) { bad.push(`${where}: the jump form offers ${what}, which resolves to no table`); continue; }
+      if (c.id !== `ref-${c.p}--${c.v}`) bad.push(`${where}: the jump form's ${what} (?p=${c.p}&v=${c.v}) resolves to ${c.id}, not ref-${c.p}--${c.v}`);
+      if (!rendered.has(c.id)) bad.push(`${where}: the jump form's ${what} points at ${c.id}, which isn't rendered`);
+      reachable.add(c.id);
+    }
+    for (const l of j.links) if (l.id && /^[a-z]+-(?:ind|subj|opt|inf)-(?:act|pass)$/.test(l.p) && !reachable.has(l.id))
+      bad.push(`${where}: ${l.lemma}'s ${l.p} table (${l.id}) can't be reached from the jump form`);
+    for (const v of f.verbs) if (!f.combos.some(c => c.v === v)) bad.push(`${where}: the jump form lists ${v} with no table`);
+  }
+  return { bad, combos };
 }
 
 // Principal parts page (check 7): every vocabulary verb, six parts each (or a recorded no-parts reason).
@@ -560,6 +587,7 @@ const glossary = glossaryAudit(trainer);
 const formation = formationAudit(trainer);
 const infinitives = infinitiveAudit(trainer);
 const jumps = jumpAudit(trainer);
+const jumpForm = jumpFormAudit(trainer);
 const appendix = appendixAudit(trainer);
 const words = wordsAudit(trainer);
 const docText = doc(rows, onlyTables, onlyDrill, sounds, verbs, parts, glossary, formation);
@@ -599,6 +627,7 @@ for (const b of glossary.bad) failures.push(b);
 for (const b of formation.bad) failures.push(b);
 for (const b of infinitives.bad) failures.push(b);
 for (const b of jumps.bad) failures.push(b);
+for (const b of jumpForm.bad) failures.push(b);
 for (const b of appendix.bad) failures.push(b);
 for (const b of words.bad) failures.push(b);
 const live = loadTrainerCoverage(trainer.html);
@@ -622,4 +651,5 @@ if (failures.length) {
 console.log(`greek-trainer: Reference per-verb anchors: ${jumps.tables} verb tables, ${jumps.links} Jump-menu verb links checked (Units 1–20, both scopes).`);
 console.log(`greek-trainer: ${appendix.mp} perfect/pluperfect M/P tables checked, ${appendix.compounds} with H&Q's Appendix 3rd plural compound.`);
 console.log(`greek-trainer: Vocabulary list: ${words.total} words over ${Object.keys(words.perUnit).length} units, ${words.links} verb links to the Reference page checked.`);
+console.log(`greek-trainer: Reference jump form: ${jumpForm.combos} Verb · Tense · Mood · Voice combos resolve to rendered tables (Units 1–20, both scopes).`);
 console.log("greek-trainer coverage check passed.");

@@ -450,9 +450,22 @@ table.wl-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
 .ref-verb-chips .btn { min-height: 44px; flex: none; font-family: var(--greek); font-size: 17px; }
 .ref-verb-chips .btn[lang="en"] { font-family: var(--ui); font-size: 14px; }
 .ref-verb-chips .btn[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); }
-.ref-verb-pick { margin: 4px 0 6px; }
-.ref-verb-pick > summary { min-height: 44px; display: inline-flex; align-items: center; list-style: none; cursor: pointer; margin-bottom: 6px; }
-.ref-verb-pick > summary::-webkit-details-marker { display: none; }
+/* Jump form: Verb · Tense · Mood · Voice → Go (2 × 2 with a full-width Go on a phone, one row on a laptop). */
+.ref-jf { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; align-items: end; margin: 4px 0 8px; }
+.ref-jf-field { display: flex; flex-direction: column; gap: 2px; min-width: 0; font-size: 13px; font-weight: 600; }
+.ref-jf select.field { min-height: 44px; padding: 8px 10px; width: 100%; min-width: 0; }
+.ref-jf select[name="slug"] { font-family: var(--greek); font-size: 17px; }
+.ref-jf-go { grid-column: 1 / -1; min-height: 44px; width: 100%; }
+.ref-jf-note { grid-column: 1 / -1; margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+.ref-jf-note:empty { display: none; }
+@media (min-width: 720px) {
+  .ref-jf { grid-template-columns: minmax(0, 2fr) repeat(3, minmax(0, 1fr)) auto; }
+  .ref-jf-go { grid-column: auto; width: auto; min-width: 72px; }
+}
+/* Go briefly rings the table it landed on (a shadow, so nothing moves). */
+.ref-item.ref-flash { animation: ref-flash 1.8s ease-out; }
+@keyframes ref-flash { 0%, 45% { box-shadow: 0 0 0 3px var(--accent); background: var(--accent-soft); } 100% { box-shadow: 0 0 0 3px transparent; background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .ref-item.ref-flash { animation: none; box-shadow: 0 0 0 3px var(--accent); } }
 .btn.ref-off { opacity: .4; cursor: not-allowed; border-style: dashed; display: inline-flex; align-items: center; }
 .ref-off-note { font-size: 12px; margin: 6px 0 0; overflow-wrap: anywhere; }
 .ref-unit > h2 { margin-top: 32px; padding-bottom: 4px; border-bottom: 2px solid var(--ink); }
@@ -2315,6 +2328,51 @@ function gradeEnglish(given, parses) {
     }
     return { idOf, spans, verbs, paraIds };
   }
+  // The jump form (Verb · Tense · Mood · Voice → Go), built from the plan's verb links, so every combo it offers is a
+  // rendered table (coverage.mjs check 14 walks this same model). The infinitive counts as a mood. Options are
+  // hierarchical: the tenses the verb has; the moods it has in that tense; the voices it has in that tense and mood.
+  const UNAB = Object.fromEntries(Object.entries(AB).map(([k, v]) => [v, k]));
+  const JF_MOODS = [...MOODS, "infinitive"], JF_VOICES = ["active", "passive"], JF_KEYS = ["slug", "tense", "mood", "voice"];
+  const verbGloss = lemma => {
+    const g = DRILL_BUILT.verbs.find(v => nfc(v.lemma) === lemma)?.gloss
+      || VOCAB_DATA.entries.find(e => e.cat === "verb" && nfc(e.greek).split(/[,\s]/)[0] === lemma)?.gloss;
+    return g ? displayMeanings(g)[0] || "" : "";
+  };
+  function refJumpForm(plan) {
+    const verbs = new Map();   // slug -> { slug, lemma, gloss, combos: [{ tense, mood, voice, p, id }], off: Map p -> reason }
+    for (const [p, xs] of plan.verbs) {
+      const [t, m, v, ...rest] = p.split("-");
+      const tense = UNAB[t], mood = m === "inf" ? "infinitive" : UNAB[m], voice = UNAB[v];
+      if (rest.length || !TENSES.includes(tense) || !JF_MOODS.includes(mood) || !JF_VOICES.includes(voice)) continue;
+      for (const x of xs) {
+        if (!verbs.has(x.slug)) verbs.set(x.slug, { slug: x.slug, lemma: x.lemma, gloss: verbGloss(x.lemma), combos: [], off: new Map() });
+        const e = verbs.get(x.slug);
+        if (x.id) e.combos.push({ tense, mood, voice, p, id: x.id }); else e.off.set(p, x.reason);
+      }
+    }
+    const list = [...verbs.values()].filter(e => e.combos.length);   // παιδεύω first, then page order
+    const find = s => verbs.get(s.slug)?.combos.find(c => c.tense === s.tense && c.mood === s.mood && c.voice === s.voice) || null;
+    const cs = s => verbs.get(s.slug)?.combos || [];
+    // key -> [canonical values the verb has at all, the ones valid given the selections to its left]
+    const options = (s, key) => {
+      const all = key === "tense" ? TENSES : key === "mood" ? JF_MOODS : JF_VOICES;
+      const has = all.filter(x => cs(s).some(c => c[key] === x));
+      const ok = has.filter(x => cs(s).some(c => c[key] === x && (key === "tense" || c.tense === s.tense) && (key !== "voice" || c.mood === s.mood)));
+      return { all, has, ok };
+    };
+    // After a change to `from`, move each select to its right onto the nearest valid value (closest in canonical order).
+    const fix = (s, from) => {
+      if (!verbs.get(s.slug)?.combos.length) s.slug = list[0]?.slug;
+      for (const key of JF_KEYS.slice(JF_KEYS.indexOf(from) + 1)) {
+        const { all, ok } = options(s, key);
+        if (ok.includes(s[key]) || !ok.length) continue;
+        const i = all.indexOf(s[key]);
+        s[key] = ok.reduce((best, x) => Math.abs(all.indexOf(x) - i) < Math.abs(all.indexOf(best) - i) ? x : best, ok[0]);
+      }
+      return s;
+    };
+    return { list, verbs, find, options, fix };
+  }
 
   function refShow(unit, units, target, verb) {
     const only = tStore.get(refVerbStore, { only: false }).only === true;
@@ -2342,22 +2400,13 @@ function gradeEnglish(given, parses) {
     // Per verb: "▾" beside a paradigm opens its verbs (παιδεύω first); "By verb" picks a verb first, and then every
     // paradigm chip goes to that verb's table. A verb without a table for a paradigm is greyed, with H&Q's reason.
     const groups = tabs.filter(t => t.members);
-    const lemmaOf = new Map([...plan.verbs.values()].flat().map(x => [x.slug, x.lemma]));
-    const pickable = [...new Map([...plan.verbs.values()].flat().filter(x => x.id).map(x => [x.slug, x.lemma])).entries()];
-    let pick = null, openP = null, pickOpen = false;   // a ?v= link lands on the verb but leaves the menu paradigm-first
-    const verbOf = (p, v) => plan.verbs.get(p)?.find(x => x.slug === v);
+    let openP = null;
     const offChip = (label, reason, full) => h("span", { class: "btn small ref-off", "aria-disabled": "true", role: "link",
       title: `${full || label}: ${reason}`, "aria-label": `${full || label} (no table: ${reason})` }, label);
     const chip = (p, label, full) => {
-      if (pick && plan.verbs.has(p)) {
-        const x = verbOf(p, pick), lem = lemmaOf.get(pick);
-        if (!x?.id) return offChip(label, x?.reason || `no table for ${lem}`, full);
-        return h("a", { class: "btn small", href: `#/reference/${unit}?p=${p}&v=${pick}`, onclick: jumpP(p, pick),
-          "aria-label": `${full || label} of ${lem}`, title: `${full || label} of ${lem}` }, label);
-      }
       const a = h("a", { class: "btn small", href: `#/reference/${unit}?p=${p}`, onclick: jumpP(p),
         "aria-label": full || label, title: full || label }, label);
-      if (pick || !(plan.verbs.get(p)?.length > 1)) return a;
+      if (!(plan.verbs.get(p)?.length > 1)) return a;
       return h("span", { class: "ref-split" }, a, h("button", { class: "btn small ref-verbs-btn", "aria-expanded": String(openP === p),
         "aria-label": `Verbs: ${full || label}`, title: `Verbs: ${full || label}`,
         onclick: () => { openP = openP === p ? null : p; fillMenus(); } }, openP === p ? "▴" : "▾"));
@@ -2377,16 +2426,69 @@ function gradeEnglish(given, parses) {
           : offChip(x.lemma, x.reason, `${full(p)} of ${x.lemma}`))),
         reasonsNote(xs));
     };
-    const verbPicker = () => pickable.length > 1 ? h("details", { class: "ref-verb-pick", open: pickOpen || null, ontoggle: e => { pickOpen = e.currentTarget.open; } },
-      h("summary", { class: "btn small" }, pick ? `By verb: ${lemmaOf.get(pick)}` : "By verb…"),
-      h("div", { class: "ref-verb-chips", lang: "grc" },
-        h("button", { class: "btn small", "aria-pressed": String(!pick), lang: "en", onclick: () => { pick = null; fillMenus(); } }, "Any verb"),
-        pickable.map(([slug, lem]) => h("button", { class: "btn small", "aria-pressed": String(pick === slug),
-          onclick: () => { pick = slug; openP = null; fillMenus(); } }, lem))),
-      pick ? reasonsNote([...plan.verbs.values()].map(l => l.find(x => x.slug === pick) || null).filter(Boolean)
-        .filter((x, i, a) => a.findIndex(y => y.reason === x.reason) === i)) : null) : null;
+    // The jump form: four selects and Go. One state, shared by the inline copy and the sticky menu's copy;
+    // pre-filled from the URL (?p=…&v=…, a paradigm-only link starts on παιδεύω).
+    const jf = refJumpForm(plan);
+    const js = (() => {
+      const s = { slug: jf.list[0]?.slug, tense: "present", mood: "indicative", voice: "active" };
+      const m = /^([a-z]+)-([a-z]+)-([a-z]+)$/.exec(target || "");
+      if (!m || !UNAB[m[1]] || !(m[2] === "inf" || UNAB[m[2]]) || !UNAB[m[3]]) return jf.fix(s, "slug");
+      Object.assign(s, { tense: UNAB[m[1]], mood: m[2] === "inf" ? "infinitive" : UNAB[m[2]], voice: UNAB[m[3]] });
+      if (verb && jf.verbs.get(verb)?.combos.length) s.slug = verb;
+      return s;   // kept as linked even when that verb has no such table: Go is disabled and the note says why
+    })();
+    let jforms = [];
+    const jfNote = () => {
+      if (jf.find(js)) return "";
+      const e = jf.verbs.get(js.slug), p = `${AB[js.tense]}-${js.mood === "infinitive" ? "inf" : AB[js.mood]}-${AB[js.voice]}`;
+      const what = js.mood === "infinitive" ? `${js.tense} infinitive ${js.voice}` : `${js.tense} ${js.mood} ${js.voice}`;
+      return `No ${what} table for ${e?.lemma || "this verb"}${e?.off.get(p) ? ` (${e.off.get(p)})` : ""}${only ? ` in Unit ${unit} only` : ` through Unit ${unit}`}.`;
+    };
+    const syncForm = f => {
+      for (const key of ["tense", "mood", "voice"]) {
+        const { has, ok } = jf.options(js, key), sel = f.querySelector(`select[name="${key}"]`);
+        const vals = has.includes(js[key]) ? has : [...has, js[key]].sort((a, b) => jf.options(js, key).all.indexOf(a) - jf.options(js, key).all.indexOf(b));
+        sel.replaceChildren(vals.map(x => h("option", { value: x, disabled: !ok.includes(x), selected: x === js[key] },
+          ok.includes(x) ? cap(x) : `${cap(x)} (none)`)));
+        sel.value = js[key];
+      }
+      f.querySelector('select[name="slug"]').value = js.slug;
+      const c = jf.find(js);
+      f.querySelector(".ref-jf-go").disabled = !c;
+      f.querySelector(".ref-jf-note").textContent = jfNote();
+    };
+    // Flash the table Go landed on, reusing nothing of the tables' own look (a shadow ring that fades).
+    const flash = id => {
+      const box = document.getElementById(id)?.closest(".ref-item");
+      if (!box) return;
+      box.classList.remove("ref-flash"); void box.offsetWidth; box.classList.add("ref-flash");
+      setTimeout(() => box.classList.remove("ref-flash"), 1900);
+    };
+    // Go: a real history entry (#/reference/<unit>?p=…&v=…), so Back returns to the previous spot and the URL bookmarks.
+    const jfGo = () => {
+      const c = jf.find(js);
+      if (!c) return;
+      const url = `#/reference/${unit}?p=${c.p}&v=${js.slug}`;
+      try { if (location.hash !== url) history.pushState(null, "", url); } catch { /* sandboxed */ }
+      $(".ref-menu")?.removeAttribute("open");
+      goTo(c.id); flash(c.id);
+    };
+    const jumpForm = () => {
+      if (!jf.list.length) return null;
+      const sel = (key, label, opts) => h("label", { class: "ref-jf-field" }, label,
+        h("select", { class: "field", name: key, onchange: e => { js[key] = e.target.value; jf.fix(js, key); jforms.forEach(syncForm); } }, opts));
+      const f = h("form", { class: "ref-jf", "aria-label": "Jump to a verb's table",
+          onsubmit: e => { e.preventDefault(); jfGo(); },
+          onkeydown: e => { if (e.key === "Enter" && e.target.tagName === "SELECT") { e.preventDefault(); jfGo(); } } },
+        sel("slug", "Verb", jf.list.map(e => h("option", { value: e.slug, lang: "grc" }, e.gloss ? `${e.lemma} · ${e.gloss}` : e.lemma))),
+        sel("tense", "Tense"), sel("mood", "Mood"), sel("voice", "Voice"),
+        h("button", { class: "btn primary ref-jf-go", type: "submit" }, "Go"),
+        h("p", { class: "muted ref-jf-note", role: "status", "aria-live": "polite" }));
+      jforms.push(f); syncForm(f);
+      return f;
+    };
     const menuBody = () => [
-      verbPicker(),
+      jumpForm(),
       ...["active", "passive"].filter(v => groups.some(g => (g.voice || "active") === v)).map(v => [
         h("div", { class: "ref-menu-group" }, cap(v)),
         ...MOODS.map(m => {
@@ -2406,7 +2508,7 @@ function gradeEnglish(given, parses) {
             us.map(u => chip(`u${u}-${k}`, `Unit ${u}`, `${label}, Unit ${u}`))))] : []; })()];
     const inlineMenu = h("nav", { class: "ref-menu-inline", "aria-label": "Paradigms" });
     const popMenu = h("nav", { class: "ref-menu-pop", "aria-label": "Paradigms" });
-    const fillMenus = () => { const top = popMenu.scrollTop; inlineMenu.replaceChildren(...[menuBody()].flat(Infinity).filter(Boolean));
+    const fillMenus = () => { const top = popMenu.scrollTop; jforms = []; inlineMenu.replaceChildren(...[menuBody()].flat(Infinity).filter(Boolean));
       popMenu.replaceChildren(...[menuBody()].flat(Infinity).filter(Boolean)); popMenu.scrollTop = top; };
     fillMenus();
     const menu = h("details", { class: "ref-menu" }, h("summary", { class: "btn small ref-menu-btn" }, "Jump to…"), popMenu);
@@ -2455,7 +2557,7 @@ function gradeEnglish(given, parses) {
     // After layout, and once more after the browser's own scroll restoration on a reload.
     if (target) {
       const id = verb && document.getElementById(`ref-${target}--${verb}`) ? `ref-${target}--${verb}` : `ref-${target}`;
-      requestAnimationFrame(() => goTo(id)); setTimeout(() => goTo(id), 200);
+      requestAnimationFrame(() => goTo(id)); setTimeout(() => { goTo(id); if (verb) flash(id); }, 200);
     }
   }
 
@@ -2482,6 +2584,17 @@ function gradeEnglish(given, parses) {
     const ind = v ? v.paradigms.filter(x => x.mood === "indicative" && x.tenseUnit <= v.unit) : [];
     const p = ind.find(x => x.tense === "present") || ind[0];
     return p ? `#/reference/${v.unit}?p=${AB[p.tense]}-ind-${AB[p.voice || "active"]}&v=${verbSlug(lemma)}` : null;
+  };
+  // For coverage.mjs check 14: every combo the jump form can offer, walked through its own option model.
+  window.trainerRefJumpForm = (unit, only) => {
+    const jf = refJumpForm(refJumpPlan(refTables(unit, only))), out = [];
+    for (const e of jf.list) for (const tense of jf.options({ slug: e.slug }, "tense").ok)
+      for (const mood of jf.options({ slug: e.slug, tense }, "mood").ok)
+        for (const voice of jf.options({ slug: e.slug, tense, mood }, "voice").ok) {
+          const c = jf.find({ slug: e.slug, tense, mood, voice });
+          out.push({ v: e.slug, lemma: e.lemma, tense, mood, voice, p: c?.p || null, id: c?.id || null });
+        }
+    return { combos: out, verbs: jf.list.map(e => e.slug), tables: [...jf.verbs.values()].reduce((n, e) => n + e.combos.length, 0) };
   };
   window.trainerFormation = t => ({ text: formationText(t), stem: stemInfo(t), lines: t.section === "inf" && t.lemma ? infFormation(t) : null });  // for coverage.mjs (check 9)
 })();
