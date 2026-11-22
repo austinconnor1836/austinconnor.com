@@ -61,6 +61,9 @@
 //      3rd plural must be H&Q's Appendix compound (pp. 665–666): PP V − μαι + μένοι + εἰσί(ν) (perfect) / ἦσαν
 //      (pluperfect), citing "H&Q Appendix p. 665/666" in the source line, and the quiz must accept it with or
 //      without the movable ν and with the participle's gendered forms ("…μένοι, -αι, -α εἰσί(ν)").
+//  13. the Vocabulary list (#/words) leaves out a vocabulary word: for every unit that has vocabulary (VOCAB_DATA),
+//      "Unit N only" must show exactly that unit's words and "Units 1–N" every word through N; and a verb's
+//      "Reference tables →" link must land on a rendered per-verb anchor (#/reference/N?p=…&v=…), in both scopes.
 // Units above supportedThrough are reported (and listed on the unit screens), not failed.
 import fs from "node:fs";
 import { loadTrainer, TRAINER } from "./load-trainer.mjs";
@@ -212,6 +215,38 @@ function partsAudit(trainer) {
     }
   }
   return { bad, perUnit, total: verbs.length };
+}
+
+// Vocabulary list (check 13): every unit's words, in both scopes, and every verb link lands on a table.
+function wordsAudit(trainer) {
+  const bad = [], perUnit = {};
+  const all = trainer.vocab.entries;
+  const units = [...new Set(all.map(e => e.unit))].sort((a, b) => a - b);
+  const max = Math.max(...units);
+  const same = (got, want) => got.length === want.length && got.every((w, i) => w.id === want[i].id);
+  const jumpIds = new Map();
+  const idsAt = (u, only) => { const k = `${u}|${only}`;
+    if (!jumpIds.has(k)) jumpIds.set(k, new Set(trainer.refJump(u, only).tables.flatMap(t => [t.id, ...t.spans]).filter(Boolean)));
+    return jumpIds.get(k); };
+  let links = 0;
+  for (let u = 1; u <= max; u++) {
+    const only = trainer.words(u, "only"), through = trainer.words(u, "through");
+    const wantOnly = all.filter(e => e.unit === u), wantThrough = all.filter(e => e.unit <= u);
+    if (wantOnly.length && !only.length) bad.push(`Vocabulary list “Unit ${u} only” is empty, but Unit ${u} has ${wantOnly.length} words`);
+    if (!same(only, wantOnly)) bad.push(`Vocabulary list “Unit ${u} only” shows ${only.length} words, want the ${wantOnly.length} in VOCAB_DATA`);
+    if (!same(through, wantThrough)) bad.push(`Vocabulary list “Units 1–${u}” shows ${through.length} words, want ${wantThrough.length}`);
+    perUnit[u] = only.length;
+    for (const w of only) if (w.href) {
+      links++;
+      const m = w.href.match(/^#\/reference\/(\d+)\?p=([\w-]+)&v=([\w-]+)$/);
+      if (!m) { bad.push(`Vocabulary list: ${w.greek} links to a malformed Reference URL ${w.href}`); continue; }
+      const id = `ref-${m[2]}--${m[3]}`;
+      for (const o of [false, true]) if (!idsAt(Number(m[1]), o).has(id))
+        bad.push(`Vocabulary list: ${w.greek}'s link ${w.href} doesn't land on a table (no #${id} on Reference Unit ${m[1]}${o ? ", Unit-only verbs" : ""})`);
+    }
+  }
+  for (const u of units) if (!perUnit[u]) bad.push(`Vocabulary list: Unit ${u} has vocabulary but no page`);
+  return { bad, perUnit, links, total: all.length };
 }
 
 // Glossary (check 8): every vocabulary word is findable in the back-of-book glossary.
@@ -526,6 +561,7 @@ const formation = formationAudit(trainer);
 const infinitives = infinitiveAudit(trainer);
 const jumps = jumpAudit(trainer);
 const appendix = appendixAudit(trainer);
+const words = wordsAudit(trainer);
 const docText = doc(rows, onlyTables, onlyDrill, sounds, verbs, parts, glossary, formation);
 
 if (WRITE) {
@@ -564,6 +600,7 @@ for (const b of formation.bad) failures.push(b);
 for (const b of infinitives.bad) failures.push(b);
 for (const b of jumps.bad) failures.push(b);
 for (const b of appendix.bad) failures.push(b);
+for (const b of words.bad) failures.push(b);
 const live = loadTrainerCoverage(trainer.html);
 if (!WRITE && JSON.stringify(live) !== JSON.stringify(block))
   failures.push("index.html's TRAINER_COVERAGE is out of date: run `node scripts/greek-trainer/coverage.mjs --write`");
@@ -584,4 +621,5 @@ if (failures.length) {
 }
 console.log(`greek-trainer: Reference per-verb anchors: ${jumps.tables} verb tables, ${jumps.links} Jump-menu verb links checked (Units 1–20, both scopes).`);
 console.log(`greek-trainer: ${appendix.mp} perfect/pluperfect M/P tables checked, ${appendix.compounds} with H&Q's Appendix 3rd plural compound.`);
+console.log(`greek-trainer: Vocabulary list: ${words.total} words over ${Object.keys(words.perUnit).length} units, ${words.links} verb links to the Reference page checked.`);
 console.log("greek-trainer coverage check passed.");
