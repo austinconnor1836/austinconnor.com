@@ -591,3 +591,19 @@ The Glossary page (`#/glossary`) searches H&Q's back-of-book Greek–English Voc
 (496 character for character); 2 are listed in `glossary-exceptions.json` with a reason.
 The check fails if a vocabulary word can't be found, or typing its first word without accents doesn't return it as an exact hit.
 
+## Formation lines name their principal part
+
+Every served verb table (1227 of them, 1207 distinct lines) has a “Formation:” line, and every stem in it names
+the principal part it comes from, in that table's own verb: “Unaugmented aorist passive stem (PP VI ἐπαιδεύθην − augment − ην → παιδευθ-)”.
+The check fails if a stem has no PP, the PP is the wrong one for the tense and voice, the cited form isn't the verb's own part
+(or is a dash in H&Q), or the stem shown isn't the part minus its ending.
+
+| Principal part | Citations |
+|---|---|
+| PP I | 515 |
+| PP II | 66 |
+| PP III | 180 |
+| PP IV | 126 |
+| PP V | 113 |
+| PP VI | 227 |
+

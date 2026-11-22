@@ -38,6 +38,13 @@
 //      back as an exact hit when its first word is typed without accents, unless glossary-exceptions.json lists it
 //      with a reason. Every glossary entry needs Greek, an English definition, a book page 775–792 and a unit 1–20
 //      (or the Section H&Q prints instead). A stale exception fails too.
+//   9. a verb table's "Formation:" line (the Reference tables and their per-verb copies, the quiz tables, the
+//      flashcards: every served table with a tense) names a stem without naming its principal part, as
+//      "stem (PP VI ἐπαιδεύθην − augment − ην → παιδευθ-)"; cites the wrong part for its tense/voice (H&Q §19:
+//      present/imperfect I, future II, aorist III, perfect/pluperfect active IV, M/P V, aorist/future passive VI);
+//      cites a form that isn't that verb's own part as H&Q prints it (πέμπω's copy must cite ἐπέμφθην, not
+//      ἐπαιδεύθην) or a part H&Q prints as a dash; or shows a stem that isn't the part minus its ending (minus the
+//      augment, for the unaugmented stems).
 // Units above supportedThrough are reported (and listed on the unit screens), not failed.
 import fs from "node:fs";
 import { loadTrainer, TRAINER } from "./load-trainer.mjs";
@@ -201,6 +208,63 @@ function glossaryAudit(trainer) {
     uncertain: g.filter(e => e.uncertain).length };
 }
 
+// Check 9: every Formation line names its stem's principal part, the right one, and the verb's own.
+const ROMAN = ["I", "II", "III", "IV", "V", "VI"];
+const expectedPP = (tense, voice) => {   // H&Q §19, written out independently of the trainer's ppNumOf
+  const mp = voice === "passive" || voice === "middle";
+  return { present: 1, imperfect: 1, future: voice === "passive" ? 6 : 2, aorist: voice === "passive" ? 6 : 3,
+    perfect: mp ? 5 : 4, pluperfect: mp ? 5 : 4 }[tense];
+};
+const bare = s => nfc(s).normalize("NFD").replace(/\p{M}/gu, "").normalize("NFC");
+const isDashPart = s => !s || /^[—–-]+$/.test(String(s).trim());
+function formationAudit(trainer) {
+  const printed = new Map(trainer.partsRows(20, "through").filter(r => r.parts).map(r => [nfc(r.lemma), r.parts.map(nfc)]));
+  const builtPP = new Map(trainer.built.verbs.map(v => [nfc(v.lemma), v.pp.map(nfc)]));
+  const bad = [], perPP = {};
+  let lines = 0;
+  const texts = new Set();
+  for (const t of trainer.refTables(Infinity)) {
+    if (!t.tense) continue;
+    const voice = t.voice || "active", where = `Unit ${t.tenseUnit} “${t.label}” (${t.id})`;
+    const { text } = trainer.formation(t);
+    if (!text) { bad.push(`${where} has no Formation line`); continue; }
+    lines++; texts.add(text);
+    // "the stem consonant" is a consonant, not a stem.
+    if (/\bstem\b(?! \(PP (?:I|II|III|IV|V|VI)\b)(?! consonant)/.test(text)) bad.push(`${where}: a stem with no principal part named: “${text}”`);
+    const cites = [...text.matchAll(/\(PP (VI|V|IV|III|II|I)\b([^)]*)\)/g)];
+    if (!cites.length) { bad.push(`${where}: the Formation line names no principal part: “${text}”`); continue; }
+    const n = expectedPP(t.tense, voice), parts = printed.get(nfc(t.lemma)) || builtPP.get(nfc(t.lemma));
+    const part = parts?.[n - 1];
+    if (!parts) bad.push(`${where}: no principal parts on file for ${t.lemma}`);
+    else if (isDashPart(part)) bad.push(`${where}: built on PP ${ROMAN[n - 1]}, which H&Q prints as a dash for ${t.lemma}`);
+    const alts = String(part || "").split(/\s+or\s+/).map(x => x.replace(/\([^)]*\)/g, "").trim()).filter(Boolean).map(nfc);
+    for (const [, num, rest] of cites) {
+      perPP[num] = (perPP[num] || 0) + 1;
+      if (num !== ROMAN[n - 1]) bad.push(`${where}: cites PP ${num}, but the ${t.tense} ${voice} is built on PP ${ROMAN[n - 1]}`);
+      const body = nfc(rest.trim());
+      if (!body || !alts.some(a => body.startsWith(a))) bad.push(`${where}: cites “PP ${num} ${body}”, not ${t.lemma}'s own PP ${ROMAN[n - 1]} (${part})`);
+      // "A − [augment − ]END → S-" (also "A or B − END → S- / T-", and ", or "-joined segments): check each stem.
+      for (const seg of body.split(/;/)[0].split(/, or /)) {
+        const m = seg.match(/^(.+?) − (augment − )?(\S+) → (.+)$/);
+        if (!m) continue;
+        const forms = m[1].split(/ or /).map(bare), end = bare(m[3]), stems = m[4].split(" / ").map(x => bare(x.replace(/-$/, "")));
+        for (const st of stems) {
+          const fit = forms.some(f => {
+            const b = f.replace(/^-/, "");
+            if (!b.endsWith(end)) return false;
+            const base = b.slice(0, b.length - end.length);
+            if (!m[2]) return base === st;
+            const strip = x => x.replace(/^[αεηιουω\u0345]+/, "");
+            return strip(base).endsWith(strip(st));   // ἐπαιδευθ → παιδευθ, ἠχθ → ἀχθ
+          });
+          if (!fit) bad.push(`${where}: “${seg}” — ${st}- isn't ${m[1]} minus ${m[2] ? "the augment and " : ""}-${end}`);
+        }
+      }
+    }
+  }
+  return { bad, lines, texts: texts.size, perPP };
+}
+
 const gapLabel = e => e.label + (e.kind === "verb" && e.lemma && e.lemma !== "παιδεύω" ? ` of ${e.lemma}` : "")
   + (e.kind !== "verb" && e.lemma && !e.label.includes(e.lemma) ? `: ${e.lemma}` : "");
 
@@ -214,7 +278,7 @@ function coverageBlock(rows) {
   return { supportedThrough, units, gaps };
 }
 
-function doc(rows, onlyTables, onlyDrill, sounds, verbs, parts, glossary) {
+function doc(rows, onlyTables, onlyDrill, sounds, verbs, parts, glossary, formation) {
   const L = [];
   L.push("# Greek trainer coverage (H&Q Units 1–20)", "");
   L.push("Generated by `node scripts/greek-trainer/coverage.mjs --write`. Do not edit by hand.", "");
@@ -271,6 +335,14 @@ function doc(rows, onlyTables, onlyDrill, sounds, verbs, parts, glossary) {
     `${glossary.uncertain} flagged as low-confidence transcriptions. ${glossary.found} of the ${glossary.vocab} vocabulary words match a glossary headword`,
     `(${glossary.exact} character for character); ${glossary.exceptions} are listed in \`glossary-exceptions.json\` with a reason.`,
     "The check fails if a vocabulary word can't be found, or typing its first word without accents doesn't return it as an exact hit.", "");
+  L.push("## Formation lines name their principal part", "",
+    `Every served verb table (${formation.lines} of them, ${formation.texts} distinct lines) has a “Formation:” line, and every stem in it names`,
+    "the principal part it comes from, in that table's own verb: “Unaugmented aorist passive stem (PP VI ἐπαιδεύθην − augment − ην → παιδευθ-)”.",
+    "The check fails if a stem has no PP, the PP is the wrong one for the tense and voice, the cited form isn't the verb's own part",
+    "(or is a dash in H&Q), or the stem shown isn't the part minus its ending.", "",
+    "| Principal part | Citations |", "|---|---|");
+  for (const r of ROMAN) if (formation.perPP[r]) L.push(`| PP ${r} | ${formation.perPP[r]} |`);
+  L.push("");
   return L.join("\n");
 }
 
@@ -283,7 +355,8 @@ const sounds = soundsAudit(trainer);
 const verbs = verbAudit(trainer);
 const parts = partsAudit(trainer);
 const glossary = glossaryAudit(trainer);
-const docText = doc(rows, onlyTables, onlyDrill, sounds, verbs, parts, glossary);
+const formation = formationAudit(trainer);
+const docText = doc(rows, onlyTables, onlyDrill, sounds, verbs, parts, glossary, formation);
 
 if (WRITE) {
   if (!COVERAGE_LINE.test(trainer.html)) throw new Error("index.html has no TRAINER_COVERAGE line");
@@ -317,6 +390,7 @@ for (const b of sounds.bad) failures.push(b.msg);
 for (const b of verbs.bad) failures.push(b);
 for (const b of parts.bad) failures.push(b);
 for (const b of glossary.bad) failures.push(b);
+for (const b of formation.bad) failures.push(b);
 const live = loadTrainerCoverage(trainer.html);
 if (!WRITE && JSON.stringify(live) !== JSON.stringify(block))
   failures.push("index.html's TRAINER_COVERAGE is out of date: run `node scripts/greek-trainer/coverage.mjs --write`");
