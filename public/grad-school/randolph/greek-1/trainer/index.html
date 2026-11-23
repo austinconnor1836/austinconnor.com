@@ -1431,6 +1431,49 @@ function gradeEnglish(given, parses) {
     return `; 3rd plural: ${how}H&Q Appendix p. ${pg} (PDF p. ${pg + 27})`;
   };
   const isCompound = forms => !!forms && forms.some(f => /μένοι /.test(f));
+  // Ending tables only (the quiz and flashcards, never the Reference page): a consonant-stem perfect/pluperfect
+  // M/P table (§43.14) is asked as its stem consonant fused with the ending (-γμαι, -ξαι, -κται …), since that
+  // cluster is what has to be memorized. H&Q p. 122 sorts the stems into three families by how PP V ends.
+  const CONS_FAMILIES = [
+    { pp: "μμαι", name: "labial stems (π, β, φ)" },
+    { pp: "γμαι", name: "palatal (velar) stems (κ, γ, χ)" },
+    { pp: "σμαι", name: "dental stems (τ, δ, θ) or σ" },
+  ];
+  // The stem H&Q's model verb goes back to before the cluster changes (§43.14: γέγραμμαι was *γέγραφμαι).
+  const CONS_MODEL_STEM = { "γράφω": "γεγραφ-", "φυλάττω": "πεφυλακ-", "κελεύω": "κεκελευσ-" };
+  // { family, cells, prefix } with each form minus the reduplicated stem (and the pluperfect augment) before the
+  // stem consonant, or null when a form doesn't split cleanly (it is then left as whole forms).
+  function consonantEndings(lemma, full) {
+    const pp = ppAlts((ppsOf(lemma) || [])[4] || "")[0];
+    const fam = pp && CONS_FAMILIES.find(f => deAccent(pp).endsWith(f.pp));
+    if (!fam) return null;
+    const prefix = dropLetters(stripAcc(pp), letters(fam.pp).length), dp = deAccent(prefix);
+    let ok = true;
+    const cells = full.map(row => row.map(fs => fs && [...new Set(fs.map(f => {
+      const d = deAccent(f), skip = d.startsWith(dp) ? letters(dp).length : d.startsWith("ε" + dp) ? letters(dp).length + 1 : -1;
+      if (skip < 0 || letters(f).length <= skip) { ok = false; return f; }
+      return letters(nfc(f)).slice(skip).join("").normalize("NFC");
+    }))]));
+    return ok ? { family: fam, cells, prefix } : null;
+  }
+  const consEndingAccepts = (given, ends) => endingAccepts(ungender(dehyphen(given)), ends);
+  function consonantEndingTable(base, first, book) {
+    const ce = consonantEndings(first.lemma, base.full);
+    if (!ce) return null;
+    const plpf = first.tense === "pluperfect", pp = (ppsOf(first.lemma) || [])[4];
+    const model = CONS_MODEL_STEM[nfc(first.lemma)];
+    const eg = `e.g. ${first.lemma}${model ? ` → ${model}` : ""}`;
+    const one = base.full[0][0]?.[0];
+    return { ...base, cells: ce.cells, accepts: consEndingAccepts,
+      label: `${cap(first.tense)} ${first.mood} ${base.voice}: ${ce.family.name}, ${eg}`,
+      instr: `Type the ${base.full.flat().filter(Boolean).length} endings, stem consonant included`,
+      formation: `${eg} (PP V ${pp}): ${plpf ? `augment ἐ- + reduplicated stem ${ce.prefix}- = ἐ${ce.prefix}-` : `reduplicated stem ${ce.prefix}-`}, then the stem consonant `
+        + `fused with the bare ${plpf ? "secondary" : "primary"} ending (${plpf ? "-μην, -σο, -το, -μεθα, -σθε" : "-μαι, -σαι, -ται, -μεθα, -σθε"}): `
+        + `the consonant meets the μ, σ, τ or σθ and the cluster changes (§43.14), as in ${one}. `
+        + `The 3rd plural is a compound: the perfect middle/passive participle (-μένοι, -μέναι, -μένα, agreeing with the subject) + ${plpf ? "ἦσαν" : "εἰσί(ν)"}.`,
+      source: `Endings from H&Q's ${first.lemma} ${book}` + (first.appendix ? appxCite(first.tense, first.appendix.model ? `on the model of ${first.appendix.model}, ` : "") : ""),
+      gradingNote: "Endings are graded without accents; iota subscripts count. The 3rd plural may be typed with the participle's gendered forms (-μένοι, -αι, -α)." };
+  }
   // Infinitive tables (one row per tense, each on its own principal part): one Formation clause per row, in the
   // same "PP VI ἐπαιδεύθην − augment − ην → παιδευθ-" format, from the table's own verb's part (§26, §30, §43).
   // INF_RULE: the infinitive ending added to the stem, and H&Q's accent rule for it.
@@ -1698,9 +1741,11 @@ function gradeEnglish(given, parses) {
   // voices, excluding infinitives, plus the article and the declensions. Each cell holds the acceptable
   // spellings (the consonant-stem 3rd plurals are H&Q's Appendix compounds, asked as whole forms).
   // παιδεύω tables ask for the bare endings. Any paradigm whose endings don't derive cleanly from the stem
-  // (the consonant-stem perfect passives of §43.14) is asked as whole forms instead, never dropped.
+  // (the consonant-stem perfect passives of §43.14) is shown as whole forms on the Reference page; the quiz
+  // (quiz = true) asks it as stem consonant + ending (consonantEndingTable), so every quiz verb table is endings only.
   const voiceOn = (settings, v) => !settings.voices || settings.voices.includes(v || "active");
-  function collectTables(scope, settings) {
+  // quiz: the Ending tables quiz/flashcards, where every verb table is endings only (consonant stems too).
+  function collectTables(scope, settings, quiz = false) {
     const tables = [];
     const art = articleTable();
     if (settings.cats.includes("article") && inScope(art, scope)) tables.push(art);
@@ -1738,6 +1783,8 @@ function gradeEnglish(given, parses) {
         instr: asked === 6 ? "Type the six personal endings" : `Type the ${asked} personal endings`,
         source: `Endings from H&Q's ${first.lemma} ${book}`,
         gradingNote: "Endings are graded without accents; iota subscripts (ῃ, ῳ) count." });
+      else if (quiz && !isPaid && isCompound(full[2][1]) && consonantEndingTable({ ...common, full }, first, book))
+        tables.push(consonantEndingTable({ ...common, full }, first, book));
       else tables.push({ ...common, cells: full.map(r => r.map(f => f && f.map(nfc))), accepts: declFormAccepts,
         instr: `Type all ${asked} forms`, formation: isPaid ? null : consonantFormation(first.lemma),
         source: `H&Q's ${first.lemma} ${book}` + (first.appendix ? appxCite(first.tense, first.appendix.model ? `on the model of ${first.appendix.model}, ` : "") : ""),
@@ -1788,7 +1835,7 @@ function gradeEnglish(given, parses) {
   function tableStart() {
     const last = tStore.get("tables-scope", { unit: 3, mode: "through" });
     const settings = settingsFor();
-    const count = (u, m) => collectTables({ unit: u, mode: m }, settings).length;
+    const count = (u, m) => collectTables({ unit: u, mode: m }, settings, true).length;
     const bookCount = (u, m) => collectTables({ unit: u, mode: m }, REF_SETTINGS).length;
     const units = Array.from({ length: 20 }, (_, i) => i + 1);   // article + 1st/2nd declension are Unit 1; verbs start at Unit 2
     const pick = { unit: last.unit, mode: last.mode };
@@ -1819,7 +1866,7 @@ function gradeEnglish(given, parses) {
       h("h1", { style: { marginTop: "8px" } }, "Ending tables"),
       h("p", { class: "muted", style: { marginTop: 0, fontSize: "14px" } },
         "Fill in the bare personal endings for one tense and mood — all six, in a person × number grid — or a full paradigm: the article (§16) and H&Q's model nouns, adjectives and pronouns. ",
-        "Verb endings are taken from H&Q's παιδεύω paradigms, active (Units 2–3) and passive (Unit 5); the consonant-stem perfect passives (§43.14) are asked as whole forms. Accents aren't graded in endings (an ending has none on its own); iota subscripts are. In whole forms (the article, nouns, adjectives, pronouns, consonant stems) accents are graded."),
+        "Verb endings are taken from H&Q's παιδεύω paradigms, active (Units 2–3) and passive (Unit 5); the consonant-stem perfect and pluperfect passives (§43.14) are asked as the stem consonant fused with the ending (-γμαι, -ξαι, -κται …), one table per stem type. Accents aren't graded in endings (an ending has none on its own); iota subscripts are. In whole forms (the article, nouns, adjectives, pronouns) accents are graded."),
       h("div", { class: "row ref-actions" }, h("a", { class: "btn", href: "#/reference" }, "Read all the tables (reference) →")),
       body);
   }
@@ -1878,7 +1925,7 @@ function gradeEnglish(given, parses) {
       settingsBox.open = open;
     }
 
-    const pool = () => collectTables(scope, settings);
+    const pool = () => collectTables(scope, settings, true);
     const tableVoices = DRILL_VOICES.filter(([v]) => drillPoolCache.book.some(it => (it.voice || "active") === v && it.tenseUnit <= scope.unit));
 
     function weight(t) {
@@ -2564,7 +2611,7 @@ function gradeEnglish(given, parses) {
   window.referenceView = referenceView;
   window.tableDrillView = tableDrillView;
   // For scripts/greek-trainer/coverage.mjs: the tables the trainer serves, with every section and voice on.
-  window.trainerTables = scope => collectTables(scope, REF_SETTINGS);
+  window.trainerTables = scope => collectTables(scope, REF_SETTINGS, true);
   window.trainerRefTables = (unit, only) => refTables(unit, only);
   window.trainerRefVerbUnits = REF_VERB_UNITS;
   // For coverage.mjs check 11: the Reference page's per-verb anchors and the Jump menu's verb links, as rendered.
