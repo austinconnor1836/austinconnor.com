@@ -2106,11 +2106,22 @@ function gradeEnglish(given, parses) {
       return h("div", { class: "row", style: { marginTop: "14px" } }, b);
     };
 
-    // ---- Flashcard review: every card opens on its full side (title, Sounds like, the filled table,
-    // formation, source). Tapping the card (or Space/Enter) flips it to the title alone, and back.
+    // ---- Flashcard review: a card shows its full side (title, Sounds like, the filled table,
+    // formation, source) or the title alone. Tapping the card (or Space/Enter) flips it, and the side
+    // last chosen is sticky: Next, Back, shuffle and new decks open on it (default full). It is saved
+    // in localStorage, falling back to an in-memory value when storage is unavailable.
     // deck grows by one shuffled pass at a time, so Back can step into earlier passes.
-    let deck = [], pass = 1, pos = 0, titleOnly = false;
-    function flipCard() { titleOnly = !titleOnly; drawCard(true); }
+    const FC_SIDE_KEY = "tables-card-side";
+    function loadSide() {
+      try { const v = localStorage.getItem(FC_SIDE_KEY); if (v === "title" || v === "full") return v === "title"; } catch { /* storage blocked */ }
+      return window.__gkFcTitleOnly === true;
+    }
+    function saveSide(v) {
+      window.__gkFcTitleOnly = v;
+      try { localStorage.setItem(FC_SIDE_KEY, v ? "title" : "full"); } catch { /* private mode */ }
+    }
+    let deck = [], pass = 1, pos = 0, titleOnly = loadSide();
+    function flipCard() { titleOnly = !titleOnly; saveSide(titleOnly); drawCard(true); }
     function drawCard(animate) {
       const t = deck[pos];
       const card = h("div", { class: "qcard fc-card" + (animate ? " fc-flip" : ""), role: "button", tabindex: "0",
@@ -2141,16 +2152,16 @@ function gradeEnglish(given, parses) {
       if (!items.length) { stage.replaceChildren(h("div", { class: "empty" }, "No ending tables in this unit for the chosen sections. Pick another unit or turn on a section in Settings.")); return; }
       pos += 1;
       if (pos >= deck.length) { deck = deck.concat(shuffle(items)); pass = items.length; }
-      titleOnly = false; drawCard();
+      drawCard();
     }
     function cardPrev() {
       if (pos === 0) return;
-      pos -= 1; titleOnly = false; drawCard();
+      pos -= 1; drawCard();
     }
     function cardStart() {
       const items = pool();
       if (!items.length) { stage.replaceChildren(h("div", { class: "empty" }, "No ending tables in this unit for the chosen sections. Pick another unit or turn on a section in Settings.")); return; }
-      deck = shuffle(items); pass = items.length; pos = 0; titleOnly = false; drawCard();
+      deck = shuffle(items); pass = items.length; pos = 0; titleOnly = loadSide(); drawCard();
     }
 
     function render() {
