@@ -71,7 +71,9 @@
 //      ending: a cell that starts with a reduplication (πεπ-, κεκ-, ἐγεγ- …) or with its verb's stem, runs longer than
 //      any personal ending, or isn't the tail of the table's own full form. The only multi-word cells allowed are the
 //      consonant-stem 3rd plural compounds, stem consonant + "μένοι εἰσί(ν)" / "μένοι ἦσαν" (-γμένοι, -μμένοι, -σμένοι).
-//      The Reference page keeps its whole forms; this guards the quiz only.
+//      The Reference page keeps its whole forms; this guards the quiz only. Every Ending-tables verb table (each
+//      tense · mood · voice) must also be a PAIR: its endings grid plus an example verb's full forms (t.full), H&Q's
+//      printed forms (never ⚙ built), filled in the same cells, each form graded right by the verb half's grader.
 // Units above supportedThrough are reported (and listed on the unit screens), not failed.
 import fs from "node:fs";
 import { loadTrainer, TRAINER } from "./load-trainer.mjs";
@@ -361,10 +363,12 @@ function appendixAudit(trainer) {
       const m = e3[0].replace(/ .*$/, ""), fem = m.replace(/οι$/, "αι"), neu = m.replace(/οι$/, "α"), a = aux.replace("(ν)", "");
       for (const g of [`${m} ${a}`, `-${m} ${a}`, `${m} ${a}${t.tense === "perfect" ? "ν" : ""}`, `${m}, -αι, -α ${aux}`, `${m}, ${fem}, ${neu} ${a}`])
         if (!t.accepts(g, e3)) bad.push(`${where}: the quiz doesn't accept the ending “${g}”`);
-    } else if (t.accepts) {
+    }
+    const fullAccepts = e3 && e3.join() !== f3.join() ? t.acceptsFull : t.accepts;
+    if (fullAccepts) {
       const m = f3[0].replace(/ .*$/, ""), fem = m.replace(/οι$/, "αι"), neu = m.replace(/οι$/, "α"), a = aux.replace("(ν)", "");
       for (const g of [`${m} ${a}`, `${m} ${a}${t.tense === "perfect" ? "ν" : ""}`, `${m}, -αι, -α ${aux}`, `${m}, ${fem}, ${neu} ${a}`])
-        if (!t.accepts(g, f3)) bad.push(`${where}: the quiz doesn't accept “${g}”`);
+        if (!fullAccepts(g, f3)) bad.push(`${where}: the quiz doesn't accept “${g}”`);
     }
   };
   for (const t of trainer.refTables(Infinity)) check(t, `Reference “${t.label}” (${t.id})`);
@@ -379,11 +383,21 @@ function endingsOnlyAudit(trainer) {
   const stemOf = lemma => deAcc(lemma).replace(/(ομαι|ω)$/, "").slice(0, 4);
   const COMPOUND = /^\S{0,2}μενοι (εισι\(ν\)|εισιν?|ησαν)$/;
   const bad = [], seen = new Set();
-  let cells = 0;
+  let cells = 0, pairs = 0;
   for (let u = 1; u <= 20; u++) for (const mode of ["only", "through"]) for (const t of trainer.tables({ unit: u, mode })) {
     if (!t.tense || seen.has(t.id)) continue;
     seen.add(t.id);
     const where = `Ending tables “${t.label}” (${t.id})`, stem = stemOf(t.lemma || "");
+    if (!t.pair || !t.full || typeof t.acceptsFull !== "function") bad.push(`${where}: not a pair (Endings + an example verb's forms)`);
+    else {
+      pairs++;
+      if (t.built) bad.push(`${where}: the example verb's forms are ⚙ built, not printed in H&Q`);
+      t.cells.forEach((row, r) => row.forEach((cell, c) => {
+        const f = t.full[r]?.[c];
+        if (!!cell !== !!f) bad.push(`${where}: ${t.rows[r]} ${t.cols[c]} has ${cell ? "an ending but no verb form" : "a verb form but no ending"}`);
+        for (const x of f || []) if (!t.acceptsFull(x, f)) bad.push(`${where}: the verb half doesn't accept its own form “${x}”`);
+      }));
+    }
     t.cells.forEach((row, r) => row.forEach((cell, c) => (cell || []).forEach(v => {
       cells++;
       const d = deAcc(v), slot = `${t.rows[r]} ${t.cols[c]} “${v}”`;
@@ -397,7 +411,7 @@ function endingsOnlyAudit(trainer) {
       if (full && !full.some(f => deAcc(f).endsWith(d))) bad.push(`${where}: ${slot} isn't the end of its full form (${full.join(" / ")})`);
     })));
   }
-  return { bad, tables: seen.size, cells };
+  return { bad, tables: seen.size, cells, pairs };
 }
 
 // Check 10: one infinitive table per verb and voice, holding every infinitive tense taught so far.
@@ -692,5 +706,5 @@ console.log(`greek-trainer: Reference per-verb anchors: ${jumps.tables} verb tab
 console.log(`greek-trainer: ${appendix.mp} perfect/pluperfect M/P tables checked, ${appendix.compounds} with H&Q's Appendix 3rd plural compound.`);
 console.log(`greek-trainer: Vocabulary list: ${words.total} words over ${Object.keys(words.perUnit).length} units, ${words.links} verb links to the Reference page checked.`);
 console.log(`greek-trainer: Reference jump form: ${jumpForm.combos} Verb · Tense · Mood · Voice combos resolve to rendered tables (Units 1–20, both scopes).`);
-console.log(`greek-trainer: Ending tables: ${endingsOnly.tables} verb tables, ${endingsOnly.cells} cells checked as endings only (Units 1–20, both scopes).`);
+console.log(`greek-trainer: Ending tables: ${endingsOnly.tables} verb tables, ${endingsOnly.cells} cells checked as endings only, ${endingsOnly.pairs} paired with an example verb (Units 1–20, both scopes).`);
 console.log("greek-trainer coverage check passed.");
