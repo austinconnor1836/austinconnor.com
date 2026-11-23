@@ -74,6 +74,9 @@
 //      The Reference page keeps its whole forms; this guards the quiz only. Every Ending-tables verb table (each
 //      tense · mood · voice) must also be a PAIR: its endings grid plus an example verb's full forms (t.full), H&Q's
 //      printed forms (never ⚙ built), filled in the same cells, each form graded right by the verb half's grader.
+//  16. two Ending tables (quiz and flashcards, every unit 1–20, both scopes) share a title or a key (id): a repeat
+//      looks like a duplicate card and merges the two tables' history. The four perfect/pluperfect M/P stem types
+//      (§43c: vowel, labial, palatal, dental) must each name their type in the title and sit together in book order.
 // Units above supportedThrough are reported (and listed on the unit screens), not failed.
 import fs from "node:fs";
 import { loadTrainer, TRAINER } from "./load-trainer.mjs";
@@ -414,6 +417,32 @@ function endingsOnlyAudit(trainer) {
   return { bad, tables: seen.size, cells, pairs };
 }
 
+// Check 16: no two Ending tables in a scope share a title or a key; stem-type variants are titled and grouped.
+function uniqueTablesAudit(trainer) {
+  const bad = [], STEMS = ["vowel stems", "labial stems", "palatal stems", "dental stems"];
+  let scopes = 0;
+  for (let u = 1; u <= 20; u++) for (const mode of ["only", "through"]) {
+    const tabs = trainer.tables({ unit: u, mode }), labels = new Map(), ids = new Map(), where = `Unit ${u} ${mode} Ending tables`;
+    scopes++;
+    for (const t of tabs) {
+      const l = nfc(t.label);
+      if (labels.has(l)) bad.push(`${where}: two tables are titled “${t.label}” (${labels.get(l)} and ${t.id})`);
+      if (ids.has(t.id)) bad.push(`${where}: “${ids.get(t.id)}” and “${t.label}” share the key ${t.id}`);
+      labels.set(l, t.id); ids.set(t.id, t.label);
+    }
+    const kinds = new Map();
+    tabs.forEach((t, i) => { if (t.stemType) { const k = `${t.tense}|${t.mood}|${t.voice}`; (kinds.get(k) || kinds.set(k, []).get(k)).push([t, i]); } });
+    for (const [k, xs] of kinds) {
+      const rank = xs.map(([t]) => STEMS.findIndex(s => t.stemType.startsWith(s)));
+      if (rank.some(r => r < 0)) bad.push(`${where}: ${k} has an unknown stem type (${xs.map(([t]) => t.stemType).join(", ")})`);
+      if (rank.some((r, i) => i && r <= rank[i - 1])) bad.push(`${where}: ${k} stem types aren't in book order (vowel, labial, palatal, dental)`);
+      if (xs.some(([, i], j) => j && i !== xs[j - 1][1] + 1)) bad.push(`${where}: ${k} stem types aren't together`);
+      for (const [t] of xs) if (!nfc(t.label).includes(nfc(t.stemType))) bad.push(`${where}: “${t.label}” doesn't name its stem type (${t.stemType})`);
+    }
+  }
+  return { bad, scopes };
+}
+
 // Check 10: one infinitive table per verb and voice, holding every infinitive tense taught so far.
 function infinitiveAudit(trainer) {
   const bad = [];
@@ -643,6 +672,7 @@ const jumpForm = jumpFormAudit(trainer);
 const appendix = appendixAudit(trainer);
 const words = wordsAudit(trainer);
 const endingsOnly = endingsOnlyAudit(trainer);
+const unique = uniqueTablesAudit(trainer);
 const docText = doc(rows, onlyTables, onlyDrill, sounds, verbs, parts, glossary, formation);
 
 if (WRITE) {
@@ -684,6 +714,7 @@ for (const b of jumpForm.bad) failures.push(b);
 for (const b of appendix.bad) failures.push(b);
 for (const b of words.bad) failures.push(b);
 for (const b of endingsOnly.bad) failures.push(b);
+for (const b of unique.bad) failures.push(b);
 const live = loadTrainerCoverage(trainer.html);
 if (!WRITE && JSON.stringify(live) !== JSON.stringify(block))
   failures.push("index.html's TRAINER_COVERAGE is out of date: run `node scripts/greek-trainer/coverage.mjs --write`");
@@ -707,4 +738,5 @@ console.log(`greek-trainer: ${appendix.mp} perfect/pluperfect M/P tables checked
 console.log(`greek-trainer: Vocabulary list: ${words.total} words over ${Object.keys(words.perUnit).length} units, ${words.links} verb links to the Reference page checked.`);
 console.log(`greek-trainer: Reference jump form: ${jumpForm.combos} Verb · Tense · Mood · Voice combos resolve to rendered tables (Units 1–20, both scopes).`);
 console.log(`greek-trainer: Ending tables: ${endingsOnly.tables} verb tables, ${endingsOnly.cells} cells checked as endings only, ${endingsOnly.pairs} paired with an example verb (Units 1–20, both scopes).`);
+console.log(`greek-trainer: Ending tables: no repeated title or key in ${unique.scopes} unit scopes; stem types titled and in book order.`);
 console.log("greek-trainer coverage check passed.");

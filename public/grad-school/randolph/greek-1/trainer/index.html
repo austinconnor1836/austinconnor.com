@@ -1290,7 +1290,13 @@ function gradeEnglish(given, parses) {
     const parts = ungender(given).split(/[\/,]/).map(x => x.trim()).filter(Boolean);
     return parts.length > 0 && parts.every(p => formAccepts(p, forms));
   };
-  const declTables = () => DECL.map(t => ({ ...t,
+  // H&Q's parsing script numbers a model word by its place in its own table, so two tables in one section can carry
+  // the same id (§15 λόγος and ἔργον, both d:§15:0). The first keeps its id (saved history still matches); a later
+  // one adds its label, so every Ending table has its own key (coverage.mjs fails a repeat).
+  const declIds = new Set();
+  const declId = t => { const id = declIds.has(t.id) ? `${t.id}:${nfc(t.label)}` : t.id; declIds.add(id); return id; };
+  const DECL_IDS = DECL.map(declId);
+  const declTables = () => DECL.map((t, i) => ({ ...t, id: DECL_IDS[i],
     instr: t.kind === "ending" ? `Type all ${t.rows.length * t.cols.length} endings` : `Type all ${t.rows.length * t.cols.length} forms`,
     corner: "", accepts: t.kind === "ending" ? declEndingAccepts : declFormAccepts,
     gradingNote: t.kind === "ending" ? "Endings are graded without accents or macrons; iota subscripts count. The hyphen is optional."
@@ -1440,9 +1446,12 @@ function gradeEnglish(given, parses) {
   // cluster is what has to be memorized. H&Q p. 122 sorts the stems into three families by how PP V ends.
   const CONS_FAMILIES = [
     { pp: "μμαι", name: "labial stems (π, β, φ)" },
-    { pp: "γμαι", name: "palatal (velar) stems (κ, γ, χ)" },
+    { pp: "γμαι", name: "palatal stems (κ, γ, χ)" },
     { pp: "σμαι", name: "dental stems (τ, δ, θ) or σ" },
   ];
+  // H&Q's own παιδεύω table is the fourth stem type, the regular one; book order: vowel, labial, palatal, dental.
+  const VOWEL_STEMS = "vowel stems";
+  const STEM_ORDER = [VOWEL_STEMS, ...CONS_FAMILIES.map(f => f.name)];
   // The stem H&Q's model verb goes back to before the cluster changes (§43.14: γέγραμμαι was *γέγραφμαι).
   const CONS_MODEL_STEM = { "γράφω": "γεγραφ-", "φυλάττω": "πεφυλακ-", "κελεύω": "κεκελευσ-" };
   // { family, cells, prefix } with each form minus the reduplicated stem (and the pluperfect augment) before the
@@ -1469,7 +1478,7 @@ function gradeEnglish(given, parses) {
     const eg = `e.g. ${first.lemma}${model ? ` → ${model}` : ""}`;
     const one = base.full[0][0]?.[0];
     return { ...base, cells: ce.cells, accepts: consEndingAccepts, stemType: ce.family.name,
-      label: `${cap(first.tense)} ${first.mood} ${base.voice}: ${ce.family.name}, ${eg}`,
+      label: `${cap(first.tense)} ${first.mood} ${base.voice}: ${ce.family.name}, e.g. ${first.lemma}`,
       instr: `Type the ${base.full.flat().filter(Boolean).length} endings, stem consonant included`,
       formation: `${eg} (PP V ${pp}): ${plpf ? `augment ἐ- + reduplicated stem ${ce.prefix}- = ἐ${ce.prefix}-` : `reduplicated stem ${ce.prefix}-`}, then the stem consonant `
         + `fused with the bare ${plpf ? "secondary" : "primary"} ending (${plpf ? "-μην, -σο, -το, -μεθα, -σθε" : "-μαι, -σαι, -ται, -μεθα, -σθε"}): `
@@ -1802,6 +1811,22 @@ function gradeEnglish(given, parses) {
       const n = t.full.flat().filter(Boolean).length;
       t.instr = `Type the ${n === 6 ? "six" : n} endings${t.stemType ? " (stem consonant included)" : ""}, then the ${n === 6 ? "six" : n} forms of ${t.lemma}`;
       t.gradingNote = `Endings: ${t.gradingNote.replace(/^Endings are graded/, "graded")} Forms of ${t.lemma}: accents and breathings count; macrons don't, and a grave counts as an acute.`;
+    }
+    if (quiz) {
+      // The perfect/pluperfect M/P comes in four stem types (§43c), so each title names its type, παιδεύω's included,
+      // and the four sit together in book order (vowel, labial, palatal, dental) where παιδεύω's table stands.
+      const kinds = new Set(tables.filter(t => t.stemType).map(t => `${t.tense}|${t.mood}|${t.voice}`));
+      for (const t of tables) if (t.tense && !t.stemType && t.lemma === "παιδεύω" && kinds.has(`${t.tense}|${t.mood}|${t.voice}`)) {
+        t.stemType = VOWEL_STEMS;
+        t.label = `${t.label}: ${VOWEL_STEMS}, e.g. παιδεύω`;
+      }
+      const kindOf = t => t.stemType ? `${t.tense}|${t.mood}|${t.voice}` : null;
+      const firstAt = new Map();
+      tables.forEach((t, i) => { const k = kindOf(t); if (k && !firstAt.has(k)) firstAt.set(k, i); });
+      const at = (t, i) => { const k = kindOf(t); return k ? [firstAt.get(k), STEM_ORDER.indexOf(t.stemType)] : [i, -1]; };
+      const ranked = tables.map((t, i) => [t, at(t, i)]);
+      ranked.sort((a, b) => a[1][0] - b[1][0] || a[1][1] - b[1][1]);
+      tables.splice(0, tables.length, ...ranked.map(x => x[0]));
     }
     for (const t of tables) t.sounds = soundsLike(t);
     return tables;
