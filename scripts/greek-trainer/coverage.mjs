@@ -82,6 +82,11 @@
 //      (mood infinitive, same tense and voice) in the matching Ending-tables scope, holding the same form, and every
 //      infinitive card must be such a row (no card outside its unit). The card is a one-row pair (check 15): its
 //      ending is the tail of the form and is accepted, and the form is accepted by the verb half's grader.
+//  18. an Ending-tables card's third, display-only table (t.unitVerb: a vocabulary verb ⚙ built by rule) shows forms
+//      that aren't exactly that verb's ⚙ built copy on the Reference page (same tense · mood · voice, every cell, the
+//      infinitive's row for an infinitive card); the copy isn't ⚙ built (a verb H&Q prints is never used); the verb isn't
+//      from the card's unit and isn't labelled with its own (earlier) unit; or a §43c stem-type card's verb is of another
+//      stem type. Checked on every unit 1–20, both scopes.
 // Units above supportedThrough are reported (and listed on the unit screens), not failed.
 import fs from "node:fs";
 import { loadTrainer, TRAINER } from "./load-trainer.mjs";
@@ -478,6 +483,39 @@ function infinitiveCardsAudit(trainer) {
   return { bad, cards, perUnit };
 }
 
+// Check 18: the unit verb's display-only table equals the Reference page's ⚙ built copy for that verb.
+function unitVerbAudit(trainer) {
+  const bad = [], seen = new Set(), ref = trainer.refTables(Infinity);
+  const famOf = lemma => { const pp5 = (trainer.built.verbs.find(v => nfc(v.lemma) === nfc(lemma))?.pp || [])[4] || "";
+    const d = nfc(pp5).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return /μμαι$/.test(d) ? "labial" : /γμαι$/.test(d) ? "palatal" : /σμαι$/.test(d) ? "dental" : "vowel"; };
+  let tables = 0;
+  for (let u = 1; u <= 20; u++) for (const mode of ["only", "through"]) for (const t of trainer.tables({ unit: u, mode })) {
+    const uv = t.unitVerb;
+    if (!uv || seen.has(t.id)) continue;
+    seen.add(t.id); tables++;
+    const where = `Ending tables “${t.label}” (${t.id}): e.g. ${uv.lemma}`, voice = t.voice || "active";
+    let want = null, copy = null;
+    if (t.mood === "infinitive") {
+      copy = ref.find(r => r.section === "inf" && nfc(r.lemma) === nfc(uv.lemma) && (r.voice || "active") === voice);
+      const i = copy ? copy.rows.findIndex(r => r.toLowerCase() === t.tense) : -1;
+      want = i >= 0 && !copy.dash?.[i] ? [[(copy.cells[i]?.[0] || []).map(nfc)]] : null;
+    } else {
+      copy = ref.find(r => r.tense === t.tense && r.mood === t.mood && (r.voice || "active") === voice && nfc(r.lemma) === nfc(uv.lemma));
+      want = copy ? (copy.full || copy.cells).map(row => row.map(f => f && f.map(nfc))) : null;
+    }
+    if (!want) { bad.push(`${where} has no matching table on the Reference page`); continue; }
+    if (!copy.built) bad.push(`${where}: the Reference copy is H&Q's printed table, not ⚙ built`);
+    if (JSON.stringify(uv.full) !== JSON.stringify(want)) bad.push(`${where}: forms ${JSON.stringify(uv.full)} aren't the Reference copy's ${JSON.stringify(want)}`);
+    const vu = trainer.built.verbs.find(v => nfc(v.lemma) === nfc(uv.lemma))?.unit;
+    if (vu !== uv.unit) bad.push(`${where}: labelled Unit ${uv.unit}, but the verb is Unit ${vu} vocabulary`);
+    if (vu > t.tenseUnit) bad.push(`${where}: Unit ${vu} vocabulary on a Unit ${t.tenseUnit} card`);
+    if (vu < t.tenseUnit && !uv.earlier) bad.push(`${where}: Unit ${vu} vocabulary on a Unit ${t.tenseUnit} card, not labelled with its unit`);
+    if (t.stemType && !t.stemType.startsWith(famOf(uv.lemma))) bad.push(`${where}: a ${famOf(uv.lemma)} stem on the ${t.stemType} card`);
+  }
+  return { bad, tables };
+}
+
 // Check 10: one infinitive table per verb and voice, holding every infinitive tense taught so far.
 function infinitiveAudit(trainer) {
   const bad = [];
@@ -709,6 +747,7 @@ const words = wordsAudit(trainer);
 const endingsOnly = endingsOnlyAudit(trainer);
 const unique = uniqueTablesAudit(trainer);
 const infCards = infinitiveCardsAudit(trainer);
+const unitVerbs = unitVerbAudit(trainer);
 const docText = doc(rows, onlyTables, onlyDrill, sounds, verbs, parts, glossary, formation);
 
 if (WRITE) {
@@ -752,6 +791,7 @@ for (const b of words.bad) failures.push(b);
 for (const b of endingsOnly.bad) failures.push(b);
 for (const b of unique.bad) failures.push(b);
 for (const b of infCards.bad) failures.push(b);
+for (const b of unitVerbs.bad) failures.push(b);
 const live = loadTrainerCoverage(trainer.html);
 if (!WRITE && JSON.stringify(live) !== JSON.stringify(block))
   failures.push("index.html's TRAINER_COVERAGE is out of date: run `node scripts/greek-trainer/coverage.mjs --write`");
@@ -777,4 +817,5 @@ console.log(`greek-trainer: Reference jump form: ${jumpForm.combos} Verb · Tens
 console.log(`greek-trainer: Ending tables: ${endingsOnly.tables} verb tables, ${endingsOnly.cells} cells checked as endings only, ${endingsOnly.pairs} paired with an example verb (Units 1–20, both scopes).`);
 console.log(`greek-trainer: Ending tables: no repeated title or key in ${unique.scopes} unit scopes; stem types titled and in book order.`);
 console.log(`greek-trainer: Ending tables: ${infCards.cards} Reference infinitives matched by an infinitive card (Units 1–20, both scopes).`);
+console.log(`greek-trainer: Ending tables: ${unitVerbs.tables} unit-verb (⚙ built) tables match their Reference copies (Units 1–20, both scopes).`);
 console.log("greek-trainer coverage check passed.");

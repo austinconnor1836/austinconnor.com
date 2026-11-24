@@ -131,6 +131,10 @@ table.ptable { border-collapse: collapse; margin: 0 auto; font-size: inherit; }
 /* Ending tables: each verb table is a pair, Endings beside an example verb's forms; stacked (endings first) on phones. */
 .etable-pair { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px 20px; align-items: start; }
 @media (min-width: 720px) { .etable-pair.two { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* With a third, display-only table (a unit vocabulary verb, built by rule): side by side where three fit, else they wrap. */
+@media (min-width: 720px) { .etable-pair.three { grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); } }
+.etable-sub { font-family: var(--ui); font-size: 12px; color: var(--muted); text-align: center; margin: 0 0 6px; }
+.etable-half[data-half="u"] .ptable td { background: var(--surface-2); }
 .etable-cap { font-family: var(--ui); font-size: 13px; font-weight: 700; color: var(--muted); text-align: center; margin: 0 0 4px; }
 .ptable .fix { display: block; font-size: .75em; color: var(--good); }
 .ptable td input {
@@ -1793,6 +1797,48 @@ function gradeEnglish(given, parses) {
     return out;
   }
 
+  // A third, DISPLAY-ONLY table on each paired card: the same forms of a verb from the card's own unit vocabulary,
+  // ⚙ built by rule (DRILL_BUILT, the Reference page's per-verb copies), so the real sound changes show beside παιδεύω.
+  // Never quizzed. Consonant stems are preferred and rotated by stem type across the unit's cards; the choice depends
+  // only on the card (its unit and its place in H&Q's order), so a card always gets the same verb. A §43c stem-type
+  // card takes a verb of its own type. A unit with no verb that has the forms falls back to the nearest earlier unit,
+  // labelled with that unit. Verbs whose forms H&Q prints (γράφω …) are left out: their Reference copy is the book's.
+  const CONS_LETTER = /[^αεηιουω]$/;
+  function verbKind(v) {
+    const pps = ppsOf(v.lemma) || v.pp || [];
+    const pp5 = ppDash(pps[4]) ? null : ppAlts(pps[4])[0];
+    const fam = pp5 && CONS_FAMILIES.find(f => deAccent(pp5).endsWith(f.pp));
+    const pp1 = deAccent(ppAlts(pps[0] || v.lemma)[0] || v.lemma).replace(/(ομαι|ω)$/, "");
+    return { cons: CONS_LETTER.test(pp1), family: fam ? fam.name : pp5 ? VOWEL_STEMS : null };
+  }
+  const uvKeyOf = t => `${t.tense}|${t.mood}|${t.voice || "active"}`;
+  function unitVerbFor(t) {
+    const key = uvKeyOf(t), u = t.tenseUnit;
+    // The card's place in its unit: H&Q's παιδεύω paradigms of that unit, in book order.
+    const keys = [...new Set(drillPoolCache.book.filter(it => it.src === "book" && nfc(it.lemma) === MODEL && it.tenseUnit === u)
+      .map(it => `${it.tense}|${it.mood}|${it.voice || "active"}`))];
+    const idx = Math.max(0, keys.indexOf(key));
+    const printed = lemma => drillPoolCache.book.some(it => it.src === "book" && nfc(it.lemma) === lemma && `${it.tense}|${it.mood}|${it.voice || "active"}` === key);
+    for (let unit = u; unit >= 1; unit--) {
+      let cands = DRILL_BUILT.verbs.filter(v => v.unit === unit).map(v => ({ v, lemma: nfc(v.lemma),
+        p: v.paradigms.find(p => `${p.tense}|${p.mood}|${p.voice || "active"}` === key), kind: verbKind(v) }))
+        .filter(c => c.p && c.p.forms.some(f => f && f.length) && !printed(c.lemma));
+      if (t.stemType) cands = cands.filter(c => c.kind.family === t.stemType);
+      else if (cands.some(c => c.kind.cons)) cands = cands.filter(c => c.kind.cons);
+      if (!cands.length) continue;
+      // Interleave the stem types (book order), so neighbouring cards show different sound changes.
+      const byFam = STEM_ORDER.concat([null]).map(f => cands.filter(c => (c.kind.family || null) === f)).filter(g => g.length);
+      const order = [];
+      for (let i = 0; order.length < cands.length; i++) for (const g of byFam) if (g[i]) order.push(g[i]);
+      const c = order[idx % order.length], v = c.v;
+      const full = t.mood === "infinitive" ? [[c.p.forms[0].map(nfc)]] : [0, 1, 2].map(r => [0, 1].map(col => slotForms(c.p, r, col)));
+      const n = ppNumOf(t.tense, t.voice || "active"), pp = (ppsOf(c.lemma) || v.pp || [])[n - 1];
+      return { lemma: c.lemma, unit: v.unit, english: v.en?.[0] || null, full, pp: `PP ${PP_ROMAN[n - 1]} ${nfc(pp)}`,
+        caption: `e.g. ${c.lemma} ⚙`, earlier: v.unit < u };
+    }
+    return null;
+  }
+
   // One table per (verb, tense, mood, voice) that H&Q prints, in scope + switched-on sections and
   // voices (the quiz adds one card per infinitive, infinitiveCards), plus the article and the declensions. Each cell holds the acceptable
   // spellings (the consonant-stem 3rd plurals are H&Q's Appendix compounds, asked as whole forms).
@@ -1881,6 +1927,7 @@ function gradeEnglish(given, parses) {
       const ranked = tables.map((t, i) => [t, at(t, i)]);
       ranked.sort((a, b) => a[1][0] - b[1][0] || a[1][1] - b[1][1]);
       tables.splice(0, tables.length, ...ranked.map(x => x[0]));
+      for (const t of tables) if (t.pair) t.unitVerb = unitVerbFor(t);
     }
     for (const t of tables) t.sounds = soundsLike(t);
     return tables;
@@ -1924,11 +1971,24 @@ function gradeEnglish(given, parses) {
     : [{ key: "e", caption: "Endings", cells: t.cells, accepts: t.accepts },
        { key: "v", caption: `e.g. ${t.lemma}`, cells: t.full.map(r => r.map(f => f && f.map(nfc))), accepts: t.acceptsFull }];
   // Lay the halves out: side by side on wide screens, stacked (endings first) on phones.
+  // t.unitVerb adds a third, display-only table (never inputs, never graded): Endings, παιδεύω, unit verb.
+  const unitVerbEl = t => {
+    const uv = t.unitVerb;
+    const rows = t.rows.map((lbl, r) => h("tr", {}, h("th", { scope: "row" }, lbl),
+      t.cols.map((_, c) => uv.full[r]?.[c] ? h("td", { lang: "grc" }, uv.full[r][c].join(" / ")) : h("td", { class: "appx muted" }, "—"))));
+    return h("div", { class: "etable-half", "data-half": "u" },
+      h("div", { class: "etable-cap", lang: "grc" }, uv.caption),
+      h("div", { class: "etable-sub" }, h("span", { lang: "grc" }, uv.lemma), uv.english ? `, ${uv.english}` : "",
+        ` · built from principal parts (${uv.pp.replace(/ (\S+)$/, "")} `, h("span", { lang: "grc" }, uv.pp.replace(/^PP \S+ /, "")), ")",
+        uv.earlier ? ` · Unit ${uv.unit} vocabulary` : ""),
+      h("div", { class: "ptable-wrap" }, h("table", { class: "ptable etable" }, h("thead", {}, headRowOf(t)), h("tbody", {}, rows))));
+  };
   const pairEl = (t, tableFor) => {
     const hs = halvesOf(t);
     if (hs.length === 1) return tableFor(hs[0]);
-    return h("div", { class: "etable-pair two" }, hs.map(x => h("div", { class: "etable-half", "data-half": x.key },
-      h("div", { class: "etable-cap", lang: x.key === "v" ? "grc" : "en" }, x.caption), tableFor(x))));
+    return h("div", { class: "etable-pair two" + (t.unitVerb ? " three" : "") }, hs.map(x => h("div", { class: "etable-half", "data-half": x.key },
+      h("div", { class: "etable-cap", lang: x.key === "v" ? "grc" : "en" }, x.caption), tableFor(x))),
+      t.unitVerb ? unitVerbEl(t) : null);
   };
   function endingsTableEl(t) {
     return pairEl(t, x => {
