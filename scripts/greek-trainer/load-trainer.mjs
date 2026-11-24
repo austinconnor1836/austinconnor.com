@@ -18,7 +18,7 @@ export async function loadTrainer(file = TRAINER) {
     console, Element: class {}, Node: class {}, Event: class {},
     document: { addEventListener: noop, removeEventListener: noop, querySelector: () => null },
     localStorage: { getItem: () => null, setItem: noop },
-    location: { hash: "" }, setTimeout, clearTimeout,
+    location: { hash: "" }, setTimeout, clearTimeout, URLSearchParams,
   };
   ctx.window = ctx;
   ctx.addEventListener = noop;

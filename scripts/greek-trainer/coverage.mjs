@@ -99,6 +99,10 @@
 //      infinitive-table row), has two rows for one, or has a row neither page shows; a row has no English or no
 //      principal-part text, cites the wrong part (H&Q §19), or shows a stem that παιδεύω's printed 1st sg. doesn't start
 //      with (the stem + ησ for the future passive); or its Reference link doesn't land on a rendered table.
+//  21. the Quiz page's focus (mode) selector, every unit 1–20, both scopes: a focus's pool isn't exactly the bank's items of
+//      its parts of speech (Verbs = verb; Nouns = noun + the article; Adjectives = adj), All isn't the whole bank and the
+//      union of the three plus the All-only pronouns, Translate under Nouns/Adjectives empties a quiz the focus has items
+//      for, or an old pos=… link (or no focus at all) doesn't map to the expected focus.
 // Units above supportedThrough are reported (and listed on the unit screens), not failed.
 import fs from "node:fs";
 import { loadTrainer, TRAINER } from "./load-trainer.mjs";
@@ -633,6 +637,43 @@ function quizAudit(trainer) {
   return { bad, sizes, verbForms, items, ambiguous, links, paradigms };
 }
 
+// Check 21: the Quiz focus selector (All / Verbs / Nouns / Adjectives).
+function quizFocusAudit(trainer) {
+  const bad = [], Q = trainer.quiz, sizes = {};
+  const WANT = { all: null, verb: ["verb"], noun: ["noun", "article"], adj: ["adj"] };
+  const ALL_ONLY = ["pron"];
+  if (Q.foci.map(f => f[0]).join() !== Object.keys(WANT).join()) bad.push(`Quiz focus: the foci are ${Q.foci.map(f => f[0]).join()}, expected ${Object.keys(WANT).join()}`);
+  const ids = xs => xs.map(it => it.id).sort().join("\n");
+  for (let u = 1; u <= 20; u++) for (const mode of ["only", "through"]) {
+    const bank = Q.bank(u, mode).items, at = `Quiz focus, ${mode === "only" ? `Unit ${u} only` : `Units 1–${u}`}`;
+    const pool = (focus, types = ["parse", "produce"]) => Q.pool({ unit: u, mode, focus, pos: Q.focusPos(focus), types, n: "all" });
+    const got = {};
+    for (const f of Object.keys(WANT)) {
+      got[f] = pool(f);
+      const want = WANT[f] ? bank.filter(it => WANT[f].includes(it.pos)) : bank;
+      if (ids(got[f]) !== ids(want)) bad.push(`${at}: ${f} has ${got[f].length} items, expected exactly the ${want.length} ${WANT[f] ? WANT[f].join(" + ") : "bank"} items`);
+      // Translate alone (verbs only) under a focus with no verbs: the focus's items are still asked (Parse + Produce).
+      if (f === "noun" || f === "adj") { const t = pool(f, ["translate"]);
+        if (ids(t) !== ids(got[f])) bad.push(`${at}: Translate alone under ${f} asks ${t.length} of its ${got[f].length} items`); }
+    }
+    const union = [...got.verb, ...got.noun, ...got.adj, ...bank.filter(it => ALL_ONLY.includes(it.pos))];
+    if (ids(union) !== ids(got.all) || new Set(union.map(it => it.id)).size !== union.length)
+      bad.push(`${at}: All (${got.all.length}) isn't the union of Verbs, Nouns, Adjectives and the pronouns (${union.length})`);
+    if (u === 5 || mode === "through") sizes[`${u}|${mode}`] = Object.fromEntries(Object.entries(got).map(([f, xs]) => [f, xs.length]));
+  }
+  // URL: focus=… wins; an old pos=… link maps to its nearest focus or stays custom; nothing → All.
+  for (const [query, focus, pos] of [["", "all"], ["focus=verb", "verb"], ["focus=noun&pos=verb", "noun"], ["focus=adj", "adj"],
+    ["pos=verb,noun,adj,article,pron", "all"], ["pos=verb,noun,adj,article", "all"], ["pos=verb,noun,adj", "all"], ["pos=verb", "verb"],
+    ["pos=noun", "noun"], ["pos=noun,article", "noun"], ["pos=adj", "adj"], ["pos=verb,adj", "custom", "verb,adj"],
+    ["focus=custom&pos=article,pron", "custom", "article,pron"], ["focus=bogus", "all"]]) {
+    const s = Q.settings(query);
+    if (s.focus !== focus || (pos && s.pos.join() !== pos)) bad.push(`Quiz focus: “${query}” gives focus ${s.focus} (${s.pos.join()}), expected ${focus}${pos ? ` (${pos})` : ""}`);
+    const back = Q.settings(Q.hash(s).split("?")[1]);
+    if (back.focus !== s.focus || back.pos.join() !== s.pos.join()) bad.push(`Quiz focus: “${query}” doesn't round-trip through its link`);
+  }
+  return { bad, sizes };
+}
+
 // Check 18: the unit verb's display-only table equals the Reference page's ⚙ built copy for that verb.
 function unitVerbAudit(trainer) {
   const bad = [], seen = new Set(), ref = trainer.refTables(Infinity);
@@ -965,6 +1006,7 @@ const infCards = infinitiveCardsAudit(trainer);
 const unitVerbs = unitVerbAudit(trainer);
 const quiz = quizAudit(trainer);
 const combos = combosAudit(trainer);
+const quizFocus = quizFocusAudit(trainer);
 const docText = doc(rows, onlyTables, onlyDrill, sounds, verbs, parts, glossary, formation, quiz);
 
 if (WRITE) {
@@ -1011,6 +1053,7 @@ for (const b of infCards.bad) failures.push(b);
 for (const b of unitVerbs.bad) failures.push(b);
 for (const b of quiz.bad) failures.push(b);
 for (const b of combos.bad) failures.push(b);
+for (const b of quizFocus.bad) failures.push(b);
 const live = loadTrainerCoverage(trainer.html);
 if (!WRITE && JSON.stringify(live) !== JSON.stringify(block))
   failures.push("index.html's TRAINER_COVERAGE is out of date: run `node scripts/greek-trainer/coverage.mjs --write`");
@@ -1039,4 +1082,6 @@ console.log(`greek-trainer: Ending tables: ${infCards.cards} Reference infinitiv
 console.log(`greek-trainer: Ending tables: ${unitVerbs.tables} unit-verb (⚙ built) tables match their Reference copies (Units 1–20, both scopes).`);
 console.log(`greek-trainer: Quiz test bank: ${quiz.items} items checked over Units 1–20 (${quiz.verbForms} Reference verb forms found in it, ${quiz.ambiguous} with several parses, ${quiz.links} Reference links); the declension rule reproduces ${quiz.paradigms.length} printed paradigms.`);
 console.log(`greek-trainer: Forms at a glance: ${combos.rows} rows checked against the Ending tables and the Reference page (Units 1–20, both scopes).`);
+{ const f = k => Object.entries(quizFocus.sizes[k]).map(([a, n]) => `${a} ${n}`).join(", ");
+  console.log(`greek-trainer: Quiz focus: every focus = its parts of speech, All = the union (Units 1–20, both scopes). Unit 5 only: ${f("5|only")}; Units 1–5: ${f("5|through")}.`); }
 console.log("greek-trainer coverage check passed.");

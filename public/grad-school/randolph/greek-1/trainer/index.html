@@ -567,6 +567,18 @@ table.ref-table { margin: 0; font-size: clamp(16px, 4.2vw, 20px); }
 .quiz-checks { gap: 4px; }
 .quiz-checks .quiz-sub { font-size: 13px; margin: -8px 0 4px 30px; }
 .quiz-pos { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.quiz-focus { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0; border: 2px solid var(--line); border-radius: 12px; overflow: hidden; margin: 4px 0 6px; }
+.quiz-focus button { min-height: 56px; padding: 6px 4px; border: 0; border-left: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer;
+  font: inherit; font-family: var(--ui); font-weight: 650; font-size: 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 0; }
+.quiz-focus button:first-child { border-left: 0; }
+.quiz-focus button small { font-weight: 500; font-size: 12px; color: var(--muted); }
+.quiz-focus button[aria-pressed="true"] { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+.quiz-focus button:disabled { opacity: .45; cursor: default; }
+.quiz-focus button span { overflow-wrap: anywhere; text-align: center; }
+@media (max-width: 400px) { .quiz-focus button { font-size: 14px; } }
+.quiz-focus-note { font-size: 14px; margin: 4px 0 8px; }
+.quiz-custom { margin: 6px 0 4px; font-size: 14px; }
+.quiz-custom summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }
 .quiz-excluded { margin-top: 22px; font-size: 14px; }
 .quiz-excluded summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 650; }
 .quiz-excluded ul { margin: 6px 0 0; padding-left: 20px; }
@@ -4128,7 +4140,9 @@ function wordsView(query) {
   draw();
 }
 
-/* Quiz / test bank (#/quiz?u=5&mode=only|through&types=parse,produce,translate&pos=verb,noun,adj,article,pron&n=10&seed=…).
+/* Quiz / test bank (#/quiz?u=5&mode=only|through&focus=all|verb|noun|adj&types=parse,produce,translate&n=10&seed=…).
+   Focus (the mode): All (the default: every item, the article and pronouns too), Verbs, Nouns (nouns + the article) or
+   Adjectives. focus=custom&pos=… keeps a hand-picked part-of-speech set; an old pos=… link maps to the nearest focus.
    Every item is generated from data already in the trainer; nothing is hand-written here:
    - Verbs: every cell of every per-verb table on the Reference page (refTables: H&Q's printed forms and the ⚙ built
      copies), finite forms and infinitives, for every tense · mood · voice taught through the unit.
@@ -4149,6 +4163,10 @@ function wordsView(query) {
     ["produce", "Produce", "See a word and a parse → type the form"],
     ["translate", "Translate", "See a verb form → pick its English (verbs only)"]];
   const QUIZ_POS = [["verb", "Verbs"], ["noun", "Nouns"], ["adj", "Adjectives"], ["article", "Article"], ["pron", "Pronouns"]];
+  // The focus (mode) selector: All is the normal quiz (every item, the article and pronouns included); Nouns brings the
+  // article with it (H&Q teaches it alongside the 1st/2nd declensions); pronouns are asked only under All (or a custom mix).
+  const QUIZ_FOCI = [["all", "All", QUIZ_POS.map(p => p[0])], ["verb", "Verbs", ["verb"]], ["noun", "Nouns", ["noun", "article"]], ["adj", "Adjectives", ["adj"]]];
+  const focusPos = f => (QUIZ_FOCI.find(x => x[0] === f) || QUIZ_FOCI[0])[2];
   const QUIZ_COUNTS = [["10", "10"], ["25", "25"], ["50", "50"], ["all", "All"]];
   const QUIZ_MAX_UNIT = 20;
   const CASES = ["nominative", "genitive", "dative", "accusative", "vocative"];
@@ -4529,36 +4547,71 @@ function wordsView(query) {
   // ---------- settings in the URL ----------
   function readSettings(query) {
     const q = new URLSearchParams(query || "");
-    const saved = qStore.get("quiz-settings", { unit: 5, mode: "through", types: ["parse", "produce"], pos: QUIZ_POS.map(p => p[0]), n: "10" });
+    const saved = qStore.get("quiz-settings", { unit: 5, mode: "through", focus: "all", types: ["parse", "produce"], pos: QUIZ_POS.map(p => p[0]), n: "10" });
     const list = (v, all, dflt) => { const xs = String(v || "").split(",").filter(x => all.some(a => a[0] === x)); return xs.length ? xs : dflt; };
+    // focus=… wins; else an old pos=… link maps to its nearest focus (or stays a custom set); else the saved focus; else All.
+    const qFocus = q.get("focus"), qPos = q.get("pos") ? list(q.get("pos"), QUIZ_POS, null) : null;
+    let focus, pos;
+    if (QUIZ_FOCI.some(f => f[0] === qFocus)) focus = qFocus;
+    else if (qFocus === "custom" && qPos) [focus, pos] = ["custom", qPos];
+    else if (qPos) [focus, pos] = focusOfPos(qPos);
+    else if (saved.focus === "custom") [focus, pos] = ["custom", list(saved.pos?.join(","), QUIZ_POS, QUIZ_POS.map(p => p[0]))];
+    else focus = QUIZ_FOCI.some(f => f[0] === saved.focus) ? saved.focus : "all";
+    if (focus !== "custom") pos = focusPos(focus);
     const s = {
       unit: Math.min(QUIZ_MAX_UNIT, Math.max(1, Number(q.get("u")) || Number(saved.unit) || 5)),
       mode: (q.get("mode") || saved.mode) === "only" ? "only" : "through",
       types: list(q.get("types"), QUIZ_TYPES, list(saved.types?.join(","), QUIZ_TYPES, ["parse", "produce"])),
-      pos: list(q.get("pos"), QUIZ_POS, list(saved.pos?.join(","), QUIZ_POS, QUIZ_POS.map(p => p[0]))),
+      focus, pos,
       n: QUIZ_COUNTS.some(c => c[0] === (q.get("n") || "")) ? q.get("n") : QUIZ_COUNTS.some(c => c[0] === saved.n) ? saved.n : "10",
       seed: (q.get("seed") || "").replace(/[^a-z0-9]/gi, "").slice(0, 16) || null,
     };
     return s;
   }
-  const quizHash = (s, seed) => `#/quiz?u=${s.unit}&mode=${s.mode}&types=${s.types.join(",")}&pos=${s.pos.join(",")}&n=${s.n}${seed ? `&seed=${seed}` : ""}`;
+  // A part-of-speech set → [focus, pos]: an exact focus; verbs + nouns + adjectives (the old default) → All; nouns with or
+  // without the article → Nouns; anything else stays a custom set.
+  function focusOfPos(pos) {
+    const has = p => pos.includes(p), same = xs => xs.length === pos.length && xs.every(has);
+    const hit = QUIZ_FOCI.find(f => same(f[2]));
+    if (hit) return [hit[0], hit[2]];
+    if (has("verb") && has("noun") && has("adj")) return ["all", focusPos("all")];
+    if (has("noun") && pos.every(p => p === "noun" || p === "article")) return ["noun", focusPos("noun")];
+    return ["custom", pos];
+  }
+  const quizHash = (s, seed) => `#/quiz?u=${s.unit}&mode=${s.mode}&focus=${s.focus}${s.focus === "custom" ? `&pos=${s.pos.join(",")}` : ""}&types=${s.types.join(",")}&n=${s.n}${seed ? `&seed=${seed}` : ""}`;
+  const saveSettings = s => qStore.set("quiz-settings", { unit: s.unit, mode: s.mode, focus: s.focus, types: s.types, pos: s.pos, n: s.n });
+  // Translate asks verbs only: under a focus with no verbs it is off (the types the focus can ask; Parse + Produce if none).
+  const allowedTypes = (s, types) => types.filter(t => t !== "translate" || s.pos.includes("verb"));
+  const typesFor = s => { const xs = allowedTypes(s, s.types); return xs.length ? xs : ["parse", "produce"]; };
+  const focusName = s => s.focus === "custom" ? "Custom mix" : (QUIZ_FOCI.find(f => f[0] === s.focus) || QUIZ_FOCI[0])[1];
+  const focusItems = (items, pos) => items.filter(it => pos.includes(it.pos));
   const scopeName = s => s.mode === "only" ? `Unit ${s.unit} only` : s.unit === 1 ? "Unit 1" : `Units 1–${s.unit}`;
   const fmt = n => n.toLocaleString("en-US");
-  const whatsIn = s => s.mode === "only"
-    ? `What's in this quiz: every form (through Unit ${s.unit}) of the verbs, nouns and adjectives first taught in Unit ${s.unit}, plus the tenses, moods, voices and declensions new in Unit ${s.unit} on the words from earlier units.`
-    : `What's in this quiz: every form of every verb, noun and adjective in the vocabulary of Units 1–${s.unit} (and the article), in every tense, mood, voice and declension H&Q has taught through Unit ${s.unit}.`;
+  function whatsIn(s) {
+    const has = p => s.pos.includes(p), u = s.unit;
+    const words = ["verb", "noun", "adj"].filter(has).map(p => ({ verb: "verb", noun: "noun", adj: "adjective" })[p]);
+    const join = (xs, w) => xs.length < 2 ? xs.join("") : xs.slice(0, -1).join(", ") + ` ${w} ` + xs[xs.length - 1];
+    const what = join([...(has("verb") ? ["tenses", "moods", "voices"] : []), ...(has("noun") || has("adj") || has("article") || has("pron") ? ["declensions"] : [])], "and");
+    const extras = [has("article") ? "the article" : "", has("pron") ? "the pronouns H&Q prints as tables" : ""].filter(Boolean).join(" and ");
+    const lead = s.focus === "all" ? "What's in this quiz" : `What's in this quiz (${focusName(s)})`;
+    if (!words.length) return `${lead}: ${extras || "nothing"} as taught through Unit ${u}.`;
+    return s.mode === "only"
+      ? `${lead}: every form (through Unit ${u}) of the ${join(words.map(w => w + "s"), "and")} first taught in Unit ${u}, plus the ${what} new in Unit ${u} on the ${words.length === 1 ? words[0] + "s" : "words"} from earlier units${extras ? ` (and ${extras})` : ""}.`
+      : `${lead}: every form of every ${join(words, "and")} in the vocabulary of Units 1–${u}${extras ? ` (and ${extras})` : ""}, in every ${what.replace(/s(?=,| and|$)/g, "")} H&Q has taught through Unit ${u}.`;
+  }
 
   // A quiz's item list: the bank for the scope, the chosen parts of speech, items some chosen type can ask.
   function poolFor(s) {
     const b = quizBank(s.unit, s.mode);
-    return b.items.filter(it => s.pos.includes(it.pos) && s.types.some(t => supports(it, t)));
+    const types = typesFor(s);
+    return b.items.filter(it => s.pos.includes(it.pos) && types.some(t => supports(it, t)));
   }
   function sampleQuiz(s, seed) {
-    const rnd = rngOf(`${seed}|${s.unit}|${s.mode}|${s.types.join(",")}|${s.pos.join(",")}`);
+    const rnd = rngOf(`${seed}|${s.unit}|${s.mode}|${typesFor(s).join(",")}|${s.pos.join(",")}`);
     const pool = poolFor(s);
     const n = s.n === "all" ? pool.length : Math.min(pool.length, Number(s.n));
     return rShuffle(pool, rnd).slice(0, n).map((it, i) => {
-      const types = s.types.filter(t => supports(it, t));
+      const types = typesFor(s).filter(t => supports(it, t));
       return { it, type: types[Math.floor(rnd() * types.length)], qseed: `${seed}:${i}` };
     });
   }
@@ -4572,47 +4625,71 @@ function wordsView(query) {
       return;
     }
     const s = readSettings(query);
-    qStore.set("quiz-settings", { unit: s.unit, mode: s.mode, types: s.types, pos: s.pos, n: s.n });
+    saveSettings(s);
     if (s.seed) return quizRun(s, s.seed);
     return quizSetup(s);
   }
 
   function quizSetup(s) {
     document.title = `Quiz · ${scopeName(s)}`;
+    // A link asking Translate alone under a focus with no verbs (focus=noun&types=translate): show and ask Parse + Produce.
+    if (!allowedTypes(s, s.types).length) { s.types = [...new Set([...s.types, "parse", "produce"])]; saveSettings(s); }
     if (location.hash !== quizHash(s)) { try { history.replaceState(null, "", quizHash(s)); } catch { /* sandboxed */ } }
     const body = h("div", {});
-    const set = patch => { Object.assign(s, patch); qStore.set("quiz-settings", { unit: s.unit, mode: s.mode, types: s.types, pos: s.pos, n: s.n });
+    const set = patch => { Object.assign(s, patch); saveSettings(s);
       try { history.replaceState(null, "", quizHash(s)); } catch { /* sandboxed */ } draw(); };
-    const toggleIn = (key, v) => { const xs = s[key].includes(v) ? s[key].filter(x => x !== v) : [...s[key], v]; if (xs.length) set({ [key]: xs }); };
+    // Picking a focus with no verbs while Translate is the only type: add Parse + Produce so the quiz isn't empty.
+    const setFocus = f => { const pos = focusPos(f), next = { focus: f, pos };
+      if (!allowedTypes({ pos }, s.types).length) next.types = [...new Set([...s.types, "parse", "produce"])];
+      set(next); };
+    const toggleIn = (key, v) => { const xs = s[key].includes(v) ? s[key].filter(x => x !== v) : [...s[key], v];
+      if (key === "pos") { if (xs.length) { const [focus, pos] = focusOfPos(xs); set({ focus, pos: focus === "custom" ? xs : pos }); } return; }
+      if (allowedTypes(s, xs).length) set({ [key]: xs }); };
     function draw() {
       document.title = `Quiz · ${scopeName(s)}`;
       const b = quizBank(s.unit, s.mode);
       const byPos = Object.fromEntries(QUIZ_POS.map(([p]) => [p, b.items.filter(it => it.pos === p).length]));
       const pool = poolFor(s);
       const n = s.n === "all" ? pool.length : Math.min(pool.length, Number(s.n));
-      const check = (key, v, label, count, disabled) => h("label", {}, h("input", { type: "checkbox", checked: s[key].includes(v), disabled,
+      const check = (key, v, label, count, disabled) => h("label", {}, h("input", { type: "checkbox", checked: s[key].includes(v) && !disabled, disabled,
         onchange: () => toggleIn(key, v) }), h("span", {}, label, count != null ? h("span", { class: "muted" }, ` (${fmt(count)})`) : null));
-      const translatable = b.items.filter(it => supports(it, "translate")).length;
+      const inFocus = focusItems(b.items, s.pos);
+      const translatable = inFocus.filter(it => supports(it, "translate")).length;
+      const focusCount = f => focusItems(b.items, focusPos(f)).length;
+      const posLabel = p => QUIZ_POS.find(x => x[0] === p)[1].toLowerCase();
+      const translateNote = !s.pos.includes("verb") ? `off in the ${focusName(s)} focus` : !translatable ? "No verb forms with an English meaning in this scope" : null;
       body.replaceChildren(
-        h("h2", { style: { marginTop: "16px" } }, "1. Which unit are you on?"),
+        h("h2", { style: { marginTop: "16px" } }, "1. Focus"),
+        h("div", { class: "quiz-focus", role: "group", "aria-label": "Quiz focus" }, QUIZ_FOCI.map(([f, label]) => {
+          const c = focusCount(f);
+          return h("button", { type: "button", "aria-pressed": String(s.focus === f), disabled: !c && s.focus !== f, onclick: () => setFocus(f) },
+            h("span", {}, label), h("small", {}, `(${fmt(c)})`));
+        })),
+        s.focus === "custom" ? h("p", { class: "muted quiz-focus-note" }, `Custom mix: ${s.pos.map(posLabel).join(", ")}. Tap a focus above to switch.`)
+          : !inFocus.length ? h("p", { class: "muted quiz-focus-note" }, `No ${focusName(s).toLowerCase()} in ${scopeName(s)}. Pick another focus or unit.`)
+          : h("p", { class: "muted quiz-focus-note" }, s.focus === "all" ? `Everything: ${QUIZ_POS.filter(([p]) => byPos[p]).map(([p]) => p === "article" ? "the article" : posLabel(p)).join(", ").replace(/, (?=[^,]*$)/, " and ")}.`
+            : s.focus === "noun" ? "Nouns and the article." : s.focus === "verb" ? "Verbs only." : "Adjectives only."),
+        h("details", { class: "quiz-custom", open: s.focus === "custom" ? true : undefined },
+          h("summary", {}, "Custom mix of parts of speech"),
+          h("div", { class: "options quiz-checks quiz-pos" }, QUIZ_POS.filter(([p]) => byPos[p] || s.pos.includes(p) && p !== "pron")
+            .map(([p, label]) => check("pos", p, label, byPos[p], !byPos[p])))),
+        h("h2", {}, "2. Which unit are you on?"),
         h("div", { class: "drill-units" }, Array.from({ length: QUIZ_MAX_UNIT }, (_, i) => i + 1).map(u => h("button", { class: "btn",
           "aria-pressed": String(s.unit === u), onclick: () => set({ unit: u }) }, String(u)))),
-        h("h2", {}, "2. What should it cover?"),
+        h("h2", {}, "3. What should it cover?"),
         h("div", { class: "drill-scope" },
           h("button", { class: "choice", "aria-pressed": String(s.mode === "only"), onclick: () => set({ mode: "only" }) },
             h("span", {}, h("b", {}, `Unit ${s.unit} only`), h("br"), h("small", { class: "muted" }, `Words new in Unit ${s.unit} (every form so far), plus the forms new in Unit ${s.unit} on earlier words`))),
           h("button", { class: "choice", "aria-pressed": String(s.mode === "through"), onclick: () => set({ mode: "through" }) },
             h("span", {}, h("b", {}, `Everything through Unit ${s.unit}`), h("br"), h("small", { class: "muted" }, `Every form of every word from Units 1–${s.unit}`)))),
-        h("p", { class: "quiz-bank" }, h("b", {}, `${scopeName(s)}: ${fmt(b.items.length)} item${b.items.length === 1 ? "" : "s"}`),
-          h("span", { class: "muted" }, " in the test bank · " + QUIZ_POS.filter(([p]) => byPos[p]).map(([p, l]) => `${l.toLowerCase()} ${fmt(byPos[p])}`).join(" · "))),
+        h("p", { class: "quiz-bank" }, h("b", {}, `${scopeName(s)} · ${focusName(s)}: ${fmt(inFocus.length)} item${inFocus.length === 1 ? "" : "s"}`),
+          h("span", { class: "muted" }, (s.focus === "all" ? " in the test bank · " : ` of ${fmt(b.items.length)} in the test bank · `)
+            + QUIZ_POS.filter(([p]) => byPos[p] && s.pos.includes(p)).map(([p, l]) => `${l.toLowerCase()} ${fmt(byPos[p])}`).join(" · "))),
         h("p", { class: "muted quiz-whats" }, whatsIn(s)),
-        h("h2", {}, "3. Question types"),
+        h("h2", {}, "4. Question types"),
         h("div", { class: "options quiz-checks" }, QUIZ_TYPES.map(([k, label, sub]) => h("div", {},
-          check("types", k, label, null, k === "translate" && !translatable),
-          h("div", { class: "muted quiz-sub" }, sub)))),
-        h("h2", {}, "4. Parts of speech"),
-        h("div", { class: "options quiz-checks quiz-pos" }, QUIZ_POS.filter(([p]) => byPos[p] || s.pos.includes(p) && p !== "pron")
-          .map(([p, label]) => check("pos", p, label, byPos[p], !byPos[p]))),
+          check("types", k, label, null, k === "translate" && !!translateNote),
+          h("div", { class: "muted quiz-sub" }, k === "translate" && translateNote ? `${sub} · ${translateNote}` : sub)))),
         h("h2", {}, "5. How many questions?"),
         h("div", { class: "row" }, QUIZ_COUNTS.map(([k, label]) => h("button", { class: "btn", "aria-pressed": String(s.n === k),
           onclick: () => set({ n: k }) }, k === "all" ? `All (${fmt(pool.length)})` : label))),
@@ -4636,7 +4713,7 @@ function wordsView(query) {
   }
 
   function quizRun(s, seed, retry) {
-    document.title = `${scopeName(s)} · Quiz`;
+    document.title = `${scopeName(s)}${s.focus === "all" ? "" : ` · ${focusName(s)}`} · Quiz`;
     const qs = retry || sampleQuiz(s, seed);
     const st = { i: 0, right: 0, missed: [] };
     const stage = h("div", {});
@@ -4653,7 +4730,7 @@ function wordsView(query) {
     app().replaceChildren(
       h("div", { class: "row" }, h("a", { href: "#/", class: "muted" }, "← Home")),
       h("div", { class: "row", style: { marginTop: "8px" } },
-        h("h1", { style: { flex: "1" } }, retry ? `${scopeName(s)} · retry` : `${scopeName(s)} · quiz`),
+        h("h1", { style: { flex: "1" } }, `${scopeName(s)}${s.focus === "all" ? "" : ` · ${focusName(s)}`} · ${retry ? "retry" : "quiz"}`),
         h("a", { class: "btn small quiz-change", href: quizHash(s) }, "Change settings")),
       h("p", { class: "muted quiz-whats" }, whatsIn(s)),
       head, stage);
@@ -4834,7 +4911,8 @@ function wordsView(query) {
   window.quizView = quizView;
   // For scripts/greek-trainer/coverage.mjs (check 19).
   window.trainerQuiz = { bank: (unit, mode) => quizBank(unit, mode), through: unit => bankThrough(unit), declineNoun, declineAdj, nounHead, adjHead,
-    printedSlots, sample: (s, seed) => sampleQuiz(s, seed), parsesOfForm, gradeForm, reset: () => { bankCache = new Map(); } };
+    printedSlots, sample: (s, seed) => sampleQuiz(s, seed), foci: QUIZ_FOCI, focusPos, focusOfPos, pool: s => poolFor(s),
+    settings: query => readSettings(query), hash: (s, seed) => quizHash(s, seed), parsesOfForm, gradeForm, reset: () => { bankCache = new Map(); } };
 })();
 
 // ---- home + router: the artifact bundles the verb drill and the vocabulary quiz.
