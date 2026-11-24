@@ -12,10 +12,10 @@ tables** actually serve. Finite verb paradigms need both; infinitives need the d
 | Unit | Paradigms | Served | Gaps | “Unit N only” tables | “Unit N only” drill forms | Status |
 |---|---|---|---|---|---|---|
 | 1 | 13 | 13 | 0 | 13 | 0 | covered |
-| 2 | 10 | 10 | 0 | 4 | 1325 | covered |
-| 3 | 12 | 12 | 0 | 6 | 1680 | covered |
+| 2 | 10 | 10 | 0 | 6 | 1325 | covered |
+| 3 | 12 | 12 | 0 | 7 | 1680 | covered |
 | 4 | 12 | 12 | 0 | 12 | 0 | covered |
-| 5 | 24 | 24 | 0 | 16 | 102 | covered |
+| 5 | 24 | 24 | 0 | 19 | 102 | covered |
 | 6 | 7 | 6 | 1 | 6 | 0 | partial |
 | 7 | 14 | 2 | 12 | 1 | 258 | partial |
 | 8 | 17 | 1 | 16 | 1 | 0 | partial |

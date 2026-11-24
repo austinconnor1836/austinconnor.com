@@ -77,6 +77,11 @@
 //  16. two Ending tables (quiz and flashcards, every unit 1–20, both scopes) share a title or a key (id): a repeat
 //      looks like a duplicate card and merges the two tables' history. The four perfect/pluperfect M/P stem types
 //      (§43c: vowel, labial, palatal, dental) must each name their type in the title and sit together in book order.
+//  17. an infinitive on the Reference page has no Ending-tables card in the same scope (every unit 1–20): each row of
+//      παιδεύω's infinitive tables in "Unit N only" (that unit's tables) and "through Unit N" must be a card
+//      (mood infinitive, same tense and voice) in the matching Ending-tables scope, holding the same form, and every
+//      infinitive card must be such a row (no card outside its unit). The card is a one-row pair (check 15): its
+//      ending is the tail of the form and is accepted, and the form is accepted by the verb half's grader.
 // Units above supportedThrough are reported (and listed on the unit screens), not failed.
 import fs from "node:fs";
 import { loadTrainer, TRAINER } from "./load-trainer.mjs";
@@ -443,6 +448,36 @@ function uniqueTablesAudit(trainer) {
   return { bad, scopes };
 }
 
+// Check 17: every Reference-page infinitive (παιδεύω's tables) has a matching Ending-tables card in the same scope.
+function infinitiveCardsAudit(trainer) {
+  const bad = [], PAI = nfc("παιδεύω"), deAcc = s => nfc(s).normalize("NFD").replace(/[\u0300\u0301\u0342\u0313\u0314\u0304\u0306\u0308]/g, "").normalize("NFC");
+  let cards = 0;
+  const perUnit = {};
+  for (let n = 1; n <= 20; n++) for (const mode of ["only", "through"]) {
+    const only = mode === "only", where = `Unit ${n} ${mode}`;
+    const rows = trainer.refTables(n, only).filter(t => t.section === "inf" && !t.group && nfc(t.lemma) === PAI && (!only || t.tenseUnit === n))
+      .flatMap(t => t.rows.map((r, i) => ({ tense: r.toLowerCase(), voice: t.voice || "active", forms: (t.cells[i]?.[0] || []).map(nfc), label: t.label })));
+    const got = trainer.tables({ unit: n, mode }).filter(t => t.mood === "infinitive");
+    if (only) perUnit[n] = got.map(t => t.label);
+    for (const r of rows) {
+      const c = got.find(t => t.tense === r.tense && (t.voice || "active") === r.voice);
+      if (!c) { bad.push(`${where}: the Reference page's ${r.tense} ${r.voice} infinitive (“${r.label}”) has no Ending-tables card`); continue; }
+      cards++;
+      const full = (c.full?.[0]?.[0] || []).map(nfc), ends = c.cells?.[0]?.[0] || [];
+      if (full.join() !== r.forms.join()) bad.push(`${where}: “${c.label}” shows ${full.join(" / ")}, the Reference page ${r.forms.join(" / ")}`);
+      if (!c.pair || typeof c.acceptsFull !== "function") { bad.push(`${where}: “${c.label}” is not a pair`); continue; }
+      for (const e of ends) {
+        if (!full.some(f => deAcc(f).endsWith(deAcc(e)))) bad.push(`${where}: “${c.label}” ending ${e} isn't the end of ${full.join(" / ")}`);
+        if (!c.accepts(e, ends)) bad.push(`${where}: “${c.label}” doesn't accept its own ending ${e}`);
+      }
+      for (const f of full) if (!c.acceptsFull(f, c.full[0][0])) bad.push(`${where}: “${c.label}” doesn't accept its own form ${f}`);
+    }
+    for (const c of got) if (!rows.some(r => r.tense === c.tense && r.voice === (c.voice || "active")))
+      bad.push(`${where}: Ending-tables card “${c.label}” has no infinitive on the Reference page in this scope`);
+  }
+  return { bad, cards, perUnit };
+}
+
 // Check 10: one infinitive table per verb and voice, holding every infinitive tense taught so far.
 function infinitiveAudit(trainer) {
   const bad = [];
@@ -673,6 +708,7 @@ const appendix = appendixAudit(trainer);
 const words = wordsAudit(trainer);
 const endingsOnly = endingsOnlyAudit(trainer);
 const unique = uniqueTablesAudit(trainer);
+const infCards = infinitiveCardsAudit(trainer);
 const docText = doc(rows, onlyTables, onlyDrill, sounds, verbs, parts, glossary, formation);
 
 if (WRITE) {
@@ -715,6 +751,7 @@ for (const b of appendix.bad) failures.push(b);
 for (const b of words.bad) failures.push(b);
 for (const b of endingsOnly.bad) failures.push(b);
 for (const b of unique.bad) failures.push(b);
+for (const b of infCards.bad) failures.push(b);
 const live = loadTrainerCoverage(trainer.html);
 if (!WRITE && JSON.stringify(live) !== JSON.stringify(block))
   failures.push("index.html's TRAINER_COVERAGE is out of date: run `node scripts/greek-trainer/coverage.mjs --write`");
@@ -739,4 +776,5 @@ console.log(`greek-trainer: Vocabulary list: ${words.total} words over ${Object.
 console.log(`greek-trainer: Reference jump form: ${jumpForm.combos} Verb · Tense · Mood · Voice combos resolve to rendered tables (Units 1–20, both scopes).`);
 console.log(`greek-trainer: Ending tables: ${endingsOnly.tables} verb tables, ${endingsOnly.cells} cells checked as endings only, ${endingsOnly.pairs} paired with an example verb (Units 1–20, both scopes).`);
 console.log(`greek-trainer: Ending tables: no repeated title or key in ${unique.scopes} unit scopes; stem types titled and in book order.`);
+console.log(`greek-trainer: Ending tables: ${infCards.cards} Reference infinitives matched by an infinitive card (Units 1–20, both scopes).`);
 console.log("greek-trainer coverage check passed.");

@@ -1259,12 +1259,13 @@ function gradeEnglish(given, parses) {
    catOf / DRILL_CATS / SLOT / PERSONS / variants. */
 "use strict";
 (function () {
-  // Infinitives have no person × number grid, so drop that section here. The article (§16)
+  // Infinitives have no person × number grid: the quiz serves each as a one-row card (infinitiveCards), and the
+  // Reference page draws its own infinitive tables (refTables). The article (§16)
   // is its own section: a case·number × gender grid of whole forms, not endings.
   // Declension sections (nouns, adjectives, pronouns) sit between the article and the verbs.
   const DECL_CATS = [["n1", "Nouns: 1st declension"], ["n2", "Nouns: 2nd declension"], ["n3", "Nouns: 3rd declension"],
     ["adj", "Adjectives"], ["pron", "Pronouns"]];
-  const TABLE_CATS = [["article", "The article (§16)"], ...DECL_CATS, ...DRILL_CATS.filter(([k]) => k !== "inf")];
+  const TABLE_CATS = [["article", "The article (§16)"], ...DECL_CATS, ...DRILL_CATS];
   const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
 
   // H&Q §16, p. 28 (PDF 47), as transcribed in the vault note "§16 - The Article".
@@ -1757,8 +1758,43 @@ function gradeEnglish(given, parses) {
 
   const inScope = (it, scope) => scope.mode === "only" ? it.tenseUnit === scope.unit : it.tenseUnit <= scope.unit;
 
+  // The infinitive's ending, by the finite tables' convention: what is left of παιδεύω's form once the stem, the
+  // reduplication and the tense marker (σ, κ, θ) are stripped, the same stem + ending split as the Reference page's
+  // Formation lines (INF_RULE). INF_MARK: the marker, so "σαι", "κεναι", "θηναι" are accepted as well.
+  const INF_STEM = { "present|active": "παιδευ", "aorist|active": "παιδευσ", "perfect|active": "πεπαιδευκ",
+    "present|passive": "παιδευ", "aorist|passive": "παιδευθ", "perfect|passive": "πεπαιδευ" };
+  const INF_MARK = { "aorist|active": "σ", "perfect|active": "κ", "aorist|passive": "θ" };
+  const INF_ORDER = ["present", "future", "aorist", "perfect"];
+  // One Ending-tables card per infinitive H&Q prints for παιδεύω (§26, §30, §43), in its own unit (tenseUnit):
+  // a single-row pair, the bare ending beside παιδεύω's form. The Reference page's infinitive tables are built
+  // from these same book items; coverage.mjs check 17 holds the two together.
+  function infinitiveCards(scope, settings) {
+    if (!settings.cats.includes("inf")) return [];
+    const out = [];
+    const its = drillPoolCache.book.filter(it => it.src === "book" && it.mood === "infinitive" && nfc(it.lemma) === nfc("παιδεύω")
+      && inScope(it, scope) && voiceOn(settings, it.voice));
+    its.sort((a, b) => a.tenseUnit - b.tenseUnit || (a.voice === b.voice ? 0 : a.voice === "active" ? -1 : 1)
+      || INF_ORDER.indexOf(a.tense) - INF_ORDER.indexOf(b.tense));
+    for (const it of its) {
+      const voice = it.voice || "active", k = `${it.tense}|${voice}`, stem = INF_STEM[k];
+      const forms = it.forms.map(nfc);
+      const ends = stem ? [...new Set(forms.map(f => deAccent(f)).filter(d => d.startsWith(stem) && d.length > stem.length).map(d => d.slice(stem.length)))] : [];
+      if (!ends.length) continue;   // no clean split: never shown as a whole form
+      const alt = INF_MARK[k] ? ends.map(e => INF_MARK[k] + e) : [];
+      const book = `${it.section}, ${pagesRef(it.pages || String(it.page))}`;
+      out.push({ id: voice === "active" ? `e:${it.tense}|infinitive` : `e:${it.lemma}|${it.tense}|infinitive|${voice}`,
+        tense: it.tense, mood: "infinitive", voice, section: "inf", label: `${cap(it.tense)} infinitive ${voice}`,
+        corner: "Tense", rows: [cap(it.tense)], cols: ["Infinitive"], sec: it.section, lemma: it.lemma, tenseUnit: it.tenseUnit,
+        cells: [[ends]], full: [[forms]], accepts: (g, e) => endingAccepts(g, [...e, ...alt]),
+        formation: infFormationLine(it.lemma, it.tense, voice, forms[0]),
+        source: `Ending and form from H&Q's ${it.lemma} ${book}`,
+        gradingNote: `Endings are graded without accents; iota subscripts (ῃ, ῳ) count.${alt.length ? ` The tense marker may be typed too (-${alt[0]}).` : ""}` });
+    }
+    return out;
+  }
+
   // One table per (verb, tense, mood, voice) that H&Q prints, in scope + switched-on sections and
-  // voices, excluding infinitives, plus the article and the declensions. Each cell holds the acceptable
+  // voices (the quiz adds one card per infinitive, infinitiveCards), plus the article and the declensions. Each cell holds the acceptable
   // spellings (the consonant-stem 3rd plurals are H&Q's Appendix compounds, asked as whole forms).
   // παιδεύω tables ask for the bare endings. Any paradigm whose endings don't derive cleanly from the stem
   // (the consonant-stem perfect passives of §43.14) is shown as whole forms on the Reference page; the quiz
@@ -1812,10 +1848,21 @@ function gradeEnglish(given, parses) {
     }
     // The quiz pairs every verb table's endings with its example verb's forms (H&Q's printed paradigm: παιδεύω, or the
     // §43.14 model verb), both filled in: endings graded as endings, the forms as whole forms.
+    // Each unit's infinitive cards follow that unit's last verb table (the end of its verb set), in both scopes.
+    if (quiz) for (const c of infinitiveCards(scope, settings)) {
+      let at = -1;
+      tables.forEach((t, i) => { if (t.tense && t.tenseUnit <= c.tenseUnit) at = i; });
+      tables.splice(at < 0 ? tables.length : at + 1, 0, c);
+    }
     if (quiz) for (const t of tables) if (t.tense && t.full && t.cells !== t.full) {
       t.pair = true;
       t.acceptsFull = declFormAccepts;
       const n = t.full.flat().filter(Boolean).length;
+      if (t.mood === "infinitive") {
+        t.instr = `Type the ending, then the ${t.tense} ${t.voice} infinitive of ${t.lemma}`;
+        t.gradingNote = `Ending: ${t.gradingNote.replace(/^Endings are graded/, "graded")} Form of ${t.lemma}: accents and breathings count; macrons don't, and a grave counts as an acute.`;
+        continue;
+      }
       t.instr = `Type the ${n === 6 ? "six" : n} endings${t.stemType ? " (stem consonant included)" : ""}, then the ${n === 6 ? "six" : n} forms of ${t.lemma}`;
       t.gradingNote = `Endings: ${t.gradingNote.replace(/^Endings are graded/, "graded")} Forms of ${t.lemma}: accents and breathings count; macrons don't, and a grave counts as an acute.`;
     }
@@ -1862,6 +1909,8 @@ function gradeEnglish(given, parses) {
     if (!settings.hasDecl) { for (const [k] of DECL_CATS) if (!settings.cats.includes(k)) settings.cats.push(k); settings.hasDecl = true; }
     // And the pluperfect section and every voice (the passive came with Unit 5).
     if (!settings.hasPlpf) { if (!settings.cats.includes("plpf")) settings.cats.push("plpf"); settings.hasPlpf = true; }
+    // And the infinitive cards.
+    if (!settings.hasInf) { if (!settings.cats.includes("inf")) settings.cats.push("inf"); settings.hasInf = true; }
     settings.voices = (settings.voices || []).filter(v => DRILL_VOICES.some(d => d[0] === v));
     if (!settings.hasVoices || !settings.voices.length) { settings.voices = DRILL_VOICES.map(v => v[0]); settings.hasVoices = true; }
     if (settings.view !== "cards") settings.view = "type";
@@ -1924,7 +1973,7 @@ function gradeEnglish(given, parses) {
       h("h1", { style: { marginTop: "8px" } }, "Ending tables"),
       h("p", { class: "muted", style: { marginTop: 0, fontSize: "14px" } },
         "Fill in the bare personal endings for one tense and mood — all six, in a person × number grid — or a full paradigm: the article (§16) and H&Q's model nouns, adjectives and pronouns. ",
-        "Verb endings are taken from H&Q's παιδεύω paradigms, active (Units 2–3) and passive (Unit 5); each verb table comes as a pair: the bare endings beside the same forms of an example verb (παιδεύω, or H&Q's model verb for each consonant stem type in §43.14, where the endings include the stem consonant: -γμαι, -ξαι, -κται …), and you fill in both. Accents aren't graded in endings (an ending has none on its own); iota subscripts are. In whole forms (the example verbs, the article, nouns, adjectives, pronouns) accents are graded."),
+        "Verb endings are taken from H&Q's παιδεύω paradigms, active (Units 2–3) and passive (Unit 5); each verb table comes as a pair: the bare endings beside the same forms of an example verb (παιδεύω, or H&Q's model verb for each consonant stem type in §43.14, where the endings include the stem consonant: -γμαι, -ξαι, -κται …), and you fill in both. Each infinitive H&Q teaches is a one-row card of the same kind: its ending beside παιδεύω's infinitive. Accents aren't graded in endings (an ending has none on its own); iota subscripts are. In whole forms (the example verbs, the article, nouns, adjectives, pronouns) accents are graded."),
       h("div", { class: "row ref-actions" }, h("a", { class: "btn", href: "#/reference" }, "Read all the tables (reference) →")),
       body);
   }
