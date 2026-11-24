@@ -94,6 +94,11 @@
 //      supportedThrough) is neither in the bank nor listed as left out; an item has no answer, or a form shared with
 //      other items in Units 1–N doesn't accept all their parses; a verb's Reference link doesn't land; a seed doesn't
 //      reproduce its quiz; or Produce rejects H&Q's alternates (or accepts a form with no accent).
+//  20. the Forms at a glance page (#/combos, every unit 1–20, both scopes) leaves out a tense · mood · voice that the Ending
+//      tables or the Reference page show in the same scope (a verb card, an infinitive card, a παιδεύω table or an
+//      infinitive-table row), has two rows for one, or has a row neither page shows; a row has no English or no
+//      principal-part text, cites the wrong part (H&Q §19), or shows a stem that παιδεύω's printed 1st sg. doesn't start
+//      with (the stem + ησ for the future passive); or its Reference link doesn't land on a rendered table.
 // Units above supportedThrough are reported (and listed on the unit screens), not failed.
 import fs from "node:fs";
 import { loadTrainer, TRAINER } from "./load-trainer.mjs";
@@ -662,6 +667,59 @@ function unitVerbAudit(trainer) {
 }
 
 // Check 10: one infinitive table per verb and voice, holding every infinitive tense taught so far.
+function combosAudit(trainer) {
+  const bad = [];
+  let rows = 0;
+  const MODEL = nfc("παιδεύω"), ROMAN = ["I", "II", "III", "IV", "V", "VI"];
+  const deAcc = x => nfc(x).normalize("NFD").replace(/[\u0300-\u036f]/g, "").normalize("NFC");
+  const jumpIds = new Map();
+  const rendered = unit => { if (!jumpIds.has(unit)) { const j = trainer.refJump(unit, false);
+    jumpIds.set(unit, new Set([...j.tables.map(t => t.id), ...j.tables.flatMap(t => t.spans || [])].filter(Boolean))); } return jumpIds.get(unit); };
+  const ppNum = (tense, voice) => tense === "present" || tense === "imperfect" ? 1
+    : tense === "perfect" || tense === "pluperfect" ? (voice === "active" ? 4 : 5)
+    : tense === "future" ? (voice === "passive" ? 6 : 2) : tense === "aorist" ? (voice === "passive" ? 6 : 3) : 0;
+  for (let u = 1; u <= 20; u++) for (const mode of ["only", "through"]) {
+    const where = `Forms at a glance, ${mode === "only" ? `Unit ${u} only` : `Units 1–${u}`}`;
+    const want = new Set();
+    for (const t of trainer.tables({ unit: u, mode })) if (t.tense && t.mood) want.add(`${t.tense}|${t.mood}|${t.voice || "active"}`);
+    for (const t of trainer.refTables(u, mode === "only")) {
+      // The Reference page's "Unit N only" keeps every παιδεύω table through N (it narrows the vocabulary verbs), so a
+      // Unit N only row is a table (or infinitive table) from Unit N itself.
+      if (nfc(t.lemma || "") !== MODEL || (mode === "only" && t.tenseUnit !== u)) continue;
+      if (t.section === "inf") t.rows.forEach((r, i) => { if (!t.dash?.[i]) want.add(`${r.toLowerCase()}|infinitive|${t.voice || "active"}`); });
+      else if (t.tense && t.mood) want.add(`${t.tense}|${t.mood}|${t.voice || "active"}`);
+    }
+    const got = trainer.combos(u, mode);
+    rows += got.length;
+    const count = new Map();
+    for (const r of got) count.set(r.key, (count.get(r.key) || 0) + 1);
+    for (const k of want) if (!count.has(k)) bad.push(`${where}: no row for ${k.replace(/\|/g, " ")} (it is on the Ending tables or the Reference page)`);
+    for (const [k, n] of count) {
+      if (n > 1) bad.push(`${where}: ${n} rows for ${k.replace(/\|/g, " ")}`);
+      if (!want.has(k)) bad.push(`${where}: row ${k.replace(/\|/g, " ")} is on neither the Ending tables nor the Reference page`);
+    }
+    for (const r of got) {
+      const id = `${where}, ${r.label}`;
+      if (!String(r.english || "").trim()) bad.push(`${id}: no English`);
+      if (!String(r.ppText || "").trim()) { bad.push(`${id}: no principal part`); continue; }
+      const n = ppNum(r.tense, r.voice);
+      if (!r.ppText.startsWith(`PP ${ROMAN[n - 1]} `)) bad.push(`${id}: cites “${r.ppText}”, but H&Q §19 builds it on PP ${ROMAN[n - 1]}`);
+      const stem = deAcc(r.part.stem), form = deAcc(r.form);
+      if (!form.startsWith(stem)) bad.push(`${id}: stem ${r.part.stem}- isn't the start of παιδεύω's ${r.form}`);
+      const mustAug = r.tense === "imperfect" || r.tense === "pluperfect" || (r.tense === "aorist" && r.mood === "indicative");
+      const noAug = (r.tense === "aorist" && r.mood !== "indicative") || (r.tense === "future" && r.voice === "passive");
+      if (mustAug !== r.ppText.includes("+ augment") || noAug !== r.ppText.includes("− augment"))
+        bad.push(`${id}: “${r.ppText}” has the augment wrong`);
+      if (!r.href) bad.push(`${id}: no Reference link`);
+      else {
+        const m = r.href.match(/^#\/reference\/(\d+)\?p=([^&]+)&v=(.+)$/);
+        if (!m || !rendered(Number(m[1])).has(`ref-${m[2]}--${m[3]}`)) bad.push(`${id}: Reference link ${r.href} doesn't land on a rendered table`);
+      }
+    }
+  }
+  return { bad, rows };
+}
+
 function infinitiveAudit(trainer) {
   const bad = [];
   const book = trainer.pool.book.filter(it => it.src === "book" && it.mood === "infinitive");
@@ -906,6 +964,7 @@ const unique = uniqueTablesAudit(trainer);
 const infCards = infinitiveCardsAudit(trainer);
 const unitVerbs = unitVerbAudit(trainer);
 const quiz = quizAudit(trainer);
+const combos = combosAudit(trainer);
 const docText = doc(rows, onlyTables, onlyDrill, sounds, verbs, parts, glossary, formation, quiz);
 
 if (WRITE) {
@@ -951,6 +1010,7 @@ for (const b of unique.bad) failures.push(b);
 for (const b of infCards.bad) failures.push(b);
 for (const b of unitVerbs.bad) failures.push(b);
 for (const b of quiz.bad) failures.push(b);
+for (const b of combos.bad) failures.push(b);
 const live = loadTrainerCoverage(trainer.html);
 if (!WRITE && JSON.stringify(live) !== JSON.stringify(block))
   failures.push("index.html's TRAINER_COVERAGE is out of date: run `node scripts/greek-trainer/coverage.mjs --write`");
@@ -978,4 +1038,5 @@ console.log(`greek-trainer: Ending tables: no repeated title or key in ${unique.
 console.log(`greek-trainer: Ending tables: ${infCards.cards} Reference infinitives matched by an infinitive card (Units 1–20, both scopes).`);
 console.log(`greek-trainer: Ending tables: ${unitVerbs.tables} unit-verb (⚙ built) tables match their Reference copies (Units 1–20, both scopes).`);
 console.log(`greek-trainer: Quiz test bank: ${quiz.items} items checked over Units 1–20 (${quiz.verbForms} Reference verb forms found in it, ${quiz.ambiguous} with several parses, ${quiz.links} Reference links); the declension rule reproduces ${quiz.paradigms.length} printed paradigms.`);
+console.log(`greek-trainer: Forms at a glance: ${combos.rows} rows checked against the Ending tables and the Reference page (Units 1–20, both scopes).`);
 console.log("greek-trainer coverage check passed.");

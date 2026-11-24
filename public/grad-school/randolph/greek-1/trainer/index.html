@@ -542,6 +542,26 @@ table.ref-table { margin: 0; font-size: clamp(16px, 4.2vw, 20px); }
 
 /* ---------- quiz / test bank (#/quiz) ---------- */
 .quiz-tile { border-left: 4px solid var(--bad); }
+/* ---------- forms at a glance (#/combos) ---------- */
+.combos-tile { border-left: 4px solid var(--star); }
+.cb-table .cb-tmv { font-size: 17.5px; font-weight: 650; line-height: 1.45; width: 30%; }
+.cb-table .cb-tmv a { display: inline-flex; align-items: center; min-height: 44px; }
+.cb-table .cb-en, .cb-table .cb-pp { font-size: 17.5px; line-height: 1.45; overflow-wrap: anywhere; }
+.cb-table td { vertical-align: middle; }
+.cb-table tr.cb-mood td { border-top: 2px solid var(--line); }
+.cb-stem { font-family: var(--greek); font-size: 20px; }
+.cb-fn { color: var(--muted); }
+.cb-table th .cb-gk { text-transform: none; letter-spacing: 0; }
+.cb-note { font-size: 14px; margin-top: 14px; }
+@media (max-width: 640px) {
+  .cb-table tr.cb-mood { border-top: 2px solid var(--line); }
+  .cb-table tr.cb-mood td { border-top: 0; }
+  .cb-table .cb-tmv { padding-right: 4.4em !important; width: auto; }
+  .cb-table .cb-tmv a { min-height: 44px; }
+  .cb-table .cb-en { margin-top: 0; }
+  .cb-table .cb-pp { color: var(--muted); font-size: 16px; }
+  .cb-table .cb-pp .cb-stem { color: var(--ink); }
+}
 .quiz-bank { margin: 14px 0 4px; font-size: 16px; overflow-wrap: anywhere; }
 .quiz-whats { font-size: 14px; margin: 4px 0 8px; }
 .quiz-checks { gap: 4px; }
@@ -2805,6 +2825,7 @@ function gradeEnglish(given, parses) {
         h("div", { class: "row ref-actions" },
           h("a", { class: "btn small", href: "#/reference" }, "Change unit"),
           h("a", { class: "btn small", href: `#/parts/${unit}/through` }, "Principal parts"),
+          h("a", { class: "btn small", href: `#/combos?u=${unit}&mode=through` }, "Forms at a glance"),
           h("button", { class: "btn small", onclick: () => window.print() }, "Print"))),
       h("p", { class: "muted", style: { marginTop: 0, fontSize: "14px" } },
         `${tabs.length - nBuilt} table${tabs.length - nBuilt === 1 ? "" : "s"}, as printed in H&Q`
@@ -2869,6 +2890,121 @@ function gradeEnglish(given, parses) {
     const cut = id ? id.indexOf("--") : -1;
     return cut > 4 ? `#/reference/${unit}?p=${id.slice(4, cut)}&v=${id.slice(cut + 2)}` : null;
   };
+  /* Forms at a glance (#/combos?u=5&mode=only|through): one row per tense · mood · voice H&Q has taught in scope
+     (infinitives included), with παιδεύω's 1st sg. in English and the principal part it is built on. Nothing is
+     hand-listed: the rows are παιδεύω's printed paradigms in the drill pool (the same items, and the same tenseUnit
+     scoping, as the Ending tables and the Reference page), the English is the cards' "Sounds like" data (EN_FINITE /
+     EN_INF) and the part is H&Q §19's numbering (ppNumOf, ppsOf, PP_ENDS). coverage.mjs check 20 holds it to both pages. */
+  const COMBO_MOODS = ["indicative", "subjunctive", "optative", "imperative", "infinitive", "participle"];
+  const COMBO_TENSES = ["present", "imperfect", "future", "aorist", "perfect", "pluperfect"];
+  const comboRank = (xs, x) => { const i = xs.indexOf(x); return i < 0 ? xs.length : i; };
+  // The stem as the table shows it: the part minus its ending (§19), with the augment added (imperfect, pluperfect),
+  // kept (aorist indicative) or taken off (the other aorists, the future passive, which also adds -ησ-).
+  function comboPart(lemma, tense, mood, voice) {
+    const n = ppNumOf(tense, voice), R = PP_ROMAN[n - 1], pp = (ppsOf(lemma) || [])[n - 1];
+    if (!n || ppDash(pp)) return null;
+    const part = stripAcc(ppAlts(pp)[0].replace(/^-/, "")), dp = deAccent(part);
+    const end = PP_ENDS[n].find(e => dp.endsWith(e) && dp.length > e.length);
+    if (!end) return null;
+    const base = dropLetters(part, letters(end).length);
+    const consonantStart = !/^[αεηιουω]/.test(deAccent(base));
+    let how = "", stem = base;
+    if (tense === "imperfect" || tense === "pluperfect") {
+      if (!consonantStart) return null;   // a temporal augment: not needed for παιδεύω
+      how = " + augment"; stem = "ἐ" + base;
+    } else if (unaugmented(tense, mood === "infinitive" ? "infinitive" : mood, voice)) {
+      const L = letters(base);
+      if (deAccent(L[0]) !== "ε" || /^[αεηιουω]/.test(deAccent(L[1] || ""))) return null;
+      stem = L.slice(1).join("").normalize("NFC");
+      how = " − augment";
+      if (tense === "future") { how += " + ησ"; stem += "ησ"; }
+    } else if (tense === "aorist") how = " + augment";
+    return { n, R, pp: nfc(pp), how, stem, text: `PP ${R}${how} (${stem}-)` };
+  }
+  function comboEnglish(lemma, tense, mood, voice) {
+    const v = EN_VERB.get(nfc(lemma));
+    if (!v) return null;
+    if (mood === "infinitive") return EN_INF[`${tense}|${voice}`]?.(v) || null;
+    const f = EN_FINITE[`${tense}|${mood}|${voice}`];
+    if (!f) return null;
+    const that = mood === "subjunctive" || mood === "optative";
+    return { text: `${that ? "(that) " : ""}${EN_SUBJ[0]} ${f(v, 0)}`, that };
+  }
+  function combosInScope(unit, mode) {
+    const scope = { unit, mode };
+    const its = (drillPoolCache?.book || []).filter(it => it.src === "book" && nfc(it.lemma) === MODEL && inScope(it, scope)
+      && (it.mood === "infinitive" || (it.person === 1 && it.number === "singular")));
+    const seen = new Map();
+    for (const it of its) {
+      const voice = it.voice || "active", key = `${it.tense}|${it.mood}|${voice}`;
+      if (!seen.has(key)) seen.set(key, it);
+    }
+    const vRank = v => comboRank(DRILL_VOICES.map(([x]) => x), v);
+    return [...seen.values()].map(it => {
+      const voice = it.voice || "active", en = comboEnglish(MODEL, it.tense, it.mood, voice);
+      const enText = typeof en === "string" ? en : en?.text || "";
+      return { key: `${it.tense}|${it.mood}|${voice}`, tense: it.tense, mood: it.mood, voice, unit: it.tenseUnit, lemma: MODEL,
+        label: `${cap(it.tense)} ${it.mood} ${voice}`, form: it.forms[0], english: enText, that: !!en?.that,
+        part: comboPart(MODEL, it.tense, it.mood, voice),
+        href: window.trainerRefHref ? window.trainerRefHref(unit, MODEL, it.tense, it.mood, voice) : null };
+    }).sort((a, b) => vRank(a.voice) - vRank(b.voice) || comboRank(COMBO_MOODS, a.mood) - comboRank(COMBO_MOODS, b.mood)
+      || comboRank(COMBO_TENSES, a.tense) - comboRank(COMBO_TENSES, b.tense) || a.unit - b.unit);
+  }
+  window.trainerCombos = (unit, mode) => combosInScope(unit, mode === "only" ? "only" : "through")
+    .map(r => ({ ...r, ppText: r.part?.text || "" }));   // for coverage.mjs (check 20)
+
+  const cbHash = s => `#/combos?u=${s.unit}&mode=${s.mode}`;
+  async function combosView(query) {
+    document.title = "Forms at a glance · H&Q Greek";
+    if (!drillPoolCache) {
+      app().replaceChildren(h("div", { class: "empty" }, "Loading…"));
+      try { drillPoolCache = await loadDrillPool(); }
+      catch (e) { return app().replaceChildren(h("div", { class: "empty" }, "Couldn't load the forms: " + e.message)); }
+    }
+    const max = wlMaxUnit();
+    const q = new URLSearchParams(query || "");
+    const saved = tStore.get("combos-scope", { unit: 5, mode: "through" });
+    const s = {
+      unit: Math.min(max, Math.max(1, Number(q.get("u")) || Number(saved.unit) || 1)),
+      mode: (q.get("mode") || saved.mode) === "only" ? "only" : "through",
+    };
+    tStore.set("combos-scope", s);
+    if (location.hash !== cbHash(s)) { try { history.replaceState(null, "", cbHash(s)); } catch { /* sandboxed */ } }
+    const scopeTxt = s.mode === "only" ? `Unit ${s.unit} only` : s.unit === 1 ? "Unit 1" : `Units 1–${s.unit}`;
+    document.title = `Forms at a glance · ${scopeTxt}`;
+    const rows = combosInScope(s.unit, s.mode);
+    const go = patch => { location.hash = cbHash({ ...s, ...patch }); };
+    const unitSel = h("select", { class: "field", "aria-label": "Unit", onchange: e => go({ unit: Number(e.target.value) }) },
+      Array.from({ length: max }, (_, i) => h("option", { value: String(i + 1), selected: s.unit === i + 1 }, `Unit ${i + 1}`)));
+    const modeBtn = (mode, label) => h("button", { class: "btn", "aria-pressed": String(s.mode === mode), onclick: () => s.mode !== mode && go({ mode }) }, label);
+    const greekStem = t => { const m = /^(.*)\((.+)\)$/.exec(t); return m ? [m[1], "(", h("span", { class: "cb-stem", lang: "grc" }, m[2]), ")"] : t; };
+    const rowEl = (r, i, rs) => h("tr", { class: i > 0 && rs[i - 1].mood !== r.mood ? "cb-mood" : null },
+      h("td", { class: "cb-tmv" }, r.href ? h("a", { href: r.href }, r.label) : r.label),
+      h("td", { class: "cb-en" }, r.english, r.that ? h("sup", { class: "cb-fn" }, "*") : null),
+      h("td", { class: "cb-pp" }, r.part ? greekStem(r.part.text) : "—"),
+      h("td", { class: "wl-u cb-u" }, h("span", { class: "pp-tag" }, `U${r.unit}`)));
+    const tableEl = rs => h("div", { class: "pp-wrap" }, h("table", { class: "wl-table cb-table" },
+      h("thead", {}, h("tr", {}, h("th", { scope: "col" }, "Tense · Mood · Voice"), h("th", { scope: "col" }, "English (1st sg. of ", h("span", { class: "cb-gk", lang: "grc" }, "παιδεύω"), ")"),
+        h("th", { scope: "col" }, "Principal part (± augment)"), h("th", { scope: "col", class: "wl-u" }, "Unit"))),
+      h("tbody", {}, rs.map(rowEl))));
+    const voices = DRILL_VOICES.filter(([v]) => rows.some(r => r.voice === v));
+    const anyThat = rows.some(r => r.that);
+    app().replaceChildren(
+      h("div", { class: "row wl-nav" }, h("a", { href: "#/", class: "muted" }, "← Home"), h("span", { class: "spacer" }),
+        h("a", { class: "btn small", href: `#/reference/${s.unit}` }, "Reference tables"),
+        h("a", { class: "btn small", href: `#/parts/${s.unit}/${s.mode}` }, "Principal parts")),
+      h("h1", { style: { marginTop: "8px" } }, `Forms at a glance: ${s.mode === "only" ? `Unit ${s.unit}` : scopeTxt}`),
+      h("p", { class: "muted", style: { marginTop: 0, fontSize: "14px" } },
+        "Every tense, mood and voice H&Q has taught, with παιδεύω's 1st singular in English and the principal part it's built on. Tap a form for its full table."),
+      h("div", { class: "wl-tools", role: "group", "aria-label": "Units" },
+        unitSel, modeBtn("only", `Unit ${s.unit} only`), modeBtn("through", `Units 1–${s.unit} (cumulative)`)),
+      h("p", { class: "muted wl-count", "aria-live": "polite" }, `${rows.length} form${rows.length === 1 ? "" : "s"} · ${scopeTxt}`),
+      rows.length ? voices.map(([v, label]) => h("section", { class: "wl-unit" },
+        h("h2", {}, label, h("small", {}, `${rows.filter(r => r.voice === v).length}`)), tableEl(rows.filter(r => r.voice === v))))
+        : h("div", { class: "empty" }, s.mode === "only" ? `Unit ${s.unit} teaches no new verb forms.` : "No verb forms yet in this scope."),
+      anyThat ? h("p", { class: "muted cb-note" }, "* ", EN_MOOD_NOTE) : null);
+  }
+  window.combosView = combosView;
   window.trainerFormation = t => ({ text: formationText(t), stem: stemInfo(t), lines: t.section === "inf" && t.lemma ? infFormation(t) : null });  // for coverage.mjs (check 9)
 })();
 
@@ -3730,6 +3866,7 @@ function partsShow(scope) {
       h("div", { class: "row ref-actions" },
         h("a", { class: "btn small", href: "#/parts" }, "Change unit"),
         h("a", { class: "btn small", href: `#/reference/${scope.unit}` }, "Reference tables"),
+        h("a", { class: "btn small", href: `#/combos?u=${scope.unit}&mode=${scope.mode}` }, "Forms at a glance"),
         h("a", { class: "btn small", href: "#/glossary" }, "Glossary"),
         h("a", { class: "btn small", href: `#/words?u=${scope.unit}&mode=${scope.mode}` }, "Vocabulary list"))),
     h("div", { class: "pp-tools" }, search, hideBtn),
@@ -4722,6 +4859,9 @@ function homeView() {
     h("a", { class: "panel deck-tile parts-tile", href: "#/parts", style: { marginTop: "12px" } },
       h("h3", {}, "Principal parts"),
       h("div", { class: "muted" }, "Every vocabulary verb with its six principal parts, one per line, by unit — hide them to quiz yourself")),
+    h("a", { class: "panel deck-tile combos-tile", href: "#/combos", style: { marginTop: "12px" } },
+      h("h3", {}, "Forms at a glance"),
+      h("div", { class: "muted" }, "Every tense, mood and voice in your units on one table: παιδεύω's 1st singular in English and the principal part (± augment) it's built on")),
     h("a", { class: "panel deck-tile noun-tile", href: "#/ndrill", style: { marginTop: "12px" } },
       h("h3", {}, "Noun drill"),
       h("div", { class: "muted" }, "Decline every noun — case and number, by unit (built by rule)")),
@@ -4743,6 +4883,7 @@ function route() {
   window.scrollTo(0, 0);
   if (/^words(\?|$)/.test(view)) return wordsView(location.hash.split("?")[1] || "");
   if (/^quiz(\?|$)/.test(view)) return quizView(location.hash.split("?")[1] || "");
+  if (/^combos(\?|$)/.test(view)) return window.combosView(location.hash.split("?")[1] || "");
   if (view === "drill") return drillView(id, mode);
   if (view === "tables") return tableDrillView(id, mode);
   if (view === "reference") return referenceView(id);
