@@ -559,6 +559,11 @@ table.ref-table { margin: 0; font-size: clamp(16px, 4.2vw, 20px); }
 .cb-table .cb-end-line { display: block; }
 .cb-table .cb-end-n { font-size: 13px; color: var(--muted); }
 .cb-table .cb-end-lbl { display: none; }
+.cb-ppmap .cb-ppm-n { width: 4.5em; }
+.cb-ppmap .cb-ppm-ex { width: 9.5em; white-space: nowrap; }
+.cb-ppmap .cb-ppm-b { font-size: 17.5px; line-height: 1.45; }
+.cb-ppmap .cb-ppm-b [lang="grc"] { font-family: var(--greek); font-size: 19px; }
+.cb-ppmap-sec .cb-note { margin-top: 8px; }
 @media (max-width: 640px) {
   .cb-table tr.cb-mood { border-top: 2px solid var(--line); }
   .cb-table tr.cb-mood td { border-top: 0; }
@@ -568,6 +573,9 @@ table.ref-table { margin: 0; font-size: clamp(16px, 4.2vw, 20px); }
   .cb-table .cb-pp { color: var(--muted); font-size: 16px; }
   .cb-table .cb-pp .cb-stem { color: var(--ink); }
   .cb-table .cb-end { width: auto; margin-top: 6px; }
+  .cb-ppmap tr { display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; align-items: baseline; }
+  .cb-ppmap .cb-ppm-n, .cb-ppmap .cb-ppm-ex { width: auto; }
+  .cb-ppmap .cb-ppm-b { grid-column: 1 / -1; }
   .cb-table .cb-end-lbl { display: block; font-size: 13px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 }
 .quiz-bank { margin: 14px 0 4px; font-size: 16px; overflow-wrap: anywhere; }
@@ -2985,6 +2993,50 @@ function gradeEnglish(given, parses) {
   }
   window.trainerCombos = (unit, mode) => combosInScope(unit, mode === "only" ? "only" : "through")
     .map(r => ({ ...r, ppText: r.part?.text || "", endingsText: r.endings?.text || "" }));   // for coverage.mjs (check 20)
+  /* "What each principal part builds" (top of #/combos): one row per principal part the scope's combo rows cite, its
+     Builds list made from those rows (grouped by r.part.n), never hand-listed, so it can't contradict the table below.
+     Within a part: tenses (the aorist before the future, so PP VI reads "aorist passive and future passive"), each
+     tense's voices ("present (active + passive)"), and its moods unless it is the indicative alone ("all moods" when it
+     has every mood the scope teaches and that is at least three). The pluperfect adds its augmented 1st sg.
+     (H&Q p. 62 prints ἐπεπαιδεύκη). coverage.mjs check 22 holds each row's keys to the combo rows citing that part. */
+  const PPMAP_TENSES = ["present", "imperfect", "aorist", "future", "perfect", "pluperfect"];
+  function ppMapInScope(unit, mode) {
+    const rows = combosInScope(unit, mode).filter(r => r.part?.n);
+    const allMoods = [...new Set(rows.map(r => r.mood))];
+    const vRank = v => comboRank(DRILL_VOICES.map(([x]) => x), v);
+    const list = xs => xs.length < 3 ? xs.join(" and ") : `${xs.slice(0, -1).join(", ")}, and ${xs[xs.length - 1]}`;
+    const moodTxt = ms => ms.length === 1 && ms[0] === "indicative" ? ""
+      : ms.length === allMoods.length && ms.length >= 3 ? "all moods" : ms.join(" + ");
+    const out = [];
+    for (let n = 1; n <= 6; n++) {
+      const rs = rows.filter(r => r.part.n === n);
+      if (!rs.length) continue;
+      const tenses = [...new Set(rs.map(r => r.tense))].sort((a, b) => comboRank(PPMAP_TENSES, a) - comboRank(PPMAP_TENSES, b));
+      const builds = tenses.map(tense => {
+        const ts = rs.filter(r => r.tense === tense);
+        const voices = [...new Set(ts.map(r => r.voice))].sort((a, b) => vRank(a) - vRank(b));
+        const moodsOf = v => ts.filter(r => r.voice === v).map(r => r.mood).sort((a, b) => comboRank(COMBO_MOODS, a) - comboRank(COMBO_MOODS, b));
+        const same = voices.every(v => moodsOf(v).join() === moodsOf(voices[0]).join());
+        const aug = tense === "pluperfect"
+          ? ts.filter(r => r.mood === "indicative").sort((a, b) => vRank(a.voice) - vRank(b.voice)).map(r => nfc(r.form)) : [];
+        const augTxt = aug.length ? `+ augment: ${aug.join(", ")}` : "";
+        let text;
+        if (voices.length === 1) {
+          const extra = [moodTxt(moodsOf(voices[0])), augTxt].filter(Boolean).join("; ");
+          text = `${tense} ${voices[0]}${extra ? ` (${extra})` : ""}`;
+        } else if (same) {
+          text = `${tense} (${[voices.join(" + "), moodTxt(moodsOf(voices[0])), augTxt].filter(Boolean).join("; ")})`;
+        } else {
+          text = `${tense} (${[voices.map(v => { const m = moodTxt(moodsOf(v)); return m ? `${v}: ${m}` : v; }).join("; "), augTxt].filter(Boolean).join("; ")})`;
+        }
+        return { tense, voices, text, keys: ts.map(r => r.key) };
+      });
+      out.push({ n, R: PP_ROMAN[n - 1], pp: rs[0].part.pp, builds, text: list(builds.map(b => b.text)),
+        keys: builds.flatMap(b => b.keys).sort() });
+    }
+    return out;
+  }
+  window.trainerPPMap = (unit, mode) => ppMapInScope(unit, mode === "only" ? "only" : "through");   // for coverage.mjs (check 22)
 
   const cbHash = s => `#/combos?u=${s.unit}&mode=${s.mode}`;
   async function combosView(query) {
@@ -3027,6 +3079,19 @@ function gradeEnglish(given, parses) {
       h("tbody", {}, rs.map(rowEl))));
     const voices = DRILL_VOICES.filter(([v]) => rows.some(r => r.voice === v));
     const anyThat = rows.some(r => r.that);
+    const ppMap = ppMapInScope(s.unit, s.mode);
+    const ppMapEl = !ppMap.length ? null : h("section", { class: "wl-unit cb-ppmap-sec" },
+      h("h2", {}, "What each principal part builds"),
+      h("div", { class: "pp-wrap" }, h("table", { class: "wl-table cb-table cb-ppmap" },
+        h("thead", {}, h("tr", {}, h("th", { scope: "col" }, "PP"), h("th", { scope: "col" }, "Example"), h("th", { scope: "col" }, "Builds"))),
+        h("tbody", {}, ppMap.map(m => h("tr", {},
+          h("td", { class: "cb-ppm-n" }, h("span", { class: "pp-tag" }, m.R)),
+          h("td", { class: "cb-ppm-ex" }, h("span", { class: "cb-stem", lang: "grc" }, m.pp)),
+          h("td", { class: "cb-ppm-b" }, m.builds.map((b, i) => [i ? (i === m.builds.length - 1 ? (m.builds.length > 2 ? ", and " : " and ") : ", ") : "",
+            b.text.split(/(\+ augment: [^)]*)/).map(x => x.startsWith("+ augment: ")
+              ? ["+ augment: ", h("span", { lang: "grc", class: "cb-gk" }, x.slice(11))] : x)]))))))),
+      ppMap.some(m => m.builds.some(b => b.tense === "pluperfect"))
+        ? h("p", { class: "muted cb-note" }, "The pluperfect has no principal part of its own: it's the perfect's part (IV or V) + augment.") : null);
     app().replaceChildren(
       h("div", { class: "row wl-nav" }, h("a", { href: "#/", class: "muted" }, "← Home"), h("span", { class: "spacer" }),
         h("a", { class: "btn small", href: `#/reference/${s.unit}` }, "Reference tables"),
@@ -3037,6 +3102,7 @@ function gradeEnglish(given, parses) {
       h("div", { class: "wl-tools", role: "group", "aria-label": "Units" },
         unitSel, modeBtn("only", `Unit ${s.unit} only`), modeBtn("through", `Units 1–${s.unit} (cumulative)`)),
       h("p", { class: "muted wl-count", "aria-live": "polite" }, `${rows.length} form${rows.length === 1 ? "" : "s"} · ${scopeTxt}`),
+      ppMapEl,
       rows.length ? voices.map(([v, label]) => h("section", { class: "wl-unit" },
         h("h2", {}, label, h("small", {}, `${rows.filter(r => r.voice === v).length}`)), tableEl(rows.filter(r => r.voice === v))))
         : h("div", { class: "empty" }, s.mode === "only" ? `Unit ${s.unit} teaches no new verb forms.` : "No verb forms yet in this scope."),

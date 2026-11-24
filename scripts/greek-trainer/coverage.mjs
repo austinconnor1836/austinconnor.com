@@ -105,6 +105,10 @@
 //      its parts of speech (Verbs = verb; Nouns = noun + the article; Adjectives = adj), All isn't the whole bank and the
 //      union of the three plus the All-only pronouns, Translate under Nouns/Adjectives empties a quiz the focus has items
 //      for, or an old pos=… link (or no focus at all) doesn't map to the expected focus.
+//  22. the "What each principal part builds" table on Forms at a glance (#/combos, every unit 1–20, both scopes): a row's
+//      Builds list isn't exactly the set of combo rows that cite its principal part (PP I–VI) in that scope, a part the
+//      combo rows cite has no row (or one they don't cite has one), a row has no Builds text or a tense in its keys that
+//      its text doesn't name, its Example isn't παιδεύω's own part, or a pluperfect isn't shown with its augmented 1st sg.
 // Units above supportedThrough are reported (and listed on the unit screens), not failed.
 import fs from "node:fs";
 import { loadTrainer, TRAINER } from "./load-trainer.mjs";
@@ -773,6 +777,38 @@ function combosAudit(trainer) {
   return { bad, rows };
 }
 
+function ppMapAudit(trainer) {
+  const bad = [];
+  let rows = 0;
+  const ROMAN = ["I", "II", "III", "IV", "V", "VI"];
+  for (let u = 1; u <= 20; u++) for (const mode of ["only", "through"]) {
+    const where = `Forms at a glance PP map, ${mode === "only" ? `Unit ${u} only` : `Units 1–${u}`}`;
+    const combos = trainer.combos(u, mode);
+    const map = trainer.ppMap(u, mode);
+    rows += map.length;
+    const cited = new Map();
+    for (const r of combos) if (r.part?.n) (cited.get(r.part.n) || cited.set(r.part.n, []).get(r.part.n)).push(r.key);
+    const seen = new Set();
+    for (const m of map) {
+      const id = `${where}, PP ${m.R}`;
+      if (seen.has(m.n)) bad.push(`${id}: two rows`);
+      seen.add(m.n);
+      if (m.R !== ROMAN[m.n - 1]) bad.push(`${id}: numbered ${m.n}`);
+      const want = [...(cited.get(m.n) || [])].sort(), got = [...m.keys].sort();
+      if (JSON.stringify(want) !== JSON.stringify(got))
+        bad.push(`${id}: Builds ${JSON.stringify(got)} aren't the combo rows citing PP ${m.R} ${JSON.stringify(want)}`);
+      if (!String(m.text || "").trim()) bad.push(`${id}: no Builds text`);
+      for (const tense of new Set(got.map(k => k.split("|")[0]))) if (!new RegExp(`\\b${tense}\\b`).test(m.text)) bad.push(`${id}: “${m.text}” doesn't name the ${tense}`);
+      const part = combos.find(r => r.part?.n === m.n)?.part?.pp;
+      if (!part || nfc(m.pp) !== nfc(part)) bad.push(`${id}: Example ${m.pp} isn't παιδεύω's PP ${m.R} (${part})`);
+      for (const r of combos.filter(r => r.part?.n === m.n && r.tense === "pluperfect" && r.mood === "indicative"))
+        if (!m.text.includes(nfc(r.form))) bad.push(`${id}: “${m.text}” doesn't show the pluperfect ${r.voice} ${r.form}`);
+    }
+    for (const n of cited.keys()) if (!seen.has(n)) bad.push(`${where}: combo rows cite PP ${ROMAN[n - 1]}, but the map has no row for it`);
+  }
+  return { bad, rows };
+}
+
 function infinitiveAudit(trainer) {
   const bad = [];
   const book = trainer.pool.book.filter(it => it.src === "book" && it.mood === "infinitive");
@@ -1018,6 +1054,7 @@ const infCards = infinitiveCardsAudit(trainer);
 const unitVerbs = unitVerbAudit(trainer);
 const quiz = quizAudit(trainer);
 const combos = combosAudit(trainer);
+const ppMap = ppMapAudit(trainer);
 const quizFocus = quizFocusAudit(trainer);
 const docText = doc(rows, onlyTables, onlyDrill, sounds, verbs, parts, glossary, formation, quiz);
 
@@ -1065,6 +1102,7 @@ for (const b of infCards.bad) failures.push(b);
 for (const b of unitVerbs.bad) failures.push(b);
 for (const b of quiz.bad) failures.push(b);
 for (const b of combos.bad) failures.push(b);
+for (const b of ppMap.bad) failures.push(b);
 for (const b of quizFocus.bad) failures.push(b);
 const live = loadTrainerCoverage(trainer.html);
 if (!WRITE && JSON.stringify(live) !== JSON.stringify(block))
@@ -1094,6 +1132,7 @@ console.log(`greek-trainer: Ending tables: ${infCards.cards} Reference infinitiv
 console.log(`greek-trainer: Ending tables: ${unitVerbs.tables} unit-verb (⚙ built) tables match their Reference copies (Units 1–20, both scopes).`);
 console.log(`greek-trainer: Quiz test bank: ${quiz.items} items checked over Units 1–20 (${quiz.verbForms} Reference verb forms found in it, ${quiz.ambiguous} with several parses, ${quiz.links} Reference links); the declension rule reproduces ${quiz.paradigms.length} printed paradigms.`);
 console.log(`greek-trainer: Forms at a glance: ${combos.rows} rows checked against the Ending tables and the Reference page (Units 1–20, both scopes).`);
+console.log(`greek-trainer: Forms at a glance PP map: ${ppMap.rows} principal-part rows match the combo rows citing them (Units 1–20, both scopes).`);
 { const f = k => Object.entries(quizFocus.sizes[k]).map(([a, n]) => `${a} ${n}`).join(", ");
   console.log(`greek-trainer: Quiz focus: every focus = its parts of speech, All = the union (Units 1–20, both scopes). Unit 5 only: ${f("5|only")}; Units 1–5: ${f("5|through")}.`); }
 console.log("greek-trainer coverage check passed.");
