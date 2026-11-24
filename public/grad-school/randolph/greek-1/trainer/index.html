@@ -540,6 +540,27 @@ table.ref-table { margin: 0; font-size: clamp(16px, 4.2vw, 20px); }
   .ref-unit + .ref-unit { break-before: page; }
 }
 
+/* ---------- quiz / test bank (#/quiz) ---------- */
+.quiz-tile { border-left: 4px solid var(--bad); }
+.quiz-bank { margin: 14px 0 4px; font-size: 16px; overflow-wrap: anywhere; }
+.quiz-whats { font-size: 14px; margin: 4px 0 8px; }
+.quiz-checks { gap: 4px; }
+.quiz-checks .quiz-sub { font-size: 13px; margin: -8px 0 4px 30px; }
+.quiz-pos { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.quiz-excluded { margin-top: 22px; font-size: 14px; }
+.quiz-excluded summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 650; }
+.quiz-excluded ul { margin: 6px 0 0; padding-left: 20px; }
+.quiz-excluded li { margin: 3px 0; overflow-wrap: anywhere; }
+.quiz-head { margin: 6px 0 14px; }
+.quiz-head .progress { margin-top: 6px; }
+.quiz-src { font-size: 13px; }
+.quiz-ref { display: inline-flex; align-items: center; min-height: 44px; font-size: 15px; font-weight: 600; }
+.quiz-missed { margin-top: 18px; }
+.quiz-miss { margin: 10px 0; padding: 12px 14px; overflow-wrap: anywhere; }
+.quiz-miss-q { font-size: 19px; margin-bottom: 4px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.quiz-miss-q .pp-tag { font-family: var(--ui); }
+.btn.small.quiz-change { min-height: 44px; }
+
 </style>
 </head>
 <body>
@@ -2835,6 +2856,19 @@ function gradeEnglish(given, parses) {
         }
     return { combos: out, verbs: jf.list.map(e => e.slug), tables: [...jf.verbs.values()].reduce((n, e) => n + e.combos.length, 0) };
   };
+  // For the Quiz (#/quiz): a verb form's link to its own table on the Reference page ("through Unit N"), as
+  // #/reference/<unit>?p=<paradigm>&v=<verb>; null if the page has no such table. coverage.mjs check 19 walks every one.
+  const refPlanCache = new Map();
+  window.trainerRefHref = (unit, lemma, tense, mood, voice) => {
+    if (!refPlanCache.has(unit)) { const tabs = refTables(unit, false); refPlanCache.set(unit, { tabs, plan: refJumpPlan(tabs) }); }
+    const { tabs, plan } = refPlanCache.get(unit);
+    lemma = nfc(lemma); voice = voice || "active";
+    const t = tabs.find(x => nfc(x.lemma || "") === lemma && (x.voice || "active") === voice && (mood === "infinitive"
+      ? x.section === "inf" && x.rows.some((r, i) => r.toLowerCase() === tense && !x.dash?.[i]) : x.tense === tense && x.mood === mood));
+    const id = t && plan.idOf.get(t);
+    const cut = id ? id.indexOf("--") : -1;
+    return cut > 4 ? `#/reference/${unit}?p=${id.slice(4, cut)}&v=${id.slice(cut + 2)}` : null;
+  };
   window.trainerFormation = t => ({ text: formationText(t), stem: stemInfo(t), lines: t.section === "inf" && t.lemma ? infFormation(t) : null });  // for coverage.mjs (check 9)
 })();
 
@@ -3957,6 +3991,715 @@ function wordsView(query) {
   draw();
 }
 
+/* Quiz / test bank (#/quiz?u=5&mode=only|through&types=parse,produce,translate&pos=verb,noun,adj,article,pron&n=10&seed=…).
+   Every item is generated from data already in the trainer; nothing is hand-written here:
+   - Verbs: every cell of every per-verb table on the Reference page (refTables: H&Q's printed forms and the ⚙ built
+     copies), finite forms and infinitives, for every tense · mood · voice taught through the unit.
+   - Nouns: H&Q's printed paradigms (Reference/Ending tables) where the book prints the word; every other 1st- and
+     2nd-declension vocabulary noun is ⚙ declined here by rule (declineNoun) from its headword (nom., gen., article).
+     The rule is checked against every printed 1st/2nd-declension paradigm by coverage.mjs (check 19) and must
+     reproduce each one exactly; a noun it can't handle (3rd declension, contracts, irregular notes) is left out
+     and listed on the page.
+   - Adjectives: H&Q's printed paradigms, else 2-1-2 / two-ending -ος adjectives ⚙ declined by the same rule.
+   - The article, and pronouns H&Q prints as case × number × gender tables, as printed.
+   Scope: "Units 1–N" = every word from the vocabulary of Units 1–N, in every form taught through N.
+   "Unit N only" = what Unit N adds: every form (through N) of a word first taught in Unit N, plus the forms Unit N
+   teaches for the first time (a tense, mood, voice or declension with tenseUnit N) on the earlier units' words.
+   Parsing is graded against every parse the form has anywhere in Units 1–N (παιδεύῃ: three). */
+"use strict";
+(function () {
+  const QUIZ_TYPES = [["parse", "Parse", "See a form → tap its parse (any valid parse counts)"],
+    ["produce", "Produce", "See a word and a parse → type the form"],
+    ["translate", "Translate", "See a verb form → pick its English (verbs only)"]];
+  const QUIZ_POS = [["verb", "Verbs"], ["noun", "Nouns"], ["adj", "Adjectives"], ["article", "Article"], ["pron", "Pronouns"]];
+  const QUIZ_COUNTS = [["10", "10"], ["25", "25"], ["50", "50"], ["all", "All"]];
+  const QUIZ_MAX_UNIT = 20;
+  const CASES = ["nominative", "genitive", "dative", "accusative", "vocative"];
+  const CASE_AB = { nominative: "nom.", genitive: "gen.", dative: "dat.", accusative: "acc.", vocative: "voc." };
+  const NUMS = ["singular", "plural"];
+  const GENDERS = ["masculine", "feminine", "neuter"];
+  const VOICES = ["active", "middle", "passive"];
+  const cap = s => s ? s[0].toUpperCase() + s.slice(1) : s;
+  const qStore = {
+    get(key, dflt) { try { return Object.assign(dflt, JSON.parse(localStorage.getItem(key) || "{}")); } catch { return dflt; } },
+    set(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* private mode */ } },
+  };
+
+  // ---------- Greek letters: NFD letters with their marks, syllable nuclei, accent placement ----------
+  const ACUTE = "́", GRAVE = "̀", CIRC = "͂", MACRON = "̄", BREVE = "̆", DIAER = "̈", ISUB = "ͅ";
+  const VOWELS = "αεηιουω";
+  const isVowel = c => VOWELS.includes(c.toLowerCase());
+  function lettersOf(s) {
+    const out = [];
+    for (const ch of nfc(s).normalize("NFD")) {
+      if (/\p{M}/u.test(ch)) { if (out.length) out[out.length - 1].m.push(ch); }
+      else out.push({ b: ch, m: [] });
+    }
+    return out;
+  }
+  const cloneL = L => L.map(l => ({ b: l.b, m: l.m.slice() }));
+  const renderL = L => L.map(l => l.b + l.m.slice().sort((a, b) => MARK_ORDER.indexOf(a) - MARK_ORDER.indexOf(b)).join("")).join("").normalize("NFC");
+  const bare = s => nfc(s).normalize("NFD").replace(/\p{M}/gu, "").toLowerCase().replace(/ς/g, "σ");
+  // Syllable nuclei: a diphthong (αι ει οι υι αυ ευ ηυ ου: first vowel unmarked, no diaeresis) or one vowel.
+  // .i is the letter that carries the accent (a diphthong's second vowel).
+  function nucleiOf(L) {
+    const out = [];
+    for (let i = 0; i < L.length; i++) {
+      if (!isVowel(L[i].b)) continue;
+      const a = L[i].b.toLowerCase(), nx = L[i + 1];
+      if (nx && "ιυ".includes(nx.b.toLowerCase()) && "αεοηυ".includes(a) && !L[i].m.length && !nx.m.includes(DIAER)
+          && !(a === "υ" && nx.b.toLowerCase() === "υ") && !(a === "η" && nx.b.toLowerCase() === "ι")) {
+        out.push({ from: i, i: i + 1, diph: true }); i++;
+      } else out.push({ from: i, i, diph: false });
+    }
+    return out;
+  }
+  const isLongNuc = (L, n) => n.diph || "ηω".includes(L[n.i].b.toLowerCase()) || L[n.i].m.some(m => m === MACRON || m === CIRC || m === ISUB);
+  const accentOf = l => l.m.find(m => m === ACUTE || m === GRAVE || m === CIRC) || null;
+  // Remove the accent; a circumflexed α/ι/υ keeps its (now unwritten) length as a macron.
+  function unaccent(L) {
+    const out = cloneL(L);
+    for (const n of nucleiOf(out)) {
+      const l = out[n.i];
+      if (!n.diph && l.m.includes(CIRC) && "αιυ".includes(l.b.toLowerCase()) && !l.m.includes(ISUB) && !l.m.includes(MACRON)) l.m.push(MACRON);
+      l.m = l.m.filter(m => m !== ACUTE && m !== GRAVE && m !== CIRC);
+    }
+    return out;
+  }
+  function putAccent(L, n, kind) {
+    const l = L[n.i];
+    l.m = l.m.filter(m => m !== ACUTE && m !== GRAVE && m !== CIRC);
+    if (kind === "circ") { l.m = l.m.filter(m => m !== MACRON && m !== BREVE); l.m.push(CIRC); }
+    else l.m.push(ACUTE);
+  }
+  // Persistent accent (H&Q §§13–15): the accent stays on the syllable it has in the nominative (k = 0 ultima,
+  // 1 penult, 2 antepenult) unless the ultima's length forces it on: antepenult only before a short ultima, a long
+  // accented penult before a short ultima takes the circumflex, an oxytone turns circumflex in the genitive and dative
+  // of both numbers, and the 1st-declension genitive plural is always -ῶν. Final -αι / -οι count as short.
+  function accented(stemL, end, k, opts) {
+    const L = cloneL(stemL).concat(lettersOf(end.e));
+    const N = nucleiOf(L), n = N.length;
+    if (opts.forceCirc) { putAccent(L, N[n - 1], "circ"); return renderL(L); }
+    let kk = Math.min(k, n - 1);
+    const ultLong = !end.s;
+    if (kk >= 2 && ultLong) kk = 1;
+    const tgt = N[n - 1 - kk];
+    const kind = kk === 0 ? (opts.oxyCirc ? "circ" : "acute") : kk === 1 && !ultLong && isLongNuc(L, tgt) ? "circ" : "acute";
+    putAccent(L, tgt, kind);
+    return renderL(L);
+  }
+  // Endings by declension class: [case][number] → { e: ending (macrons as H&Q prints them), s: short for accent }.
+  const E = (e, s = false) => ({ e, s });
+  const ENDINGS = {
+    "1-eta": { singular: [E("η"), E("ης"), E("ῃ"), E("ην"), E("η")], plural: [E("αι", true), E("ων"), E("αις"), E("ᾱς"), E("αι", true)] },
+    "1-alpha": { singular: [E("ᾱ"), E("ᾱς"), E("ᾳ"), E("ᾱν"), E("ᾱ")], plural: [E("αι", true), E("ων"), E("αις"), E("ᾱς"), E("αι", true)] },
+    "1-short-es": { singular: [E("α", true), E("ης"), E("ῃ"), E("αν", true), E("α", true)], plural: [E("αι", true), E("ων"), E("αις"), E("ᾱς"), E("αι", true)] },
+    "1-short-as": { singular: [E("α", true), E("ᾱς"), E("ᾳ"), E("αν", true), E("α", true)], plural: [E("αι", true), E("ων"), E("αις"), E("ᾱς"), E("αι", true)] },
+    "1-masc-es": { singular: [E("ης"), E("ου"), E("ῃ"), E("ην"), E("η")], plural: [E("αι", true), E("ων"), E("αις"), E("ᾱς"), E("αι", true)] },
+    "1-masc-tes": { singular: [E("ης"), E("ου"), E("ῃ"), E("ην"), E("α", true)], plural: [E("αι", true), E("ων"), E("αις"), E("ᾱς"), E("αι", true)] },
+    "1-masc-as": { singular: [E("ᾱς"), E("ου"), E("ᾳ"), E("ᾱν"), E("ᾱ")], plural: [E("αι", true), E("ων"), E("αις"), E("ᾱς"), E("αι", true)] },
+    "2-mf": { singular: [E("ος", true), E("ου"), E("ῳ"), E("ον", true), E("ε", true)], plural: [E("οι", true), E("ων"), E("οις"), E("ους"), E("οι", true)] },
+    "2-n": { singular: [E("ον", true), E("ου"), E("ῳ"), E("ον", true), E("ον", true)], plural: [E("α", true), E("ων"), E("οις"), E("α", true), E("α", true)] },
+  };
+  // Which class a nominative + genitive belong to, the nominative ending's length in letters, and the unit H&Q
+  // teaches it (§14/§15 Unit 1; §37 short-alpha feminines and the masculines Unit 4).
+  function nounClass(nom, gen, gender) {
+    const n = bare(nom), g = bare(gen), L = lettersOf(nom), last = L[L.length - 1];
+    const longA = last && last.b === "α" && last.m.some(m => m === MACRON || m === CIRC);
+    if (gender !== "n" && n.endsWith("οσ") && g.endsWith("ου")) return { cls: "2-mf", cut: 2, tenseUnit: 1, decl: "2nd declension" };
+    if (gender === "n" && n.endsWith("ον") && g.endsWith("ου")) return { cls: "2-n", cut: 2, tenseUnit: 1, decl: "2nd declension (neuter)" };
+    if (gender === "m" && n.endsWith("ησ") && g.endsWith("ου"))
+      return { cls: n.endsWith("τησ") ? "1-masc-tes" : "1-masc-es", cut: 2, tenseUnit: 4, decl: "1st declension (masculine)" };
+    if (gender === "m" && n.endsWith("ασ") && g.endsWith("ου")) return { cls: "1-masc-as", cut: 2, tenseUnit: 4, decl: "1st declension (masculine)" };
+    if (gender === "f" && n.endsWith("η") && g.endsWith("ησ")) return { cls: "1-eta", cut: 1, tenseUnit: 1, decl: "1st declension" };
+    if (gender === "f" && n.endsWith("α") && longA && g.endsWith("ασ")) return { cls: "1-alpha", cut: 1, tenseUnit: 1, decl: "1st declension" };
+    if (gender === "f" && n.endsWith("α") && !longA && g.endsWith("ησ")) return { cls: "1-short-es", cut: 1, tenseUnit: 4, decl: "1st declension (short α)" };
+    if (gender === "f" && n.endsWith("α") && !longA && g.endsWith("ασ")) return { cls: "1-short-as", cut: 1, tenseUnit: 4, decl: "1st declension (short α)" };
+    return null;
+  }
+  // Stem (accent removed, lengths kept) and the nominative's accent position k. The genitive lends any macron the
+  // nominative's accent hides (ἆθλον → ᾱ̓́θλου).
+  function stemAndK(nom, gen, cut) {
+    const L = lettersOf(nom), N = nucleiOf(L);
+    const at = N.findIndex(n => accentOf(L[n.i]) || (n.diph && accentOf(L[n.from])));
+    if (at < 0) return null;
+    if (accentOf(L[N[at].i]) === CIRC && at === N.length - 1) return null;   // a contract (γῆ): not by this rule
+    const stem = unaccent(L.slice(0, L.length - cut));
+    const G = unaccent(lettersOf(gen));
+    for (let i = 0; i < stem.length && i < G.length; i++)
+      if (stem[i].b === G[i].b && G[i].m.includes(MACRON) && !stem[i].m.includes(MACRON)) stem[i].m.push(MACRON);
+    return { stem, k: N.length - 1 - at };
+  }
+  // A noun's ten forms, { [case|number]: form }, or { error }.
+  function declineNoun({ nom, gen, gender, voc }) {
+    const c = nounClass(nom, gen, gender);
+    if (!c) return { error: "not a 1st- or 2nd-declension noun this rule declines" };
+    const sk = stemAndK(nom, gen, c.cut);
+    if (!sk) return { error: "a contracted or unaccented nominative" };
+    const out = {};
+    for (const number of NUMS) CASES.forEach((cs, ci) => {
+      const end = ENDINGS[c.cls][number][ci];
+      const genDat = ci === 1 || ci === 2;
+      out[`${cs}|${number}`] = accented(sk.stem, end, sk.k,
+        { oxyCirc: sk.k === 0 && genDat, forceCirc: c.cls.startsWith("1-") && number === "plural" && ci === 1 });
+    });
+    if (voc) out["vocative|singular"] = nfc(voc);   // H&Q's headword note (ἀδελφός, voc. ἄδελφε)
+    return { forms: out, cls: c };
+  }
+  // A 2-1-2 adjective (ἀγαθός, -ή, -όν; ἄξιος, -ᾱ, -ον) or a two-ending one (ἄδικος, -ον): masculine and neuter
+  // as the 2nd declension, feminine as the 1st (-η or -ᾱ), all with the masculine's persistent accent. The feminine
+  // genitive plural follows the masculine (ἀξίων), not the noun rule -ῶν.
+  function declineAdj({ m, f, n }) {
+    if (!bare(m).endsWith("οσ") || !bare(n).endsWith("ον")) return { error: "not an -ος, (-η/-ᾱ), -ον adjective" };
+    const mk = stemAndK(m, m, 2);
+    if (!mk) return { error: "no accent on the masculine" };
+    const out = {};
+    const fCls = !f ? null : bare(f).endsWith("η") ? "1-eta" : bare(f).endsWith("α") ? "1-alpha" : null;
+    if (f && !fCls) return { error: "feminine is neither -η nor -ᾱ" };
+    for (const number of NUMS) CASES.forEach((cs, ci) => {
+      const genDat = ci === 1 || ci === 2, opts = { oxyCirc: mk.k === 0 && genDat };
+      out[`${cs}|${number}|masculine`] = accented(mk.stem, ENDINGS["2-mf"][number][ci], mk.k, opts);
+      out[`${cs}|${number}|neuter`] = accented(mk.stem, ENDINGS["2-n"][number][ci], mk.k, opts);
+      out[`${cs}|${number}|feminine`] = fCls ? accented(mk.stem, ENDINGS[fCls][number][ci], mk.k, opts) : out[`${cs}|${number}|masculine`];
+    });
+    return { forms: out, twoEnding: !f };
+  }
+
+  // ---------- headwords (VOCAB_DATA) ----------
+  const lemmaKey = s => nfc(String(s).split(/[,\s]/)[0].replace(/["“”]/g, ""));
+  const GREEK_RE = /\p{Script=Greek}/u;
+  function nounHead(e) {
+    const g = nfc(e.greek);
+    const voc = (g.match(/\(voc\.\s*([^)]+)\)/) || [])[1] || null;
+    const other = g.replace(/\(voc\.[^)]*\)/, "").match(/\(([^)]*)\)/);
+    const [nom, gen, art = ""] = g.replace(/\([^)]*\)/g, "").split(",").map(s => s.trim());
+    const gender = /ὁ\s+or\s+ἡ|ἡ\s+or\s+ὁ/.test(art) ? "c" : /^ὁ$/.test(art) ? "m" : /^ἡ$/.test(art) ? "f" : /^τό$/.test(art) ? "n" : null;
+    return { nom, gen, gender, voc: voc && voc.trim(), note: other ? other[1] : null, art };
+  }
+  function adjHead(e) {
+    const ps = nfc(e.greek).replace(/\([^)]*\)/g, "").split(",").map(s => s.trim()).filter(Boolean);
+    return ps.length === 3 ? { m: ps[0], f: ps[1], n: ps[2] } : ps.length === 2 ? { m: ps[0], f: null, n: ps[1] } : null;
+  }
+
+  // ---------- printed declension tables (from the Reference page's tables) ----------
+  const COL_GENDERS = { M: ["masculine"], F: ["feminine"], N: ["neuter"], "M/F": ["masculine", "feminine"], "M/F/N": GENDERS,
+    "Masc.": ["masculine"], "Fem.": ["feminine"], "Neut.": ["neuter"] };
+  const ROW_CASE = { Nom: "nominative", Gen: "genitive", Dat: "dative", Acc: "accusative", Voc: "vocative" };
+  // [{ case, number, gender, forms }] from a printed table, or { skip: reason }.
+  function printedSlots(t) {
+    const byCol = t.cols.map(c => COL_GENDERS[c] || null);
+    const genderCols = byCol.every(Boolean);
+    const numberCols = t.cols.length === 2 && /^singular$/i.test(t.cols[0]) && /^plural$/i.test(t.cols[1]);
+    if (!genderCols && !numberCols && t.cols.length !== 1) return { skip: "its columns aren't genders or numbers" };
+    const out = [];
+    for (const [r, row] of t.rows.entries()) {
+      const cases = (row.match(/Nom|Gen|Dat|Acc|Voc/g) || []).map(c => ROW_CASE[c]);
+      const num = /sg\./.test(row) ? "singular" : /pl\./.test(row) ? "plural" : null;
+      if (!cases.length) return { skip: "a row that isn't a case" };
+      if (!num && !numberCols) return { skip: "H&Q's table gives no number (a numeral)" };
+      t.cols.forEach((_, c) => {
+        const forms = (t.cells[r][c] || []).map(nfc).filter(Boolean);
+        if (!forms.length) return;
+        const number = numberCols ? NUMS[c] : num;
+        const genders = genderCols ? byCol[c] : [null];
+        for (const cs of cases) for (const g of genders) out.push({ case: cs, number, gender: g, forms });
+      });
+    }
+    return { slots: out };
+  }
+
+  // ---------- the bank ----------
+  const posGroup = pos => pos === "verb" ? "verb" : pos === "noun" ? "noun" : "gendered";
+  const surfaceKey = f => noLength(baseNorm(f).normalize("NFD").replace(/̀/g, "́").normalize("NFC"));
+  const verbParseKey = p => p.mood === "infinitive" ? `${p.tense}|infinitive|${p.voice}` : `${p.tense}|${p.mood}|${p.voice}|${p.person}|${p.number}`;
+  const nounParseKey = p => `${p.case}|${p.number}${p.gender ? "|" + p.gender : ""}`;
+  const parseKey = it => it.pos === "verb" ? verbParseKey(it.parse) : nounParseKey(it.parse);
+  const AB = { present: "pres.", imperfect: "impf.", future: "fut.", aorist: "aor.", perfect: "perf.", pluperfect: "plpf." };
+  function parseText(it) {
+    const p = it.parse;
+    if (it.pos === "verb") return p.mood === "infinitive" ? `${p.tense} infinitive ${p.voice}`
+      : `${p.tense} ${p.mood} ${p.voice}, ${PERSONS[p.person - 1]} ${p.number}`;
+    return `${p.gender ? p.gender + " " : ""}${p.case} ${p.number}`;
+  }
+  const BUILT_NOTE = "⚙ built by rule; not printed in H&Q";
+
+  let bankCache = new Map();
+  // Every item through `unit` (memoized); quizBank() filters it for "Unit N only".
+  function bankThrough(unit) {
+    if (bankCache.has(unit)) return bankCache.get(unit);
+    const items = [], excluded = [], seen = new Map();
+    const add = it => {
+      const key = `${it.pos}|${it.lemma}|${parseKey(it)}`;
+      const old = seen.get(key);
+      if (old) { for (const f of it.forms) if (!old.forms.includes(f)) old.forms.push(f); return; }
+      it.id = key; seen.set(key, it); items.push(it);
+    };
+    const vocabUnitOfVerb = new Map();
+    for (const it of drillPoolCache.book) if (!vocabUnitOfVerb.has(it.lemma)) vocabUnitOfVerb.set(it.lemma, it.vocabUnit);
+    for (const v of DRILL_BUILT.verbs) vocabUnitOfVerb.set(nfc(v.lemma), v.unit);
+    const infUnit = new Map(drillPoolCache.book.filter(it => it.mood === "infinitive" && it.src === "book")
+      .map(it => [`${it.tense}|${it.voice}`, it.tenseUnit]));
+    const printedInf = new Set(drillPoolCache.book.filter(it => it.mood === "infinitive" && it.src === "book")
+      .map(it => `${it.lemma}|${it.tense}|${it.voice}`));
+    const tabs = window.trainerRefTables(unit, false);
+    // Verbs: every Reference table with a verb (its full forms where it shows the ending above them).
+    for (const t of tabs) {
+      if (!t.lemma || !(t.tense || t.section === "inf")) continue;
+      const lemma = nfc(t.lemma), voice = t.voice || "active";
+      const vocabUnit = vocabUnitOfVerb.get(lemma) || t.vocabUnit || t.tenseUnit;
+      const eng = t.sounds?.lines || [];
+      if (t.section === "inf") {
+        const words = (eng[0]?.[1] || "").split(" · ");
+        let w = 0;
+        t.rows.forEach((row, r) => {
+          if (t.dash?.[r]) return;
+          const forms = (t.cells[r]?.[0] || []).map(nfc);
+          const english = words[w++] || null;
+          if (!forms.length) return;
+          const tense = row.toLowerCase();
+          const book = lemma === MODEL_LEMMA || printedInf.has(`${lemma}|${tense}|${voice}`);
+          add({ pos: "verb", lemma, forms, parse: { tense, mood: "infinitive", voice, person: null, number: null },
+            vocabUnit, tenseUnit: infUnit.get(`${tense}|${voice}`) || t.tenseUnit, built: !book, english, sec: t.sec });
+        });
+        continue;
+      }
+      const grid = t.full || t.cells;
+      const sg = (eng.find(l => l[0] === "Sg.")?.[1] || "").replace(/^\(that\) /, "").split(" · ");
+      const pl = (eng.find(l => l[0] === "Pl.")?.[1] || "").replace(/^\(that\) /, "").split(" · ");
+      for (let r = 0; r < 3; r++) for (let c = 0; c < 2; c++) {
+        const forms = (grid[r]?.[c] || []).map(nfc).filter(Boolean);
+        if (!forms.length) continue;
+        add({ pos: "verb", lemma, forms, parse: { tense: t.tense, mood: t.mood, voice, person: r + 1, number: NUMS[c] },
+          vocabUnit, tenseUnit: t.tenseUnit, built: !!t.built, english: (c ? pl : sg)[r] || null, sec: t.sec });
+      }
+    }
+    // Words with a verb entry but no table at all (a compound or irregular verb the builder doesn't make).
+    const vocab = VOCAB_DATA.entries.filter(e => e.unit <= unit);
+    const haveVerb = new Set(items.map(it => it.lemma));
+    for (const e of vocab.filter(e => e.cat === "verb")) {
+      const lemma = lemmaKey(e.greek.replace(/^[—–-]+,\s*/, ""));
+      if (!haveVerb.has(lemma)) excluded.push({ pos: "verb", lemma: nfc(e.greek.split(",")[0]), unit: e.unit, why: "no table on the Reference page (no principal parts to build from)" });
+    }
+    // Printed declension tables: the article, nouns, adjectives, pronouns.
+    const vocabByLemma = new Map(vocab.map(e => [lemmaKey(e.greek), e]));
+    const printed = new Set();
+    for (const t of tabs) {
+      if (t.lemma || t.tense || t.section === "inf" || t.kind === "ending") continue;
+      if (!["article", "n1", "n2", "n3", "adj", "pron"].includes(t.section)) continue;
+      const pos = t.section === "article" ? "article" : t.section === "adj" ? "adj" : t.section === "pron" ? "pron" : "noun";
+      // The table's word: its label's first word, or (a label in English: "Reflexive pronoun, 3rd person") its first form.
+      const lemma = t.section === "article" ? nfc("ὁ, ἡ, τό") : GREEK_RE.test(lemmaKey(t.label)) ? lemmaKey(t.label) : nfc(t.cells[0][0][0]);
+      const r = printedSlots(t);
+      if (r.skip) { excluded.push({ pos, lemma: nfc(t.label), unit: t.tenseUnit, why: r.skip }); continue; }
+      printed.add(lemma);
+      const ve = vocabByLemma.get(lemma);
+      const head = pos === "article" ? lemma : ve ? nfc(ve.greek) : nfc(t.label.replace(/\s*["“][^"”]*["”]/, ""));
+      for (const s of r.slots)
+        add({ pos, lemma, head, forms: s.forms.slice(), parse: { case: s.case, number: s.number, gender: pos === "noun" ? null : s.gender },
+          vocabUnit: ve ? ve.unit : t.tenseUnit, tenseUnit: t.tenseUnit, built: false, english: null, src: t.source, sec: t.source });
+    }
+    // Vocabulary nouns and adjectives H&Q doesn't print: declined here by rule.
+    for (const e of vocab) {
+      if (e.cat !== "noun" && e.cat !== "adjective") continue;
+      const lemma = lemmaKey(e.greek), pos = e.cat === "noun" ? "noun" : "adj";
+      if (printed.has(lemma)) continue;   // H&Q prints it (ἐκεῖνος, οὗτος: as pronoun tables)
+      const head = nfc(e.greek);
+      if (pos === "noun") {
+        const hw = nounHead(e);
+        const why = !hw.gender ? "no article in the headword" : hw.note ? `H&Q notes an irregular form (${hw.note})`
+          : /^\p{Lu}/u.test(hw.nom) ? "a proper name (singular only)" : null;
+        const d = why ? { error: why } : declineNoun(hw);
+        // The rule must give back the headword's own nominative and genitive, or the noun is left out.
+        if (!d.error) for (const [k, want] of [["nominative|singular", hw.nom], ["genitive|singular", hw.gen]])
+          if (nfc(d.forms[k]) !== nfc(want)) d.error = `the rule gives ${k.split("|")[0].slice(0, 3)}. sg. ${d.forms[k]}, H&Q prints ${want}`;
+        if (d.error) { excluded.push({ pos, lemma, unit: e.unit, why: d.error }); continue; }
+        if (d.cls.tenseUnit > unit) { excluded.push({ pos, lemma, unit: e.unit, why: `${d.cls.decl} is taught in Unit ${d.cls.tenseUnit}` }); continue; }
+        for (const [k, f] of Object.entries(d.forms)) {
+          const [cs, number] = k.split("|");
+          add({ pos, lemma, head, forms: [f], parse: { case: cs, number, gender: null }, vocabUnit: e.unit, tenseUnit: d.cls.tenseUnit,
+            built: !(cs === "nominative" && number === "singular") && !(cs === "vocative" && number === "singular" && hw.voc), english: null, sec: d.cls.decl });
+        }
+      } else {
+        const hw = adjHead(e);
+        const d = !hw ? { error: "a headword without its endings" } : declineAdj(hw);
+        if (!d.error) for (const [g, want] of [["masculine", hw.m], ["feminine", hw.f], ["neuter", hw.n]])
+          if (want && nfc(d.forms[`nominative|singular|${g}`]) !== nfc(want)) d.error = `the rule gives ${d.forms[`nominative|singular|${g}`]}, H&Q prints ${want}`;
+        if (d.error) { excluded.push({ pos, lemma, unit: e.unit, why: d.error }); continue; }
+        for (const [k, f] of Object.entries(d.forms)) {
+          const [cs, number, gender] = k.split("|");
+          add({ pos, lemma, head, forms: [f], parse: { case: cs, number, gender }, vocabUnit: e.unit, tenseUnit: 4,
+            built: !(cs === "nominative" && number === "singular"), english: null, sec: d.twoEnding ? "two-ending adjective (§39)" : "2-1-2 adjective (§38)" });
+        }
+      }
+    }
+    // Every parse a surface form has anywhere in Units 1–N, by part-of-speech group (verbs; nouns; gendered words).
+    const bySurface = new Map();
+    for (const it of items) for (const f of it.forms) for (const v of variants(f)) {
+      const k = `${posGroup(it.pos)}|${surfaceKey(v)}`;
+      if (!bySurface.has(k)) bySurface.set(k, new Set());
+      bySurface.get(k).add(it);
+    }
+    for (const it of items) {
+      const all = new Set();
+      for (const f of it.forms) for (const v of variants(f)) for (const o of bySurface.get(`${posGroup(it.pos)}|${surfaceKey(v)}`) || []) all.add(o);
+      it.parses = [...all];
+    }
+    const res = { items, excluded, bySurface };
+    bankCache.set(unit, res);
+    return res;
+  }
+  const MODEL_LEMMA = nfc("παιδεύω");
+  // "Unit N only": a word first taught in Unit N (every form through N), or a form first taught in Unit N.
+  const inScope = (it, unit, mode) => it.vocabUnit <= unit && it.tenseUnit <= unit
+    && (mode !== "only" || it.vocabUnit === unit || it.tenseUnit === unit);
+  function quizBank(unit, mode) {
+    const all = bankThrough(unit);
+    return { items: all.items.filter(it => inScope(it, unit, mode)), excluded: all.excluded.filter(x => mode !== "only" || x.unit === unit), through: all };
+  }
+  // The parses of a displayed form (any variant), in the through-N bank.
+  function parsesOfForm(form, it, unit) {
+    const b = bankThrough(unit), out = new Set();
+    for (const v of variants(form)) for (const o of b.bySurface.get(`${posGroup(it.pos)}|${surfaceKey(v)}`) || []) out.add(o);
+    return [...out];
+  }
+
+  // ---------- seeded randomness: the same seed and settings give the same quiz ----------
+  function rngOf(str) {
+    let h = 1779033703 ^ str.length;
+    for (let i = 0; i < str.length; i++) { h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = h << 13 | h >>> 19; }
+    let a = h >>> 0;
+    return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+  }
+  const rShuffle = (a, rnd) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const newSeed = () => Math.random().toString(36).slice(2, 8);
+
+  // ---------- grading ----------
+  const toAcuteQ = s => nfc(String(s).normalize("NFD").replace(/̀/g, "́"));
+  // The perfect/pluperfect M/P 3rd plural compound's participle agrees with the subject (H&Q Appendix p. 665):
+  // γεγραμμένοι, γεγραμμέναι or γεγραμμένα εἰσί(ν) are all right (grade() also takes "…μένοι, -αι, -α εἰσί(ν)").
+  const genders = f => /μένοι\s/.test(f) ? [f, f.replace(/μένοι(?=\s)/, "μέναι"), f.replace(/μένοι(?=\s)/, "μένα")] : [f];
+  function gradeForm(given, forms) {
+    const g = noLength(toAcuteQ(given));
+    const rs = forms.flatMap(genders).map(f => grade(g, noLength(f), "strict"));
+    return rs.includes("right") ? "right" : rs.includes("close") ? "close" : "wrong";
+  }
+  const sameParseQ = (a, b) => parseKey(a) === parseKey(b);
+  function supports(it, type) {
+    if (type === "translate") return it.pos === "verb" && !!it.english;
+    return true;
+  }
+
+  // ---------- settings in the URL ----------
+  function readSettings(query) {
+    const q = new URLSearchParams(query || "");
+    const saved = qStore.get("quiz-settings", { unit: 5, mode: "through", types: ["parse", "produce"], pos: QUIZ_POS.map(p => p[0]), n: "10" });
+    const list = (v, all, dflt) => { const xs = String(v || "").split(",").filter(x => all.some(a => a[0] === x)); return xs.length ? xs : dflt; };
+    const s = {
+      unit: Math.min(QUIZ_MAX_UNIT, Math.max(1, Number(q.get("u")) || Number(saved.unit) || 5)),
+      mode: (q.get("mode") || saved.mode) === "only" ? "only" : "through",
+      types: list(q.get("types"), QUIZ_TYPES, list(saved.types?.join(","), QUIZ_TYPES, ["parse", "produce"])),
+      pos: list(q.get("pos"), QUIZ_POS, list(saved.pos?.join(","), QUIZ_POS, QUIZ_POS.map(p => p[0]))),
+      n: QUIZ_COUNTS.some(c => c[0] === (q.get("n") || "")) ? q.get("n") : QUIZ_COUNTS.some(c => c[0] === saved.n) ? saved.n : "10",
+      seed: (q.get("seed") || "").replace(/[^a-z0-9]/gi, "").slice(0, 16) || null,
+    };
+    return s;
+  }
+  const quizHash = (s, seed) => `#/quiz?u=${s.unit}&mode=${s.mode}&types=${s.types.join(",")}&pos=${s.pos.join(",")}&n=${s.n}${seed ? `&seed=${seed}` : ""}`;
+  const scopeName = s => s.mode === "only" ? `Unit ${s.unit} only` : s.unit === 1 ? "Unit 1" : `Units 1–${s.unit}`;
+  const fmt = n => n.toLocaleString("en-US");
+  const whatsIn = s => s.mode === "only"
+    ? `What's in this quiz: every form (through Unit ${s.unit}) of the verbs, nouns and adjectives first taught in Unit ${s.unit}, plus the tenses, moods, voices and declensions new in Unit ${s.unit} on the words from earlier units.`
+    : `What's in this quiz: every form of every verb, noun and adjective in the vocabulary of Units 1–${s.unit} (and the article), in every tense, mood, voice and declension H&Q has taught through Unit ${s.unit}.`;
+
+  // A quiz's item list: the bank for the scope, the chosen parts of speech, items some chosen type can ask.
+  function poolFor(s) {
+    const b = quizBank(s.unit, s.mode);
+    return b.items.filter(it => s.pos.includes(it.pos) && s.types.some(t => supports(it, t)));
+  }
+  function sampleQuiz(s, seed) {
+    const rnd = rngOf(`${seed}|${s.unit}|${s.mode}|${s.types.join(",")}|${s.pos.join(",")}`);
+    const pool = poolFor(s);
+    const n = s.n === "all" ? pool.length : Math.min(pool.length, Number(s.n));
+    return rShuffle(pool, rnd).slice(0, n).map((it, i) => {
+      const types = s.types.filter(t => supports(it, t));
+      return { it, type: types[Math.floor(rnd() * types.length)], qseed: `${seed}:${i}` };
+    });
+  }
+
+  // ---------- #/quiz ----------
+  function quizView(query) {
+    if (!drillPoolCache) {
+      app().replaceChildren(h("div", { class: "empty" }, "Loading…"));
+      loadDrillPool().then(p => { drillPoolCache = p; quizView(query); },
+        e => app().replaceChildren(h("div", { class: "empty" }, "Couldn't load the quiz: " + e.message)));
+      return;
+    }
+    const s = readSettings(query);
+    qStore.set("quiz-settings", { unit: s.unit, mode: s.mode, types: s.types, pos: s.pos, n: s.n });
+    if (s.seed) return quizRun(s, s.seed);
+    return quizSetup(s);
+  }
+
+  function quizSetup(s) {
+    document.title = `Quiz · ${scopeName(s)}`;
+    if (location.hash !== quizHash(s)) { try { history.replaceState(null, "", quizHash(s)); } catch { /* sandboxed */ } }
+    const body = h("div", {});
+    const set = patch => { Object.assign(s, patch); qStore.set("quiz-settings", { unit: s.unit, mode: s.mode, types: s.types, pos: s.pos, n: s.n });
+      try { history.replaceState(null, "", quizHash(s)); } catch { /* sandboxed */ } draw(); };
+    const toggleIn = (key, v) => { const xs = s[key].includes(v) ? s[key].filter(x => x !== v) : [...s[key], v]; if (xs.length) set({ [key]: xs }); };
+    function draw() {
+      document.title = `Quiz · ${scopeName(s)}`;
+      const b = quizBank(s.unit, s.mode);
+      const byPos = Object.fromEntries(QUIZ_POS.map(([p]) => [p, b.items.filter(it => it.pos === p).length]));
+      const pool = poolFor(s);
+      const n = s.n === "all" ? pool.length : Math.min(pool.length, Number(s.n));
+      const check = (key, v, label, count, disabled) => h("label", {}, h("input", { type: "checkbox", checked: s[key].includes(v), disabled,
+        onchange: () => toggleIn(key, v) }), h("span", {}, label, count != null ? h("span", { class: "muted" }, ` (${fmt(count)})`) : null));
+      const translatable = b.items.filter(it => supports(it, "translate")).length;
+      body.replaceChildren(
+        h("h2", { style: { marginTop: "16px" } }, "1. Which unit are you on?"),
+        h("div", { class: "drill-units" }, Array.from({ length: QUIZ_MAX_UNIT }, (_, i) => i + 1).map(u => h("button", { class: "btn",
+          "aria-pressed": String(s.unit === u), onclick: () => set({ unit: u }) }, String(u)))),
+        h("h2", {}, "2. What should it cover?"),
+        h("div", { class: "drill-scope" },
+          h("button", { class: "choice", "aria-pressed": String(s.mode === "only"), onclick: () => set({ mode: "only" }) },
+            h("span", {}, h("b", {}, `Unit ${s.unit} only`), h("br"), h("small", { class: "muted" }, `Words new in Unit ${s.unit} (every form so far), plus the forms new in Unit ${s.unit} on earlier words`))),
+          h("button", { class: "choice", "aria-pressed": String(s.mode === "through"), onclick: () => set({ mode: "through" }) },
+            h("span", {}, h("b", {}, `Everything through Unit ${s.unit}`), h("br"), h("small", { class: "muted" }, `Every form of every word from Units 1–${s.unit}`)))),
+        h("p", { class: "quiz-bank" }, h("b", {}, `${scopeName(s)}: ${fmt(b.items.length)} item${b.items.length === 1 ? "" : "s"}`),
+          h("span", { class: "muted" }, " in the test bank · " + QUIZ_POS.filter(([p]) => byPos[p]).map(([p, l]) => `${l.toLowerCase()} ${fmt(byPos[p])}`).join(" · "))),
+        h("p", { class: "muted quiz-whats" }, whatsIn(s)),
+        h("h2", {}, "3. Question types"),
+        h("div", { class: "options quiz-checks" }, QUIZ_TYPES.map(([k, label, sub]) => h("div", {},
+          check("types", k, label, null, k === "translate" && !translatable),
+          h("div", { class: "muted quiz-sub" }, sub)))),
+        h("h2", {}, "4. Parts of speech"),
+        h("div", { class: "options quiz-checks quiz-pos" }, QUIZ_POS.filter(([p]) => byPos[p] || s.pos.includes(p) && p !== "pron")
+          .map(([p, label]) => check("pos", p, label, byPos[p], !byPos[p]))),
+        h("h2", {}, "5. How many questions?"),
+        h("div", { class: "row" }, QUIZ_COUNTS.map(([k, label]) => h("button", { class: "btn", "aria-pressed": String(s.n === k),
+          onclick: () => set({ n: k }) }, k === "all" ? `All (${fmt(pool.length)})` : label))),
+        h("div", { class: "row", style: { marginTop: "18px" } },
+          h("button", { class: "btn primary", disabled: !n, onclick: () => { location.hash = quizHash(s, newSeed()); } },
+            n ? `Start ${fmt(n)}-question quiz →` : "Nothing to ask for this choice")),
+        b.excluded.length ? h("details", { class: "panel quiz-excluded" },
+          h("summary", {}, `Not in the bank (${b.excluded.length})`),
+          h("ul", {}, b.excluded.map(x => h("li", {}, h("span", { lang: "grc", class: "greek" }, x.lemma),
+            h("span", { class: "muted" }, ` (Unit ${x.unit}): ${x.why}`))))) : null);
+    }
+    draw();
+    app().replaceChildren(
+      h("div", { class: "row" }, h("a", { href: "#/", class: "muted" }, "← Home")),
+      h("h1", { style: { marginTop: "8px" } }, "Quiz: test bank"),
+      h("p", { class: "muted", style: { marginTop: 0, fontSize: "14px" } },
+        "A test bank of every form of every verb, noun and adjective in your units, generated from the trainer's own tables: ",
+        "the verbs from the Reference page (H&Q's printed forms and the ⚙ built copies), the nouns and adjectives from H&Q's printed paradigms ",
+        "or ⚙ declined by rule. A random sample each time; the link reproduces the same quiz."),
+      body);
+  }
+
+  function quizRun(s, seed, retry) {
+    document.title = `${scopeName(s)} · Quiz`;
+    const qs = retry || sampleQuiz(s, seed);
+    const st = { i: 0, right: 0, missed: [] };
+    const stage = h("div", {});
+    const head = h("div", { class: "quiz-head" });
+    const drawHead = () => {
+      const done = st.i, total = qs.length;
+      head.replaceChildren(
+        h("div", { class: "tally" }, h("span", {}, done < total ? `Question ${done + 1} of ${fmt(total)}` : `${fmt(total)} questions`),
+          h("span", {}, `${st.right} right${st.missed.length ? ` · ${st.missed.length} missed` : ""}`)),
+        h("div", { class: "progress", role: "progressbar", "aria-valuemin": "0", "aria-valuemax": String(total), "aria-valuenow": String(done) },
+          h("span", { class: "p-good", style: { width: `${100 * st.right / total}%` } }),
+          h("span", { class: "p-warn", style: { width: `${100 * st.missed.length / total}%` } })));
+    };
+    app().replaceChildren(
+      h("div", { class: "row" }, h("a", { href: "#/", class: "muted" }, "← Home")),
+      h("div", { class: "row", style: { marginTop: "8px" } },
+        h("h1", { style: { flex: "1" } }, retry ? `${scopeName(s)} · retry` : `${scopeName(s)} · quiz`),
+        h("a", { class: "btn small quiz-change", href: quizHash(s) }, "Change settings")),
+      h("p", { class: "muted quiz-whats" }, whatsIn(s)),
+      head, stage);
+    if (!qs.length) { stage.replaceChildren(h("div", { class: "empty" }, "Nothing to ask for this choice.")); return; }
+
+    function next() {
+      state.onKey = null;
+      drawHead();
+      if (st.i >= qs.length) return finish();
+      const q = qs[st.i];
+      ({ parse: askParse, produce: askProduce, translate: askTranslate }[q.type] || askParse)(q);
+    }
+    function record(q, ok, given) {
+      if (ok) st.right++; else st.missed.push({ ...q, given });
+      st.i++;
+      drawHead();
+    }
+    const nextBtn = () => {
+      const b = h("button", { class: "btn primary", onclick: next }, st.i >= qs.length ? "See results →" : "Next →");
+      state.onKey = e => { if (e.key === "Enter" && !(e.target instanceof HTMLButtonElement)) { e.preventDefault(); next(); } };
+      setTimeout(() => b.focus(), 0);
+      return h("div", { class: "row", style: { marginTop: "14px" } }, b);
+    };
+    const builtBadge = it => it.built ? h("span", { class: "built-badge", title: "Built by rule, not printed in H&Q" }, "⚙ built") : null;
+    const frame = (q, label, prompt, bodyEl) => stage.replaceChildren(h("div", { class: "qcard" },
+      h("div", { class: "qlabel" }, label, h("span", { class: "muted" }, q.it.pos === "adj" ? "adjective" : q.it.pos === "pron" ? "pronoun" : q.it.pos), builtBadge(q.it)),
+      h("div", { class: "prompt" }, prompt), bodyEl));
+    const refLink = it => {
+      if (it.pos !== "verb" || !window.trainerRefHref) return null;
+      const href = window.trainerRefHref(Math.max(it.vocabUnit, it.tenseUnit), it.lemma, it.parse.tense, it.parse.mood, it.parse.voice);
+      return href ? h("a", { class: "quiz-ref", href }, "Reference table →") : null;
+    };
+    const headOf = it => it.pos === "verb" ? it.lemma : it.head || it.lemma;
+    // Every valid parse of the form, with its word, ⚙ marker and Reference link.
+    function parsesBlock(form, it) {
+      const ps = parsesOfForm(form, it, s.unit).sort((a, b) => (b === it) - (a === it));   // the asked parse first
+      return h("div", {}, ps.map(p => h("div", { class: "drill-parse" },
+        h("div", { class: "ans" }, p.forms.join(" / ")),
+        h("div", {}, h("b", {}, parseText(p)), " of ", h("span", { class: "greek", lang: "grc" }, headOf(p)), p.built ? h("span", { class: "muted" }, " · ⚙ built") : null),
+        p.english ? h("div", { class: "muted" }, "“" + p.english + "”") : null,
+        h("div", { class: "muted quiz-src" }, p.built ? BUILT_NOTE : p.pos === "verb" ? `Printed in H&Q (${p.sec})` : `Printed in H&Q (${p.sec})`),
+        refLink(p))),
+        ps.length > 1 ? h("div", { class: "muted quiz-src" }, `This form has ${ps.length} possible parses; any of them counts.`) : null);
+    }
+    const bigGreek = f => h("div", { class: "card-text greek size-xl", lang: "grc" }, f);
+
+    // ---- Parse: tap the fields; graded right if it matches ANY parse the form has in Units 1–N.
+    function askParse(q) {
+      const it = q.it, rnd = rngOf(q.qseed), form = it.forms[Math.floor(rnd() * it.forms.length)];
+      const valid = parsesOfForm(form, it, s.unit);
+      const bank = bankThrough(s.unit).items;
+      const pick = {};
+      let done = false;
+      const fb = h("div", {}), groups = h("div", { class: "drill-groups" });
+      let fields;
+      if (it.pos === "verb") {
+        const vs = bank.filter(x => x.pos === "verb");
+        const has = (k, v) => vs.some(x => x.parse[k] === v);
+        fields = [["tense", TENSES.filter(v => has("tense", v))], ["mood", MOODS.filter(v => has("mood", v))],
+          ["voice", VOICES.filter(v => has("voice", v))], ["person", [1, 2, 3]], ["number", NUMS]];
+        if (fields[2][1].length === 1) pick.voice = fields[2][1][0];
+      } else fields = [["case", CASES], ["number", NUMS], ...(it.pos === "noun" ? [] : [["gender", GENDERS]])];
+      const isInf = () => pick.mood === "infinitive";
+      const needed = () => fields.filter(([k, vals]) => vals.length > 1 && !(isInf() && (k === "person" || k === "number")));
+      const ready = () => needed().every(([k]) => pick[k] != null);
+      const checkBtn = h("button", { class: "btn primary", disabled: true, onclick: () => check() }, "Check");
+      const label = (k, v) => k === "person" ? PERSONS[v - 1] : v;
+      function draw() {
+        groups.replaceChildren(fields.filter(([, vals]) => vals.length > 1).map(([k, vals]) => h("div", { class: "drill-group" },
+          h("div", { class: "lbl" }, cap(k)),
+          h("div", { class: "row" }, vals.map(v => h("button", { class: "btn small", disabled: done || (isInf() && (k === "person" || k === "number")),
+            "aria-pressed": String(pick[k] === v), onclick: () => { pick[k] = v; draw(); } }, label(k, v)))))));
+        checkBtn.disabled = !ready() || done;
+      }
+      function check() {
+        if (!ready() || done) return;
+        done = true;
+        const guess = it.pos === "verb"
+          ? { tense: pick.tense, mood: pick.mood, voice: pick.voice, person: isInf() ? null : pick.person, number: isInf() ? null : pick.number }
+          : { case: pick.case, number: pick.number, gender: it.pos === "noun" ? null : pick.gender };
+        const ok = valid.some(p => parseKey(p) === parseKey({ pos: it.pos, parse: guess }));
+        const yours = parseText({ pos: it.pos, parse: guess });
+        record(q, ok, yours);
+        draw();
+        fb.replaceChildren(h("div", { class: "feedback " + (ok ? "good" : "bad") }, ok ? "Correct!" : `Not quite: you said ${yours}.`,
+          h("div", { style: { color: "var(--ink)", fontWeight: 400 } }, parsesBlock(form, it))), nextBtn());
+      }
+      draw();
+      state.onKey = e => { if (e.key === "Enter" && ready() && !done) { e.preventDefault(); check(); } };
+      frame(q, "Parse", bigGreek(form), h("div", {}, groups, h("div", { class: "row", style: { marginTop: "12px" } }, checkBtn), fb));
+    }
+
+    // ---- Produce: type the form for a word + parse.
+    function askProduce(q) {
+      const it = q.it;
+      let done = false;
+      const fb = h("div", {});
+      const inp = h("input", { class: "field", "data-greek": "", lang: "grc", autocomplete: "off", autocapitalize: "off", spellcheck: "false",
+        placeholder: "Type the Greek form", "aria-label": "Greek form" });
+      // The same word and parse in the bank (a duplicate row) adds its forms too.
+      const accepted = [...new Set(bankThrough(s.unit).items.filter(o => o.pos === it.pos && o.lemma === it.lemma && sameParseQ(o, it)).flatMap(o => o.forms))];
+      const check = () => {
+        if (done || !inp.value.trim()) return;
+        done = true; inp.disabled = true;
+        const res = gradeForm(inp.value, accepted);
+        record(q, res === "right", inp.value.trim());
+        fb.replaceChildren(h("div", { class: "feedback " + (res === "right" ? "good" : res === "close" ? "close" : "bad") },
+          res === "right" ? "Correct!" : res === "close" ? "Close, but accents count: check the accents, breathings and iota subscripts." : "Not quite.",
+          h("div", { style: { color: "var(--ink)", fontWeight: 400 } }, h("div", { class: "lbl" }, "Accepted"), h("div", { class: "ans" }, accepted.join(" / ")),
+            parsesBlock(it.forms[0], it))), nextBtn());
+      };
+      state.onKey = e => { if (e.key === "Enter" && !done) { e.preventDefault(); check(); } };
+      frame(q, "Produce", h("div", {}, h("div", { class: "card-text greek size-l", lang: "grc" }, headOf(it)), h("div", { class: "size-m" }, parseText(it))),
+        h("div", {}, inp,
+          h("div", { class: "muted quiz-src", style: { marginTop: "6px" } }, "Accents and breathings count (a grave counts as an acute); macrons don't. Optional letters like (ν) can be typed or left out; any form H&Q gives as an alternative is right."),
+          h("div", { class: "row", style: { marginTop: "12px" } }, h("button", { class: "btn primary", onclick: check }, "Check")), fb));
+      setTimeout(() => inp.focus({ preventScroll: true }), 0);
+    }
+
+    // ---- Translate: pick the English of a verb form (4 choices from the same verb's other forms).
+    function askTranslate(q) {
+      const it = q.it, rnd = rngOf(q.qseed), form = it.forms[Math.floor(rnd() * it.forms.length)];
+      const valid = parsesOfForm(form, it, s.unit);
+      const ok = new Set(valid.map(p => p.english).filter(Boolean));
+      const near = o => (o.parse.tense === it.parse.tense) + (o.parse.mood === it.parse.mood) + (o.parse.voice === it.parse.voice)
+        + 2 * (o.parse.person === it.parse.person && o.parse.number === it.parse.number);
+      const bank = bankThrough(s.unit).items;
+      const cands = rShuffle(bank.filter(o => o.pos === "verb" && o.lemma === it.lemma && o.english && !ok.has(o.english)), rnd).sort((a, b) => near(b) - near(a));
+      const ds = [];
+      for (const c of cands) { if (!ds.includes(c.english)) ds.push(c.english); if (ds.length >= 6) break; }
+      if (ds.length < 3) return askParse({ ...q, type: "parse" });
+      const options = rShuffle([it.english, ...rShuffle(ds, rnd).slice(0, 3)], rnd);
+      const fb = h("div", {});
+      let done = false;
+      const buttons = options.map((o, i) => h("button", { class: "choice drill-eng", onclick: () => choose(i) }, h("span", { class: "num" }, i + 1), h("span", {}, o)));
+      function choose(i) {
+        if (done) return;
+        done = true;
+        const right = ok.has(options[i]);
+        buttons.forEach((b, j) => { if (ok.has(options[j])) b.classList.add("right"); });
+        if (!right) buttons[i].classList.add("wrong");
+        record(q, right, options[i]);
+        fb.replaceChildren(h("div", { class: "feedback " + (right ? "good" : "bad") }, right ? "Correct!" : "Not quite.",
+          h("div", { style: { color: "var(--ink)", fontWeight: 400 } }, parsesBlock(form, it))), nextBtn());
+      }
+      state.onKey = e => { const n = Number(e.key); if (!done && n >= 1 && n <= options.length) choose(n - 1); };
+      frame(q, "Translate", bigGreek(form), h("div", {}, h("div", { class: "choices" }, buttons),
+        it.parse.mood === "subjunctive" || it.parse.mood === "optative"
+          ? h("div", { class: "muted quiz-src", style: { marginTop: "6px" } }, "Subjunctive and optative read as in a purpose clause (§36): “may …”, “might …”.") : null, fb));
+    }
+
+    function finish() {
+      state.onKey = null;
+      const total = qs.length, pct = Math.round(100 * st.right / total);
+      const missed = st.missed;
+      const promptOf = m => m.type === "produce" ? `${headOf(m.it)}: ${parseText(m.it)}` : m.it.forms[0];
+      stage.replaceChildren(h("div", { class: "qcard done-box" },
+        h("div", { class: "big" }, `${st.right} / ${total}`),
+        h("div", { class: "muted" }, `${pct}% right${missed.length ? ` · ${missed.length} missed` : " · nothing missed"}`),
+        h("div", { class: "row", style: { justifyContent: "center", marginTop: "16px" } },
+          missed.length ? h("button", { class: "btn primary", onclick: () => quizRun(s, seed, missed.map(m => ({ it: m.it, type: m.type, qseed: m.qseed + "r" }))) },
+            `Retry missed (${missed.length})`) : null,
+          h("a", { class: "btn" + (missed.length ? "" : " primary"), href: quizHash(s, newSeed()) }, "New quiz"),
+          h("a", { class: "btn", href: quizHash(s) }, "Change settings"))),
+        missed.length ? h("div", { class: "quiz-missed" }, h("h2", {}, "Missed"),
+          missed.map(m => h("div", { class: "panel quiz-miss" },
+            h("div", { class: "quiz-miss-q" }, h("span", { class: "pp-tag" }, cap(m.type)), " ", h("span", { lang: m.type === "produce" ? "grc" : "grc", class: "greek" }, promptOf(m)), builtBadge(m.it)),
+            h("div", {}, h("span", { class: "muted" }, "Right: "),
+              m.type === "produce" ? h("span", { class: "greek", lang: "grc" }, m.it.forms.join(" / "))
+              : m.type === "translate" ? h("span", {}, parsesOfForm(m.it.forms[0], m.it, s.unit).map(p => p.english).filter(Boolean).join(" / "))
+              : h("span", {}, parsesOfForm(m.it.forms[0], m.it, s.unit).map(parseText).join(" · or · "))),
+            m.given ? h("div", {}, h("span", { class: "muted" }, "Yours: "), h("span", { class: m.type === "produce" ? "greek" : "", lang: m.type === "produce" ? "grc" : "en" }, m.given)) : null,
+            refLink(m.it)))) : null);
+    }
+    next();
+  }
+
+  window.quizView = quizView;
+  // For scripts/greek-trainer/coverage.mjs (check 19).
+  window.trainerQuiz = { bank: (unit, mode) => quizBank(unit, mode), through: unit => bankThrough(unit), declineNoun, declineAdj, nounHead, adjHead,
+    printedSlots, sample: (s, seed) => sampleQuiz(s, seed), parsesOfForm, gradeForm, reset: () => { bankCache = new Map(); } };
+})();
+
 // ---- home + router: the artifact bundles the verb drill and the vocabulary quiz.
 function homeView() {
   document.title = "H&Q Greek";
@@ -3967,6 +4710,9 @@ function homeView() {
     h("a", { class: "panel deck-tile drill-tile", href: "#/drill", style: { marginTop: "18px" } },
       h("h3", {}, "Verb drill"),
       h("div", { class: "muted" }, "Parse, find and write verb forms — tense, mood, person, number, by unit")),
+    h("a", { class: "panel deck-tile quiz-tile", href: "#/quiz", style: { marginTop: "12px" } },
+      h("h3", {}, "Quiz: test bank"),
+      h("div", { class: "muted" }, "Every form of every verb, noun and adjective in your units: parse, produce or translate, 10 to all of them, with a score")),
     h("a", { class: "panel deck-tile tables-tile", href: "#/tables", style: { marginTop: "12px" } },
       h("h3", {}, "Ending tables"),
       h("div", { class: "muted" }, "Fill in the personal endings (person × number, each tense & mood), the article, and the noun, adjective and pronoun paradigms, by unit")),
@@ -3996,6 +4742,7 @@ function route() {
   const [view, id, mode] = location.hash.replace(/^#\/?/, "").split("/");
   window.scrollTo(0, 0);
   if (/^words(\?|$)/.test(view)) return wordsView(location.hash.split("?")[1] || "");
+  if (/^quiz(\?|$)/.test(view)) return quizView(location.hash.split("?")[1] || "");
   if (view === "drill") return drillView(id, mode);
   if (view === "tables") return tableDrillView(id, mode);
   if (view === "reference") return referenceView(id);

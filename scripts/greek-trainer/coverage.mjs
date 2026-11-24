@@ -87,6 +87,13 @@
 //      infinitive's row for an infinitive card); the copy isn't ⚙ built (a verb H&Q prints is never used); the verb isn't
 //      from the card's unit and isn't labelled with its own (earlier) unit; or a §43c stem-type card's verb is of another
 //      stem type. Checked on every unit 1–20, both scopes.
+//  19. the Quiz page's test bank (#/quiz, every unit 1–20, both scopes) leaves out a form on the Reference page's per-verb
+//      tables, has a verb item that isn't on the page, or puts an item in "Unit N only" that is neither a Unit N word nor a
+//      form first taught in Unit N; the noun/adjective declension rule doesn't reproduce a printed 1st/2nd-declension
+//      paradigm (τέχνη … νεᾱνίᾱς, ἀγαθός, ἄξιος, ἄδικος) cell for cell; a vocabulary noun or adjective (units ≤
+//      supportedThrough) is neither in the bank nor listed as left out; an item has no answer, or a form shared with
+//      other items in Units 1–N doesn't accept all their parses; a verb's Reference link doesn't land; a seed doesn't
+//      reproduce its quiz; or Produce rejects H&Q's alternates (or accepts a form with no accent).
 // Units above supportedThrough are reported (and listed on the unit screens), not failed.
 import fs from "node:fs";
 import { loadTrainer, TRAINER } from "./load-trainer.mjs";
@@ -483,6 +490,144 @@ function infinitiveCardsAudit(trainer) {
   return { bad, cards, perUnit };
 }
 
+// Check 19: the Quiz page's test bank (#/quiz), every unit 1–20, both scopes.
+//   a. every form on the Reference page's per-verb tables (finite cells and infinitive rows, H&Q's and ⚙ built) is a
+//      bank item with that verb, tense, mood, voice, person and number: "through Unit N" holds every one; "Unit N only"
+//      holds every form of a Unit N verb (the Reference page's "Unit N verbs only") and every form whose tense · mood ·
+//      voice is new in Unit N; and the bank has no verb item that isn't on the page;
+//   b. the noun/adjective declension rule reproduces every printed 1st/2nd-declension noun and -ος adjective paradigm
+//      cell for cell (τέχνη … νεᾱνίᾱς, ἀγαθός, ἄξιος, ἄδικος), declines none of them it can't, and a vocabulary noun
+//      or adjective in Units ≤ supportedThrough is either in the bank or listed as left out with a reason;
+//   c. every item has forms (its answers) and its parse set contains itself;
+//   d. ambiguity: recomputed here, every item sharing a surface form (any variant: movable ν, accents graded, macrons and
+//      grave/acute not) with another item of its kind in Units 1–N lists that item's parse (παιδεύῃ: three; λόγοι: nom.
+//      and voc. pl.);
+//   e. every verb item's "Reference table →" link lands on a rendered per-verb table;
+//   f. a seed reproduces the same quiz, and Produce accepts H&Q's alternates (both optative plurals, -ῃ/-ει, movable ν,
+//      the -μένοι compound with its gendered forms), a grave for an acute, and no macrons.
+function quizAudit(trainer) {
+  const bad = [], Q = trainer.quiz, sizes = {};
+  const ACC = /[̀́͂]/;
+  const key = f => nfc(String(f)).normalize("NFD").replace(/[̄̆]/g, "").replace(/̀/g, "́").normalize("NFC").toLowerCase().replace(/\s+/g, " ").trim();
+  const vars = f => { const out = new Set([f]); const n = (f.match(/\(([^()\s]+)\)/g) || []).length;
+    for (let m = 0; m < 1 << n; m++) { let i = 0; out.add(f.replace(/(?<=\S)\(([^()\s]+)\)/g, (_, x) => (m >> i++) & 1 ? x : "")); } return [...out]; };
+  const grp = pos => pos === "verb" ? "verb" : pos === "noun" ? "noun" : "g";
+  const vparse = (lemma, tense, mood, voice, person, number) => `${lemma}|${tense}|${mood}|${voice || "active"}|${person ?? ""}|${number ?? ""}`;
+  let verbForms = 0, items = 0, ambiguous = 0, links = 0;
+  const linkSeen = new Map(), jumpIds = new Map();
+  const rendered = unit => { if (!jumpIds.has(unit)) jumpIds.set(unit, new Set(trainer.refJump(unit, false).tables.map(t => t.id))); return jumpIds.get(unit); };
+  for (let u = 1; u <= 20; u++) {
+    const through = Q.bank(u, "through").items, only = Q.bank(u, "only").items;
+    sizes[u] = { only: only.length, through: through.length, pos: {} };
+    for (const it of through) sizes[u].pos[it.pos] = (sizes[u].pos[it.pos] || 0) + 1;
+    const index = items => { const m = new Map(); for (const it of items) if (it.pos === "verb")
+      m.set(vparse(it.lemma, it.parse.tense, it.parse.mood, it.parse.voice, it.parse.person, it.parse.number), it); return m; };
+    const T = index(through), O = index(only);
+    // a. Reference forms → bank.
+    const want = new Map();
+    const walk = (tabs, cb) => { for (const t of tabs) {
+      if (!t.lemma || !(t.tense || t.section === "inf")) continue;
+      if (t.section === "inf") t.rows.forEach((r, i) => { if (!t.dash?.[i]) for (const f of t.cells[i]?.[0] || []) cb(t, vparse(nfc(t.lemma), r.toLowerCase(), "infinitive", t.voice), f, r.toLowerCase()); });
+      else for (let r = 0; r < 3; r++) for (let c = 0; c < 2; c++) for (const f of ((t.full || t.cells)[r]?.[c] || []))
+        cb(t, vparse(nfc(t.lemma), t.tense, t.mood, t.voice, r + 1, c ? "plural" : "singular"), f, t.tense);
+    } };
+    const infUnit = new Map(trainer.pool.book.filter(it => it.mood === "infinitive" && it.src === "book").map(it => [`${it.tense}|${it.voice}`, it.tenseUnit]));
+    walk(trainer.refTables(u, false), (t, k, f, tense) => {
+      verbForms++; want.set(k, true);
+      const it = T.get(k);
+      if (!it || !it.forms.includes(nfc(f))) bad.push(`Quiz Units 1–${u}: the Reference form ${f} (${k}) isn't in the test bank`);
+      const newHere = (t.section === "inf" ? infUnit.get(`${tense}|${t.voice || "active"}`) : t.tenseUnit) === u;
+      if (newHere && !O.has(k)) bad.push(`Quiz Unit ${u} only: ${f} (${k}) is new in Unit ${u} but not in the bank`);
+    });
+    // The page's "Unit N verbs only" also shows παιδεύω and H&Q's printed tables: hold it to the Unit N verbs' copies.
+    walk(trainer.refTables(u, true), (t, k, f) => { if (T.get(k)?.vocabUnit === u && !O.get(k)?.forms.includes(nfc(f))) bad.push(`Quiz Unit ${u} only: the Unit ${u} verb form ${f} (${k}) isn't in the bank`); });
+    for (const k of T.keys()) if (!want.has(k)) bad.push(`Quiz Units 1–${u}: verb item ${k} isn't on the Reference page`);
+    for (const it of only) if (!(it.vocabUnit === u || it.tenseUnit === u)) bad.push(`Quiz Unit ${u} only: ${it.id} is neither a Unit ${u} word nor a Unit ${u} form`);
+    // c + d. Answers and ambiguity, recomputed.
+    const bySurface = new Map();
+    for (const it of through) for (const f of it.forms) for (const v of vars(f)) {
+      const k = `${grp(it.pos)}|${key(v)}`;
+      if (!bySurface.has(k)) bySurface.set(k, new Set());
+      bySurface.get(k).add(it.id);
+    }
+    for (const it of through) {
+      items++;
+      if (!it.forms.length || it.forms.some(f => !String(f).trim())) bad.push(`Quiz Units 1–${u}: ${it.id} has no answer`);
+      if (!it.forms.every(f => ACC.test(nfc(f).normalize("NFD")) || /^[οἡαἱ]ἱ?$|^[ὁἡοἱαἱ]$/.test(f) || it.pos === "article" || it.pos === "pron"))
+        bad.push(`Quiz Units 1–${u}: ${it.id} has an unaccented form (${it.forms.join(" / ")})`);
+      const ids = new Set(it.parses.map(p => p.id));
+      if (!ids.has(it.id)) bad.push(`Quiz Units 1–${u}: ${it.id}'s parses leave out its own`);
+      const need = new Set();
+      for (const f of it.forms) for (const v of vars(f)) for (const id of bySurface.get(`${grp(it.pos)}|${key(v)}`) || []) need.add(id);
+      for (const id of need) if (!ids.has(id)) bad.push(`Quiz Units 1–${u}: ${it.forms[0]} (${it.id}) is also ${id}, but that parse isn't accepted`);
+      if (need.size > 1) ambiguous++;
+      // e. Reference links (each verb + paradigm once).
+      if (it.pos === "verb") {
+        const lu = Math.max(it.vocabUnit, it.tenseUnit), lk = `${lu}|${it.lemma}|${it.parse.tense}|${it.parse.mood}|${it.parse.voice}`;
+        if (!linkSeen.has(lk)) {
+          const href = trainer.refHref(lu, it.lemma, it.parse.tense, it.parse.mood, it.parse.voice);
+          const m = href && href.match(/^#\/reference\/(\d+)\?p=([^&]+)&v=(.+)$/);
+          const ok = !!m && rendered(Number(m[1])).has(`ref-${m[2]}--${m[3]}`);
+          linkSeen.set(lk, ok); links++;
+          if (!ok) bad.push(`Quiz: ${it.id}'s Reference link ${href} doesn't land on a rendered table`);
+        }
+      }
+    }
+  }
+  // Spot checks of the ambiguity the user named.
+  const b5 = Q.through(5).items;
+  const pai = b5.find(it => it.lemma === nfc("παιδεύω") && it.forms.includes(nfc("παιδεύῃ")));
+  if (!pai || pai.parses.length !== 3) bad.push(`Quiz: παιδεύῃ should have 3 parses in Units 1–5, has ${pai?.parses.length}`);
+  const logoi = b5.find(it => it.lemma === nfc("λόγος") && it.forms.includes(nfc("λόγοι")));
+  if (!logoi || logoi.parses.map(p => p.parse.case).sort().join() !== "nominative,vocative") bad.push("Quiz: λόγοι should parse as nom. and voc. pl.");
+  // b. The declension rule against every printed 1st/2nd-declension noun and -ος adjective.
+  const lemmaKey = s => nfc(String(s).split(/[,\s]/)[0].replace(/["“”]/g, ""));
+  const vocabOf = new Map();
+  for (const e of trainer.vocab.entries) vocabOf.set(`${e.cat}|${lemmaKey(e.greek)}`, e);
+  const NOT_BY_RULE = new Set([nfc("νοῦς")]);   // §152: a contracted 2nd-declension noun; printed, so served as printed
+  const paradigms = [];
+  for (const t of trainer.refTables(Infinity)) {
+    if (t.lemma || t.tense || t.kind === "ending" || !["n1", "n2", "adj"].includes(t.section)) continue;
+    const lemma = lemmaKey(t.label), adj = t.section === "adj";
+    const e = vocabOf.get(`${adj ? "adjective" : "noun"}|${lemma}`);
+    const r = Q.printedSlots(t);
+    if (r.skip) continue;
+    let d;
+    if (adj) { const hw = e && Q.adjHead(e); d = hw ? Q.declineAdj(hw) : { error: "no headword" }; }
+    else d = e ? Q.declineNoun(Q.nounHead(e)) : { error: "not in the vocabulary" };
+    if (d.error) {
+      if (!adj && !NOT_BY_RULE.has(lemma)) bad.push(`Quiz: the declension rule can't decline H&Q's printed ${t.label} (${d.error})`);
+      continue;
+    }
+    const miss = r.slots.filter(s => !s.forms.includes(d.forms[adj ? `${s.case}|${s.number}|${s.gender}` : `${s.case}|${s.number}`]));
+    for (const s of miss) bad.push(`Quiz: the declension rule gives ${t.label} ${s.gender || ""} ${s.case} ${s.number} = ${d.forms[adj ? `${s.case}|${s.number}|${s.gender}` : `${s.case}|${s.number}`]}, H&Q prints ${s.forms.join(" / ")}`);
+    paradigms.push({ label: t.label, cells: r.slots.length });
+  }
+  for (const need of ["τέχνη", "ψῡχή", "χώρᾱ", "ἀγορᾱ́", "λόγος", "ἄνθρωπος", "ἀδελφός", "νῆσος", "δῶρον", "ἔργον", "θάλαττα", "μοῦσα", "γέφῡρα", "μοῖρα",
+    "πολῑ́της", "ποιητής", "νεᾱνίᾱς", "ἀγαθός", "ἄξιος", "ἄδικος"])
+    if (!paradigms.some(p => lemmaKey(p.label) === nfc(need))) bad.push(`Quiz: H&Q's printed ${need} wasn't checked against the declension rule`);
+  // Every vocabulary noun/adjective through supportedThrough is in the bank or listed as left out.
+  const all = Q.through(supportedThrough);
+  const inBank = new Set(all.items.map(it => `${it.pos === "adj" ? "adjective" : it.pos}|${it.lemma}`));
+  const left = new Set(all.excluded.map(x => nfc(x.lemma)));
+  for (const e of trainer.vocab.entries) if ((e.cat === "noun" || e.cat === "adjective") && e.unit <= supportedThrough) {
+    const l = lemmaKey(e.greek);
+    if (!inBank.has(`${e.cat}|${l}`) && !left.has(l)) bad.push(`Quiz: the Unit ${e.unit} ${e.cat} ${e.greek} is neither in the bank nor listed as left out`);
+  }
+  // f. Seeds and grading.
+  const s = { unit: 5, mode: "through", types: ["parse", "produce", "translate"], pos: ["verb", "noun", "adj", "article"], n: "25" };
+  const a = Q.sample(s, "abc123").map(q => q.it.id + q.type), b = Q.sample(s, "abc123").map(q => q.it.id + q.type);
+  if (a.length !== 25 || a.join() !== b.join()) bad.push("Quiz: the same seed doesn't give the same 25 questions");
+  const accepts = (given, forms) => Q.gradeForm(given, forms.map(nfc)) === "right";
+  for (const [g, fs] of [["παιδευθεῖμεν", ["παιδευθεῖμεν", "παιδευθείημεν"]], ["παιδευθείημεν", ["παιδευθεῖμεν", "παιδευθείημεν"]],
+    ["παιδεύει", ["παιδεύῃ", "παιδεύει"]], ["παιδεύουσιν", ["παιδεύουσι(ν)"]], ["παιδεύουσι", ["παιδεύουσι(ν)"]],
+    ["γεγραμμέναι εἰσίν", ["γεγραμμένοι εἰσί(ν)"]], ["γεγραμμένοι, -αι, -α εἰσί", ["γεγραμμένοι εἰσί(ν)"]],
+    ["τὸν", ["τόν"]], ["αγορας", ["ἀγορᾱ́ς"]].slice(0, 0), ["ἀγοράς", ["ἀγορᾱ́ς"]]])
+    if (g && !accepts(g, fs)) bad.push(`Quiz: Produce doesn't accept ${g} for ${fs.join(" / ")}`);
+  if (accepts("ἀγορας", ["ἀγορᾱ́ς"])) bad.push("Quiz: Produce accepts a form with no accent (accents count)");
+  return { bad, sizes, verbForms, items, ambiguous, links, paradigms };
+}
+
 // Check 18: the unit verb's display-only table equals the Reference page's ⚙ built copy for that verb.
 function unitVerbAudit(trainer) {
   const bad = [], seen = new Set(), ref = trainer.refTables(Infinity);
@@ -658,7 +803,7 @@ function coverageBlock(rows) {
   return { supportedThrough, units, gaps };
 }
 
-function doc(rows, onlyTables, onlyDrill, sounds, verbs, parts, glossary, formation) {
+function doc(rows, onlyTables, onlyDrill, sounds, verbs, parts, glossary, formation, quiz) {
   const L = [];
   L.push("# Greek trainer coverage (H&Q Units 1–20)", "");
   L.push("Generated by `node scripts/greek-trainer/coverage.mjs --write`. Do not edit by hand.", "");
@@ -726,6 +871,18 @@ function doc(rows, onlyTables, onlyDrill, sounds, verbs, parts, glossary, format
     "| Principal part | Citations |", "|---|---|");
   for (const r of ROMAN) if (formation.perPP[r]) L.push(`| PP ${r} | ${formation.perPP[r]} |`);
   L.push("");
+  L.push("## Quiz test bank", "",
+    "The Quiz page (`#/quiz?u=N&mode=only|through`) asks from a test bank generated from the trainer's own data: every form on the",
+    "Reference page's per-verb tables (H&Q's printed forms and the ⚙ built copies, finite forms and infinitives), H&Q's printed",
+    "declension tables (nouns, adjectives, the article, case × number × gender pronoun tables), and every other 1st/2nd-declension",
+    "vocabulary noun and -ος adjective ⚙ declined by rule. The rule reproduces every printed 1st/2nd-declension paradigm cell for cell",
+    `(${quiz.paradigms.map(p => p.label.split(/[,\s]/)[0]).join(", ")}); a word it can't decline is listed on the page as left out.`,
+    "“Unit N only” = every form (through N) of a word first taught in Unit N, plus every form first taught in Unit N (its tenseUnit) on",
+    "earlier words. A parse is graded against every parse its form has in Units 1–N.", "",
+    "| Unit | Unit N only | Units 1–N | Verbs | Nouns | Adjectives | Article | Pronouns |", "|---|---|---|---|---|---|---|---|");
+  for (const [u, x] of Object.entries(quiz.sizes))
+    L.push(`| ${u} | ${x.only} | ${x.through} | ${x.pos.verb || 0} | ${x.pos.noun || 0} | ${x.pos.adj || 0} | ${x.pos.article || 0} | ${x.pos.pron || 0} |`);
+  L.push("");
   return L.join("\n");
 }
 
@@ -748,7 +905,8 @@ const endingsOnly = endingsOnlyAudit(trainer);
 const unique = uniqueTablesAudit(trainer);
 const infCards = infinitiveCardsAudit(trainer);
 const unitVerbs = unitVerbAudit(trainer);
-const docText = doc(rows, onlyTables, onlyDrill, sounds, verbs, parts, glossary, formation);
+const quiz = quizAudit(trainer);
+const docText = doc(rows, onlyTables, onlyDrill, sounds, verbs, parts, glossary, formation, quiz);
 
 if (WRITE) {
   if (!COVERAGE_LINE.test(trainer.html)) throw new Error("index.html has no TRAINER_COVERAGE line");
@@ -792,6 +950,7 @@ for (const b of endingsOnly.bad) failures.push(b);
 for (const b of unique.bad) failures.push(b);
 for (const b of infCards.bad) failures.push(b);
 for (const b of unitVerbs.bad) failures.push(b);
+for (const b of quiz.bad) failures.push(b);
 const live = loadTrainerCoverage(trainer.html);
 if (!WRITE && JSON.stringify(live) !== JSON.stringify(block))
   failures.push("index.html's TRAINER_COVERAGE is out of date: run `node scripts/greek-trainer/coverage.mjs --write`");
@@ -818,4 +977,5 @@ console.log(`greek-trainer: Ending tables: ${endingsOnly.tables} verb tables, ${
 console.log(`greek-trainer: Ending tables: no repeated title or key in ${unique.scopes} unit scopes; stem types titled and in book order.`);
 console.log(`greek-trainer: Ending tables: ${infCards.cards} Reference infinitives matched by an infinitive card (Units 1–20, both scopes).`);
 console.log(`greek-trainer: Ending tables: ${unitVerbs.tables} unit-verb (⚙ built) tables match their Reference copies (Units 1–20, both scopes).`);
+console.log(`greek-trainer: Quiz test bank: ${quiz.items} items checked over Units 1–20 (${quiz.verbForms} Reference verb forms found in it, ${quiz.ambiguous} with several parses, ${quiz.links} Reference links); the declension rule reproduces ${quiz.paradigms.length} printed paradigms.`);
 console.log("greek-trainer coverage check passed.");

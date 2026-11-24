@@ -611,3 +611,36 @@ taught through N as a row (a “—” row with the reason when the verb lacks t
 | PP V | 172 |
 | PP VI | 284 |
 
+## Quiz test bank
+
+The Quiz page (`#/quiz?u=N&mode=only|through`) asks from a test bank generated from the trainer's own data: every form on the
+Reference page's per-verb tables (H&Q's printed forms and the ⚙ built copies, finite forms and infinitives), H&Q's printed
+declension tables (nouns, adjectives, the article, case × number × gender pronoun tables), and every other 1st/2nd-declension
+vocabulary noun and -ος adjective ⚙ declined by rule. The rule reproduces every printed 1st/2nd-declension paradigm cell for cell
+(τέχνη, ψῡχή, χώρᾱ, ἀγορᾱ́, λόγος, ἄνθρωπος, ἀδελφός, νῆσος, δῶρον, ἔργον, θάλαττα, μοῦσα, γέφῡρα, μοῖρα, πολῑ́της, ποιητής, νεᾱνίᾱς, ἀγαθός, ἄξιος, ἄδικος); a word it can't decline is listed on the page as left out.
+“Unit N only” = every form (through N) of a word first taught in Unit N, plus every form first taught in Unit N (its tenseUnit) on
+earlier words. A parse is graded against every parse its form has in Units 1–N.
+
+| Unit | Unit N only | Units 1–N | Verbs | Nouns | Adjectives | Article | Pronouns |
+|---|---|---|---|---|---|---|---|
+| 1 | 174 | 174 | 0 | 150 | 0 | 24 | 0 |
+| 2 | 184 | 358 | 104 | 230 | 0 | 24 | 0 |
+| 3 | 500 | 858 | 504 | 330 | 0 | 24 | 0 |
+| 4 | 609 | 1467 | 743 | 460 | 240 | 24 | 0 |
+| 5 | 1547 | 3014 | 1940 | 570 | 480 | 24 | 0 |
+| 6 | 705 | 3719 | 2381 | 690 | 600 | 24 | 24 |
+| 7 | 542 | 4261 | 2759 | 740 | 690 | 24 | 48 |
+| 8 | 222 | 4483 | 2891 | 770 | 750 | 24 | 48 |
+| 9 | 722 | 5205 | 3395 | 820 | 870 | 24 | 96 |
+| 10 | 815 | 6020 | 4075 | 895 | 930 | 24 | 96 |
+| 11 | 575 | 6595 | 4556 | 935 | 960 | 24 | 120 |
+| 12 | 345 | 6940 | 4871 | 965 | 960 | 24 | 120 |
+| 13 | 393 | 7333 | 5144 | 1025 | 1020 | 24 | 120 |
+| 14 | 604 | 7937 | 5548 | 1045 | 1200 | 24 | 120 |
+| 15 | 418 | 8355 | 5840 | 1045 | 1260 | 24 | 186 |
+| 16 | 516 | 8871 | 6232 | 1085 | 1344 | 24 | 186 |
+| 17 | 692 | 9563 | 6604 | 1105 | 1644 | 24 | 186 |
+| 18 | 505 | 10068 | 7075 | 1115 | 1644 | 24 | 210 |
+| 19 | 588 | 10656 | 7453 | 1145 | 1824 | 24 | 210 |
+| 20 | 313 | 10969 | 7736 | 1175 | 1824 | 24 | 210 |
+
