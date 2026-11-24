@@ -553,6 +553,12 @@ table.ref-table { margin: 0; font-size: clamp(16px, 4.2vw, 20px); }
 .cb-fn { color: var(--muted); }
 .cb-table th .cb-gk { text-transform: none; letter-spacing: 0; }
 .cb-note { font-size: 14px; margin-top: 14px; }
+.cb-table .cb-end { font-size: 19px; line-height: 1.45; }
+.cb-table .cb-end-p { white-space: nowrap; }
+.cb-table .cb-end [lang="grc"] { font-family: var(--greek); }
+.cb-table .cb-end-line { display: block; }
+.cb-table .cb-end-n { font-size: 13px; color: var(--muted); }
+.cb-table .cb-end-lbl { display: none; }
 @media (max-width: 640px) {
   .cb-table tr.cb-mood { border-top: 2px solid var(--line); }
   .cb-table tr.cb-mood td { border-top: 0; }
@@ -561,6 +567,8 @@ table.ref-table { margin: 0; font-size: clamp(16px, 4.2vw, 20px); }
   .cb-table .cb-en { margin-top: 0; }
   .cb-table .cb-pp { color: var(--muted); font-size: 16px; }
   .cb-table .cb-pp .cb-stem { color: var(--ink); }
+  .cb-table .cb-end { width: auto; margin-top: 6px; }
+  .cb-table .cb-end-lbl { display: block; font-size: 13px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
 }
 .quiz-bank { margin: 14px 0 4px; font-size: 16px; overflow-wrap: anywhere; }
 .quiz-whats { font-size: 14px; margin: 4px 0 8px; }
@@ -2906,7 +2914,9 @@ function gradeEnglish(given, parses) {
      (infinitives included), with παιδεύω's 1st sg. in English and the principal part it is built on. Nothing is
      hand-listed: the rows are παιδεύω's printed paradigms in the drill pool (the same items, and the same tenseUnit
      scoping, as the Ending tables and the Reference page), the English is the cards' "Sounds like" data (EN_FINITE /
-     EN_INF) and the part is H&Q §19's numbering (ppNumOf, ppsOf, PP_ENDS). coverage.mjs check 20 holds it to both pages. */
+     EN_INF) and the part is H&Q §19's numbering (ppNumOf, ppsOf, PP_ENDS). The Endings column is the matching Ending-tables
+     card's endings half (collectTables, quiz = true: the verb cards and the infinitive cards; the perfect/pluperfect
+     passive is παιδεύω's own vowel-stem card). coverage.mjs check 20 holds it to both pages. */
   const COMBO_MOODS = ["indicative", "subjunctive", "optative", "imperative", "infinitive", "participle"];
   const COMBO_TENSES = ["present", "imperfect", "future", "aorist", "perfect", "pluperfect"];
   const comboRank = (xs, x) => { const i = xs.indexOf(x); return i < 0 ? xs.length : i; };
@@ -2942,8 +2952,19 @@ function gradeEnglish(given, parses) {
     const that = mood === "subjunctive" || mood === "optative";
     return { text: `${that ? "(that) " : ""}${EN_SUBJ[0]} ${f(v, 0)}`, that };
   }
+  // The card's endings, as the cards print them: alternates joined " / " (ει / ῃ), a missing person "—".
+  // Finite: { sg: [1st, 2nd, 3rd], pl: [...] }; infinitive: { inf }. cells is the card's own grid (for coverage.mjs).
+  function comboEndings(cards, tense, mood, voice) {
+    const t = cards.find(c => nfc(c.lemma || "") === MODEL && c.tense === tense && c.mood === mood && (c.voice || "active") === voice);
+    if (!t) return null;
+    const cell = x => x && x.length ? x.join(" / ") : "—";
+    if (mood === "infinitive") return { cells: t.cells, inf: cell(t.cells[0][0]), text: cell(t.cells[0][0]) };
+    const sg = t.cells.map(r => cell(r[0])), pl = t.cells.map(r => cell(r[1]));
+    return { cells: t.cells, sg, pl, text: `sg. ${sg.join(", ")}; pl. ${pl.join(", ")}` };
+  }
   function combosInScope(unit, mode) {
     const scope = { unit, mode };
+    const cards = collectTables(scope, REF_SETTINGS, true);
     const its = (drillPoolCache?.book || []).filter(it => it.src === "book" && nfc(it.lemma) === MODEL && inScope(it, scope)
       && (it.mood === "infinitive" || (it.person === 1 && it.number === "singular")));
     const seen = new Map();
@@ -2957,13 +2978,13 @@ function gradeEnglish(given, parses) {
       const enText = typeof en === "string" ? en : en?.text || "";
       return { key: `${it.tense}|${it.mood}|${voice}`, tense: it.tense, mood: it.mood, voice, unit: it.tenseUnit, lemma: MODEL,
         label: `${cap(it.tense)} ${it.mood} ${voice}`, form: it.forms[0], english: enText, that: !!en?.that,
-        part: comboPart(MODEL, it.tense, it.mood, voice),
+        part: comboPart(MODEL, it.tense, it.mood, voice), endings: comboEndings(cards, it.tense, it.mood, voice),
         href: window.trainerRefHref ? window.trainerRefHref(unit, MODEL, it.tense, it.mood, voice) : null };
     }).sort((a, b) => vRank(a.voice) - vRank(b.voice) || comboRank(COMBO_MOODS, a.mood) - comboRank(COMBO_MOODS, b.mood)
       || comboRank(COMBO_TENSES, a.tense) - comboRank(COMBO_TENSES, b.tense) || a.unit - b.unit);
   }
   window.trainerCombos = (unit, mode) => combosInScope(unit, mode === "only" ? "only" : "through")
-    .map(r => ({ ...r, ppText: r.part?.text || "" }));   // for coverage.mjs (check 20)
+    .map(r => ({ ...r, ppText: r.part?.text || "", endingsText: r.endings?.text || "" }));   // for coverage.mjs (check 20)
 
   const cbHash = s => `#/combos?u=${s.unit}&mode=${s.mode}`;
   async function combosView(query) {
@@ -2994,10 +3015,15 @@ function gradeEnglish(given, parses) {
       h("td", { class: "cb-tmv" }, r.href ? h("a", { href: r.href }, r.label) : r.label),
       h("td", { class: "cb-en" }, r.english, r.that ? h("sup", { class: "cb-fn" }, "*") : null),
       h("td", { class: "cb-pp" }, r.part ? greekStem(r.part.text) : "—"),
-      h("td", { class: "wl-u cb-u" }, h("span", { class: "pp-tag" }, `U${r.unit}`)));
+      h("td", { class: "wl-u cb-u" }, h("span", { class: "pp-tag" }, `U${r.unit}`)),
+      h("td", { class: "cb-end" }, h("span", { class: "cb-end-lbl" }, "Endings"),
+        !r.endings ? "—" : r.endings.inf ? h("span", { class: "cb-end-line", lang: "grc" }, r.endings.inf)
+        : [["sg.", r.endings.sg], ["pl.", r.endings.pl]].map(([n, xs]) =>
+          h("span", { class: "cb-end-line" }, h("span", { class: "cb-end-n" }, n), " ", h("span", { lang: "grc" }, xs.map((x, i) => [i ? ", " : "", h("span", { class: "cb-end-p" }, x)]))))));
     const tableEl = rs => h("div", { class: "pp-wrap" }, h("table", { class: "wl-table cb-table" },
       h("thead", {}, h("tr", {}, h("th", { scope: "col" }, "Tense · Mood · Voice"), h("th", { scope: "col" }, "English (1st sg. of ", h("span", { class: "cb-gk", lang: "grc" }, "παιδεύω"), ")"),
-        h("th", { scope: "col" }, "Principal part (± augment)"), h("th", { scope: "col", class: "wl-u" }, "Unit"))),
+        h("th", { scope: "col" }, "Principal part (± augment)"), h("th", { scope: "col", class: "wl-u" }, "Unit"),
+        h("th", { scope: "col" }, "Endings"))),
       h("tbody", {}, rs.map(rowEl))));
     const voices = DRILL_VOICES.filter(([v]) => rows.some(r => r.voice === v));
     const anyThat = rows.some(r => r.that);

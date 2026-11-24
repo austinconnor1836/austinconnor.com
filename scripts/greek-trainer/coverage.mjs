@@ -98,7 +98,9 @@
 //      tables or the Reference page show in the same scope (a verb card, an infinitive card, a παιδεύω table or an
 //      infinitive-table row), has two rows for one, or has a row neither page shows; a row has no English or no
 //      principal-part text, cites the wrong part (H&Q §19), or shows a stem that παιδεύω's printed 1st sg. doesn't start
-//      with (the stem + ησ for the future passive); or its Reference link doesn't land on a rendered table.
+//      with (the stem + ησ for the future passive); its Reference link doesn't land on a rendered table; or its Endings
+//      are empty or aren't the matching Ending-tables card's endings (παιδεύω's card, the vowel-stem one for the perfect /
+//      pluperfect passive; an infinitive row shows its card's single ending, a finite row all six persons).
 //  21. the Quiz page's focus (mode) selector, every unit 1–20, both scopes: a focus's pool isn't exactly the bank's items of
 //      its parts of speech (Verbs = verb; Nouns = noun + the article; Adjectives = adj), All isn't the whole bank and the
 //      union of the three plus the All-only pronouns, Translate under Nouns/Adjectives empties a quiz the focus has items
@@ -732,6 +734,7 @@ function combosAudit(trainer) {
     }
     const got = trainer.combos(u, mode);
     rows += got.length;
+    const cards = trainer.tables({ unit: u, mode }).filter(t => nfc(t.lemma || "") === MODEL && t.tense && t.mood);
     const count = new Map();
     for (const r of got) count.set(r.key, (count.get(r.key) || 0) + 1);
     for (const k of want) if (!count.has(k)) bad.push(`${where}: no row for ${k.replace(/\|/g, " ")} (it is on the Ending tables or the Reference page)`);
@@ -751,6 +754,15 @@ function combosAudit(trainer) {
       const noAug = (r.tense === "aorist" && r.mood !== "indicative") || (r.tense === "future" && r.voice === "passive");
       if (mustAug !== r.ppText.includes("+ augment") || noAug !== r.ppText.includes("− augment"))
         bad.push(`${id}: “${r.ppText}” has the augment wrong`);
+      const card = cards.find(t => t.tense === r.tense && t.mood === r.mood && (t.voice || "active") === r.voice);
+      const e = r.endings, cell = x => x && x.length ? x.join(" / ") : "—";
+      if (!String(r.endingsText || "").trim() || !e) bad.push(`${id}: no Endings`);
+      else if (!card) bad.push(`${id}: Endings, but no Ending-tables card for it`);
+      else if (JSON.stringify(e.cells) !== JSON.stringify(card.cells)) bad.push(`${id}: Endings ${JSON.stringify(e.cells)} aren't the card's ${JSON.stringify(card.cells)}`);
+      else if (r.mood === "infinitive" ? e.inf !== cell(card.cells[0][0]) || !e.inf.trim()
+        : JSON.stringify([e.sg, e.pl]) !== JSON.stringify([0, 1].map(c => card.cells.map(row => cell(row[c]))))
+          || [...e.sg, ...e.pl].length !== 6 || ![...e.sg, ...e.pl].some(x => x !== "—"))
+        bad.push(`${id}: Endings “${r.endingsText}” don't match the card's`);
       if (!r.href) bad.push(`${id}: no Reference link`);
       else {
         const m = r.href.match(/^#\/reference\/(\d+)\?p=([^&]+)&v=(.+)$/);
