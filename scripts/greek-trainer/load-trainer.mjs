@@ -30,5 +30,6 @@ export async function loadTrainer(file = TRAINER) {
   t.setPool(pool);
   return { html, pool, tables: scope => ctx.trainerTables(scope), refTables: (unit, only) => ctx.trainerRefTables(unit, only),
     refVerbUnits: ctx.trainerRefVerbUnits, refJump: (unit, only) => ctx.trainerRefJump(unit, only), refJumpForm: (unit, only) => ctx.trainerRefJumpForm(unit, only), formation: t => ctx.trainerFormation(t), partsRows: (unit, mode) => ctx.trainerPartsRows(unit, mode), words: (unit, mode) => ctx.trainerWordsInScope(unit, mode), vocab: t.VOCAB_DATA, glossary: t.GLOSSARY_DATA, glossarySearch: q => ctx.trainerGlossarySearch(q), built: t.DRILL_BUILT, coverage: t.TRAINER_COVERAGE,
-    quiz: ctx.trainerQuiz, refHref: (...a) => ctx.trainerRefHref(...a), combos: (unit, mode) => ctx.trainerCombos(unit, mode) };
+    quiz: ctx.trainerQuiz, refHref: (...a) => ctx.trainerRefHref(...a), combos: (unit, mode) => ctx.trainerCombos(unit, mode),
+    ppMap: (unit, mode) => ctx.trainerPPMap(unit, mode) };
 }
