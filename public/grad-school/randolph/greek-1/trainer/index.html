@@ -593,6 +593,30 @@ table.ref-table { margin: 0; font-size: clamp(16px, 4.2vw, 20px); }
 .quiz-focus button span { overflow-wrap: anywhere; text-align: center; }
 @media (max-width: 400px) { .quiz-focus button { font-size: 14px; } }
 .quiz-focus-note { font-size: 14px; margin: 4px 0 8px; }
+/* Vocabulary flashcards (#/vocab-cards) */
+.vc-tools { display: grid; gap: 8px; margin-top: 12px; }
+.vc-tools .quiz-focus { margin: 0; }
+.quiz-focus.vc-dir { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.quiz-focus.vc-dir button { min-height: 48px; }
+.quiz-focus.vc-pos { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.quiz-focus.vc-pos .vc-short { display: none; }
+@media (max-width: 440px) { .quiz-focus.vc-pos button { font-size: 14px; padding: 6px 2px; }
+  .quiz-focus.vc-pos .vc-long { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .quiz-focus.vc-pos .vc-short { display: inline; } .quiz-focus.vc-dir button { font-size: 15px; } }
+.vc-stage { margin-top: 14px; }
+.vc-card { min-height: 260px; display: flex; flex-direction: column; }
+.vc-body { flex: 1; display: flex; flex-direction: column; justify-content: center; text-align: center; gap: 6px; padding: 10px 0; }
+.vc-face { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.vc-head { font-family: var(--greek); font-size: 34px; font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
+.vc-parts { font-family: var(--greek); font-size: 21px; line-height: 1.45; overflow-wrap: anywhere; }
+.vc-tags { display: flex; gap: 6px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
+.vc-tags .pp-tag { font-size: 14px; white-space: normal; }
+.vc-gloss { font-size: 22px; line-height: 1.45; overflow-wrap: anywhere; }
+.vc-rule { width: 60%; border: 0; border-top: 1px solid var(--line); margin: 12px auto; }
+.vc-row { margin-top: 12px; gap: 10px; flex-wrap: wrap; }
+.vc-row .btn, .btn.small.vc-change { min-height: 44px; }
+.vc-note { font-size: 14px; margin: 10px 0 0; }
+@media (max-width: 440px) { .vc-head { font-size: 30px; } .vc-parts { font-size: 19px; } .vc-gloss { font-size: 20px; } .vc-row .btn { flex: 1 1 auto; } }
 .quiz-custom { margin: 6px 0 4px; font-size: 14px; }
 .quiz-custom summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; font-weight: 600; }
 .quiz-excluded { margin-top: 22px; font-size: 14px; }
@@ -663,6 +687,34 @@ document.addEventListener("keydown", e => {
   if ($("#modal-root").childElementCount) return;
   state.onKey && state.onKey(e);
 });
+
+// ---- The flashcard (shared by the Ending-tables flashcards and the Vocabulary flashcards): a card that flips
+// on tap or Space/Enter, with ← / → to step through the deck. o: { label, counter, flipped, ariaLabel, hint,
+// body, animate, onFlip, onPrev, onNext, onSwipe? }. fcCard returns the card element and sets state.onKey.
+// onSwipe (opt-in) adds a horizontal swipe: left = next, right = previous.
+function fcCard(o) {
+  const card = h("div", { class: "qcard fc-card" + (o.animate ? " fc-flip" : "") + (o.cls ? " " + o.cls : ""), role: "button", tabindex: "0",
+      "aria-pressed": o.flipped ? "true" : "false", "aria-label": o.ariaLabel, onclick: o.onFlip },
+    h("div", { class: "qlabel" }, o.label, o.counter != null ? h("span", { class: "muted" }, o.counter) : null),
+    o.body,
+    h("div", { class: "muted fc-hint" }, o.hint));
+  if (o.onSwipe) {
+    let x0 = null, y0 = 0;
+    card.addEventListener("touchstart", e => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; }, { passive: true });
+    card.addEventListener("touchend", e => {
+      if (x0 == null) return;
+      const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0; x0 = null;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > 1.5 * Math.abs(dy)) { e.preventDefault(); (dx < 0 ? o.onNext : o.onPrev)(); }
+    });
+  }
+  state.onKey = e => {
+    if (e.key === "ArrowRight") { e.preventDefault(); o.onNext(); }
+    else if (e.key === "ArrowLeft") { e.preventDefault(); o.onPrev(); }
+    else if ((e.key === " " || e.key === "Enter") && !(e.target instanceof HTMLButtonElement) && !(e.target instanceof HTMLAnchorElement)
+      && !(e.target instanceof HTMLSelectElement)) { e.preventDefault(); o.onFlip(); }
+  };
+  return card;
+}
 
 // ---- offline stubs: the artifact has no deck backend, so the drill's "own paradigms"
 // path finds nothing and these are never called with real data.
@@ -2302,28 +2354,21 @@ function gradeEnglish(given, parses) {
     function flipCard() { titleOnly = !titleOnly; saveSide(titleOnly); drawCard(true); }
     function drawCard(animate) {
       const t = deck[pos];
-      const card = h("div", { class: "qcard fc-card" + (animate ? " fc-flip" : ""), role: "button", tabindex: "0",
-          "aria-pressed": titleOnly ? "true" : "false",
-          "aria-label": titleOnly ? "Flashcard showing the title only. Tap to show the full card." : "Flashcard showing the full card. Tap to flip to the title only.",
-          onclick: flipCard },
-        h("div", { class: "qlabel" }, "Ending table — flashcard", h("span", { class: "muted" }, `${(pos % pass) + 1} / ${pass}`)),
-        titleOnly
+      const card = fcCard({ animate, flipped: titleOnly, onFlip: flipCard, onPrev: cardPrev, onNext: cardNext,
+        ariaLabel: titleOnly ? "Flashcard showing the title only. Tap to show the full card." : "Flashcard showing the full card. Tap to flip to the title only.",
+        label: "Ending table — flashcard", counter: `${(pos % pass) + 1} / ${pass}`,
+        body: titleOnly
           ? h("div", { class: "prompt fc-title-only" }, h("div", { class: "size-l", lang: "grc" }, t.label))
           : h("div", {},
               h("div", { class: "prompt" }, h("div", { class: "size-l", lang: "grc" }, t.label), soundsEl(t)),
               endingsTableEl(t), formationBlock(t),
               h("div", { class: "muted", style: { fontSize: "13px", marginTop: "8px" } }, source(t))),
-        h("div", { class: "muted fc-hint" }, titleOnly ? "Tap card to show the full card" : "Tap card to flip to title"));
+        hint: titleOnly ? "Tap card to show the full card" : "Tap card to flip to title" });
       stage.replaceChildren(card,
         h("div", { class: "row", style: { marginTop: "14px", gap: "10px" } },
           h("button", { class: "btn", onclick: e => { e.stopPropagation(); flipCard(); } }, titleOnly ? "Show all" : "Title only"),
           h("button", { class: "btn", onclick: cardPrev, disabled: pos === 0, "aria-label": "Previous ending table" }, "← Back"),
           h("button", { class: "btn primary", onclick: cardNext }, "Next →")));
-      state.onKey = e => {
-        if (e.key === "ArrowRight") { e.preventDefault(); cardNext(); }
-        else if (e.key === "ArrowLeft") { e.preventDefault(); cardPrev(); }
-        else if ((e.key === " " || e.key === "Enter") && !(e.target instanceof HTMLButtonElement)) { e.preventDefault(); flipCard(); }
-      };
     }
     function cardNext() {
       const items = pool();
@@ -3569,7 +3614,8 @@ function vocabStart() {
   }
   draw();
   app().replaceChildren(
-    h("div", { class: "row" }, h("a", { href: "#/", class: "muted" }, "← Home")),
+    h("div", { class: "row" }, h("a", { href: "#/", class: "muted" }, "← Home"), h("span", { class: "spacer" }),
+      h("a", { class: "btn small", href: "#/vocab-cards" }, "Flashcards")),
     h("h1", { style: { marginTop: "8px" } }, "Vocabulary quiz"),
     h("p", { class: "muted", style: { marginTop: 0, fontSize: "14px" } },
       "Endless questions on every H&Q vocabulary word — nouns, verbs, adjectives, prepositions and the little words ",
@@ -3599,6 +3645,7 @@ function vocabRun(scope) {
     h("div", { class: "row" }, h("a", { href: "#/", class: "muted" }, "← Home")),
     h("div", { class: "row", style: { marginTop: "8px" } },
       h("h1", { style: { flex: "1" } }, scope.mode === "only" ? `New in Unit ${scope.unit}` : `Units 1–${scope.unit}`),
+      h("a", { class: "btn small", href: `#/vocab-cards?u=${scope.unit}&mode=${scope.mode}&dir=g2e&pos=all` }, "Flashcards"),
       h("a", { class: "btn small", href: "#/vocab" }, "Change unit")),
     settingsBox, score, stage);
 
@@ -4222,7 +4269,8 @@ function wordsView(query) {
   app().replaceChildren(
     h("div", { class: "row wl-nav" }, h("a", { href: "#/", class: "muted" }, "← Home"), h("span", { class: "spacer" }),
       h("a", { class: "btn small", href: "#/glossary" }, "Glossary"),
-      h("a", { class: "btn small", href: `#/parts/${s.unit}/${s.mode}` }, "Principal parts")),
+      h("a", { class: "btn small", href: `#/parts/${s.unit}/${s.mode}` }, "Principal parts"),
+      h("a", { class: "btn small", href: `#/vocab-cards?u=${s.unit}&mode=${s.mode}&dir=g2e&pos=all` }, "Flashcards")),
     h("h1", { style: { marginTop: "8px" } }, `Vocabulary: ${s.mode === "only" ? `Unit ${s.unit}` : scopeTxt}`),
     h("p", { class: "muted", style: { marginTop: 0, fontSize: "14px" } },
       "Every word from H&Q's unit vocabulary lists in full dictionary form: nouns with genitive and article, adjectives with all their endings, verbs with their principal parts."),
@@ -4230,6 +4278,189 @@ function wordsView(query) {
       unitSel, modeBtn("only", `Unit ${s.unit} only`), modeBtn("through", `Units 1–${s.unit} (cumulative)`)),
     search, count, list);
   draw();
+}
+
+/* Vocabulary flashcards (#/vocab-cards?u=5&mode=only|through&dir=g2e|e2g&pos=all|noun|verb|adj|other[&seed=…][&i=…]).
+   The deck is exactly the Vocabulary list's words (wordsInScope: "Unit N only" or "Units 1–N"), narrowed by the
+   part-of-speech filter, in book order or shuffled by a seed kept in the URL (the same seed gives the same order).
+   Greek face: the headword in full dictionary form (verbs: the lemma, then principal parts II–VI), its part of speech
+   and unit; English face: the gloss with H&Q's notes. The card is fcCard (the Ending-tables flashcard): tap or
+   Space/Enter flips, ← / → step, and the side last shown is sticky (vocab-cards-side, apart from tables-card-side).
+   "Known" cards drop out of the deck for that unit and scope (vocab-cards-known) until Reset.
+   A bare #/vocab-cards asks which unit, exactly like the Vocabulary quiz. coverage.mjs check 22 checks the deck. */
+const VC_POS = [["all", "All", null], ["noun", "Nouns", ["noun"]], ["verb", "Verbs", ["verb"]], ["adj", "Adjectives", ["adjective"]],
+  ["other", "Other", null]];
+const VC_MAIN = new Set(["noun", "verb", "adjective"]);
+const vcInPos = (e, pos) => pos === "all" ? true : pos === "other" ? !VC_MAIN.has(e.cat) : VC_POS.find(p => p[0] === pos)[2].includes(e.cat);
+const VC_TAG = { noun: "Noun", verb: "Verb", adjective: "Adjective", preposition: "Preposition", little: "Other" };
+// The two faces of a card, as text (coverage.mjs checks both are non-empty for every word).
+function vcFaces(e) {
+  const parts = splitParts(nfc(e.greek));
+  const verb = e.cat === "verb" && parts.length > 1;
+  const tag = e.cat === "little" && e.kind ? e.kind : VC_TAG[e.cat] || "Word";
+  return { lemma: verb ? parts[0] : nfc(e.greek), rest: verb ? parts.slice(1).join(", ") : "", greek: nfc(e.greek),
+    english: nfc(e.gloss).trim(), kind: e.cat !== "little" && e.kind ? e.kind : "", tag: `${tag}${e.cat !== "little" && e.kind ? ` (${e.kind})` : ""}` };
+}
+function vcRng(str) {
+  let x = 1779033703 ^ str.length;
+  for (let i = 0; i < str.length; i++) { x = Math.imul(x ^ str.charCodeAt(i), 3432918353); x = x << 13 | x >>> 19; }
+  let a = x >>> 0;
+  return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; };
+}
+// The deck for a scope, filter and seed (null = book order), known cards left out.
+function vcDeck(unit, mode, pos = "all", seed = null, known = []) {
+  const kn = new Set(known);
+  let ws = wordsInScope(unit, mode).filter(e => vcInPos(e, pos) && !kn.has(e.id));
+  if (seed) { const rnd = vcRng(`${seed}|${unit}|${mode}|${pos}`); ws = ws.slice(); for (let i = ws.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [ws[i], ws[j]] = [ws[j], ws[i]]; } }
+  return ws;
+}
+window.trainerVocabCards = (unit, mode, pos = "all", seed = null) => vcDeck(unit, mode, pos, seed).map(e => ({ id: e.id, unit: e.unit, cat: e.cat, ...vcFaces(e),
+  href: e.cat === "verb" ? wlVerbHref(e) : null }));   // for scripts/greek-trainer/coverage.mjs
+const vcHash = s => `#/vocab-cards?u=${s.unit}&mode=${s.mode}&dir=${s.dir}&pos=${s.pos}${s.seed ? `&seed=${s.seed}` : ""}${s.i ? `&i=${s.i}` : ""}`;
+const VC_SIDE_KEY = "vocab-cards-side", VC_KNOWN_KEY = "vocab-cards-known";
+function vcLoadSide() {
+  try { const v = localStorage.getItem(VC_SIDE_KEY); if (v === "front" || v === "both") return v === "both"; } catch { /* storage blocked */ }
+  return window.__gkVcBoth === true;
+}
+function vcSaveSide(v) { window.__gkVcBoth = v; try { localStorage.setItem(VC_SIDE_KEY, v ? "both" : "front"); } catch { /* private mode */ } }
+
+function vocabCardsView(query) {
+  const max = wlMaxUnit();
+  const q = new URLSearchParams(query || "");
+  const saved = vocabStore.get("vocab-cards-scope", { unit: 1, mode: "through", dir: "g2e", pos: "all" });
+  if (!q.get("u") || !q.get("mode")) return vocabCardsStart(saved, max);
+  const s = {
+    unit: Math.min(max, Math.max(1, Number(q.get("u")) || 1)),
+    mode: q.get("mode") === "only" ? "only" : "through",
+    dir: q.get("dir") === "e2g" ? "e2g" : "g2e",
+    pos: VC_POS.some(p => p[0] === q.get("pos")) ? q.get("pos") : "all",
+    seed: (q.get("seed") || "").replace(/[^a-z0-9]/gi, "").slice(0, 16) || null,
+    i: Math.max(0, Number(q.get("i")) || 0),
+  };
+  vocabStore.set("vocab-cards-scope", { unit: s.unit, mode: s.mode, dir: s.dir, pos: s.pos });
+  const scopeKey = `${s.unit}|${s.mode}`;
+  const allKnown = vocabStore.get(VC_KNOWN_KEY, {});
+  const known = new Set(Array.isArray(allKnown[scopeKey]) ? allKnown[scopeKey] : []);
+  const saveKnown = () => { const all = vocabStore.get(VC_KNOWN_KEY, {}); if (known.size) all[scopeKey] = [...known]; else delete all[scopeKey]; vocabStore.set(VC_KNOWN_KEY, all); };
+  const scopeTxt = s.mode === "only" ? `Unit ${s.unit} only` : s.unit === 1 ? "Unit 1" : `Units 1–${s.unit}`;
+  document.title = `Vocabulary flashcards · ${scopeTxt}`;
+  const inScope = wordsInScope(s.unit, s.mode);
+  let deck = vcDeck(s.unit, s.mode, s.pos, s.seed, [...known]);
+  let pos = Math.min(s.i, Math.max(0, deck.length - 1)), both = vcLoadSide();
+  const syncUrl = () => { try { history.replaceState(null, "", vcHash({ ...s, i: pos })); } catch { /* sandboxed */ } };
+  if (location.hash !== vcHash({ ...s, i: pos })) syncUrl();   // canonical URL, no new history entry
+  const go = patch => { location.hash = vcHash({ ...s, i: 0, ...patch }); };   // a new history entry: Back returns here
+
+  const posCount = p => inScope.filter(e => vcInPos(e, p) && !known.has(e.id)).length;
+  const dirBtn = (d, label) => h("button", { type: "button", "aria-pressed": String(s.dir === d), onclick: () => s.dir !== d && go({ dir: d, i: pos }) }, h("span", {}, label));
+  const tools = h("div", { class: "vc-tools" },
+    h("div", { class: "quiz-focus vc-dir", role: "group", "aria-label": "Direction" }, dirBtn("g2e", "Greek → English"), dirBtn("e2g", "English → Greek")),
+    h("div", { class: "quiz-focus vc-pos", role: "group", "aria-label": "Part of speech" }, VC_POS.map(([p, label]) => {
+      const c = posCount(p);
+      return h("button", { type: "button", "aria-pressed": String(s.pos === p), disabled: !c && s.pos !== p, onclick: () => s.pos !== p && go({ pos: p }) },
+        h("span", { class: p === "adj" ? "vc-long" : null }, label), p === "adj" ? h("span", { class: "vc-short", "aria-hidden": "true" }, "Adj.") : null,
+        h("small", {}, `(${c})`));
+    })));
+  const stage = h("div", { class: "vc-stage" });
+  app().replaceChildren(
+    h("div", { class: "row wl-nav" }, h("a", { href: "#/", class: "muted" }, "← Home"), h("span", { class: "spacer" }),
+      h("a", { class: "btn small", href: `#/words?u=${s.unit}&mode=${s.mode}` }, "Vocabulary list"),
+      h("a", { class: "btn small", href: `#/vocab/${s.unit}/${s.mode}` }, "Quiz")),
+    h("div", { class: "row", style: { marginTop: "8px" } },
+      h("h1", { style: { flex: "1" } }, "Flashcards: ", h("span", { style: { whiteSpace: "nowrap" } }, scopeTxt)),
+      h("a", { class: "btn small vc-change", href: "#/vocab-cards" }, "Change unit")),
+    tools, stage);
+
+  function face(f, e, side) {
+    if (side === "greek") return h("div", { class: "vc-face vc-greek" },
+      h("div", { class: "vc-head", lang: "grc" }, f.lemma),
+      f.rest ? h("div", { class: "vc-parts", lang: "grc" }, f.rest) : null,
+      h("div", { class: "vc-tags" }, h("span", { class: "pp-tag" }, f.tag), h("span", { class: "pp-tag" }, `U${e.unit}`)));
+    const href = e.cat === "verb" ? wlVerbHref(e) : null;
+    return h("div", { class: "vc-face vc-english" },
+      h("div", { class: "vc-gloss" }, f.english),
+      href ? h("a", { class: "wl-ref", href, onclick: ev => ev.stopPropagation() }, "Reference tables →") : null);
+  }
+  function flip() { both = !both; vcSaveSide(both); draw(true); }
+  function step(d) { if (!deck.length) return; const n = pos + d; if (n < 0 || n >= deck.length) return; pos = n; syncUrl(); draw(); }
+  function draw(animate) {
+    if (!deck.length) {
+      stage.replaceChildren(h("div", { class: "empty" }, known.size && posCount(s.pos) === 0 && inScope.some(e => vcInPos(e, s.pos))
+        ? `Every card here is marked known.` : `No ${s.pos === "all" ? "words" : VC_POS.find(p => p[0] === s.pos)[1].toLowerCase()} in ${scopeTxt}.`),
+        known.size ? h("div", { class: "row vc-row" }, h("button", { class: "btn", onclick: resetKnown }, `Reset known (${known.size})`)) : null);
+      state.onKey = null;
+      return;
+    }
+    const e = deck[pos], f = vcFaces(e);
+    const front = s.dir === "g2e" ? "greek" : "english", back = front === "greek" ? "english" : "greek";
+    const frontName = front === "greek" ? "Greek" : "English";
+    const card = fcCard({ animate, flipped: both, cls: "vc-card", onFlip: flip, onPrev: () => step(-1), onNext: () => step(1), onSwipe: true,
+      ariaLabel: both ? `Flashcard showing both sides. Tap to show the ${frontName} only.` : `Flashcard showing the ${frontName} only. Tap to show both sides.`,
+      label: s.dir === "g2e" ? "Greek → English" : "English → Greek", counter: `${pos + 1} / ${deck.length}`,
+      body: h("div", { class: "vc-body" }, face(f, e, front), both ? h("hr", { class: "vc-rule" }) : null, both ? face(f, e, back) : null),
+      hint: both ? `Tap card to show the ${frontName} only` : "Tap card to show both sides" });
+    stage.replaceChildren(card,
+      h("div", { class: "row vc-row" },
+        h("button", { class: "btn", onclick: ev => { ev.stopPropagation(); flip(); } }, both ? `${frontName} only` : "Show all"),
+        h("button", { class: "btn", onclick: () => step(-1), disabled: pos === 0, "aria-label": "Previous card" }, "← Back"),
+        h("button", { class: "btn primary", onclick: () => step(1), disabled: pos >= deck.length - 1, "aria-label": "Next card" }, "Next →")),
+      h("div", { class: "row vc-row" },
+        h("button", { class: "btn", onclick: () => go({ seed: Math.random().toString(36).slice(2, 8) }) }, s.seed ? "Reshuffle" : "Shuffle"),
+        s.seed ? h("button", { class: "btn", onclick: () => go({ seed: null }) }, "Book order") : null,
+        h("button", { class: "btn", onclick: markKnown, title: "Drop this card from the deck for this unit and scope" }, "Mark as known"),
+        known.size ? h("button", { class: "btn", onclick: resetKnown }, `Reset known (${known.size})`) : null),
+      h("p", { class: "muted vc-note" }, `${deck.length} card${deck.length === 1 ? "" : "s"} · ${scopeTxt}${s.seed ? " · shuffled" : " · book order"}`
+        + (known.size ? ` · ${known.size} marked known` : "")));
+  }
+  function refreshTools() { tools.querySelectorAll(".vc-pos button").forEach((b, i) => { const c = posCount(VC_POS[i][0]); b.querySelector("small").textContent = `(${c})`; b.disabled = !c && s.pos !== VC_POS[i][0]; }); }
+  function markKnown() {
+    known.add(deck[pos].id); saveKnown();
+    deck = vcDeck(s.unit, s.mode, s.pos, s.seed, [...known]);
+    pos = Math.min(pos, Math.max(0, deck.length - 1)); syncUrl(); refreshTools(); draw();
+    toast("Marked as known");
+  }
+  function resetKnown() {
+    known.clear(); saveKnown();
+    deck = vcDeck(s.unit, s.mode, s.pos, s.seed, []); pos = 0; syncUrl(); refreshTools(); draw();
+  }
+  draw();
+}
+
+// Bare #/vocab-cards: the Vocabulary quiz's start screen (same unit grid and scope choices), opening the deck.
+function vocabCardsStart(last, max) {
+  document.title = "Vocabulary flashcards";
+  if (!last.unit || last.unit > max) last.unit = max;
+  const units = Array.from({ length: max }, (_, i) => i + 1);
+  const count = (u, m) => wordsInScope(u, m).length;
+  const pick = { unit: last.unit, mode: last.mode === "only" ? "only" : "through" };
+  const body = h("div", {});
+  function draw() {
+    const n = count(pick.unit, pick.mode);
+    body.replaceChildren(
+      h("h2", { style: { marginTop: "16px" } }, "1. Which unit are you on?"),
+      h("div", { class: "drill-units" }, units.map(u => h("button", { class: "btn", "aria-pressed": String(pick.unit === u),
+        onclick: () => { pick.unit = u; draw(); } }, String(u)))),
+      h("h2", {}, "2. What should it cover?"),
+      h("div", { class: "drill-scope" },
+        h("button", { class: "choice", "aria-pressed": String(pick.mode === "only"), onclick: () => { pick.mode = "only"; draw(); } },
+          h("span", {}, h("b", {}, `Unit ${pick.unit} only`), h("br"), h("small", { class: "muted" }, `Just the vocabulary introduced in Unit ${pick.unit}`))),
+        h("button", { class: "choice", "aria-pressed": String(pick.mode === "through"), onclick: () => { pick.mode = "through"; draw(); } },
+          h("span", {}, h("b", {}, `Everything through Unit ${pick.unit}`), h("br"), h("small", { class: "muted" }, `All vocabulary from Units 1–${pick.unit}`)))),
+      h("p", { class: "muted", style: { fontSize: "14px" } }, n ? `${n} card${n === 1 ? "" : "s"} in the deck.` : "No words for this choice yet."),
+      h("button", { class: "btn primary", disabled: !n, onclick: () => {
+        vocabStore.set("vocab-cards-scope", { ...last, ...pick });
+        location.hash = vcHash({ unit: pick.unit, mode: pick.mode, dir: last.dir === "e2g" ? "e2g" : "g2e", pos: "all" });
+      } }, "Start flashcards →"));
+  }
+  draw();
+  app().replaceChildren(
+    h("div", { class: "row" }, h("a", { href: "#/", class: "muted" }, "← Home"), h("span", { class: "spacer" }),
+      h("a", { class: "btn small", href: "#/vocab" }, "Vocabulary quiz")),
+    h("h1", { style: { marginTop: "8px" } }, "Vocabulary flashcards"),
+    h("p", { class: "muted", style: { marginTop: 0, fontSize: "14px" } },
+      "Flip through every word from H&Q's unit vocabulary lists, in full dictionary form: Greek → English or English → Greek, ",
+      "by part of speech, in book order or shuffled. The same words as the Vocabulary list."),
+    body);
 }
 
 /* Quiz / test bank (#/quiz?u=5&mode=only|through&focus=all|verb|noun|adj&types=parse,produce,translate&n=10&seed=…).
@@ -5043,7 +5274,10 @@ function homeView() {
       h("div", { class: "muted" }, "Every vocabulary word for one unit, or Units 1–N, in full dictionary form, with a filter")),
     h("a", { class: "panel deck-tile vocab-tile", href: "#/vocab", style: { marginTop: "12px" } },
       h("h3", {}, "Vocabulary quiz"),
-      h("div", { class: "muted" }, "Every H&Q word — Greek ↔ English, by unit and category")));
+      h("div", { class: "muted" }, "Every H&Q word — Greek ↔ English, by unit and category")),
+    h("a", { class: "panel deck-tile vocab-tile", href: "#/vocab-cards", style: { marginTop: "12px" } },
+      h("h3", {}, "Vocabulary flashcards"),
+      h("div", { class: "muted" }, "Flip through one unit's words, or Units 1–N: Greek → English or English → Greek, by part of speech, shuffled or in book order")));
 }
 function route() {
   state.onKey = null;
@@ -5053,6 +5287,7 @@ function route() {
   window.scrollTo(0, 0);
   if (/^words(\?|$)/.test(view)) return wordsView(location.hash.split("?")[1] || "");
   if (/^quiz(\?|$)/.test(view)) return quizView(location.hash.split("?")[1] || "");
+  if (/^vocab-cards(\?|$)/.test(view)) return vocabCardsView(location.hash.split("?")[1] || "");
   if (/^combos(\?|$)/.test(view)) return window.combosView(location.hash.split("?")[1] || "");
   if (view === "drill") return drillView(id, mode);
   if (view === "tables") return tableDrillView(id, mode);
