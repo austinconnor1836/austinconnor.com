@@ -680,6 +680,40 @@ function quizFocusAudit(trainer) {
   return { bad, sizes };
 }
 
+// Check 22: Vocabulary flashcards (#/vocab-cards). For every unit and both scopes the deck is exactly the Vocabulary
+// list's words (same ids, same count), the part-of-speech filters partition it (Nouns + Verbs + Adjectives + Other = All),
+// a seed reorders the same cards reproducibly, every card has a non-empty Greek and English face, and a verb's
+// Reference link is the Vocabulary list's.
+function vocabCardsAudit(trainer) {
+  const bad = [], sizes = {};
+  const ids = xs => xs.map(w => w.id).sort().join("\n");
+  const max = Math.max(...trainer.vocab.entries.map(e => e.unit));
+  let cards = 0;
+  for (let u = 1; u <= max; u++) for (const mode of ["only", "through"]) {
+    const at = `Vocabulary flashcards, ${mode === "only" ? `Unit ${u} only` : `Units 1–${u}`}`;
+    const want = trainer.words(u, mode), deck = trainer.vocabCards(u, mode);
+    if (deck.length !== want.length || ids(deck) !== ids(want)) bad.push(`${at}: the deck has ${deck.length} cards, want the Vocabulary list's ${want.length} words`);
+    const href = new Map(want.map(w => [w.id, w.href]));
+    for (const c of deck) {
+      if (!String(c.greek || "").trim() || !String(c.lemma || "").trim()) bad.push(`${at}: ${c.id} has an empty Greek face`);
+      if (!String(c.english || "").trim()) bad.push(`${at}: ${c.greek} (${c.id}) has an empty English face`);
+      if ((c.href || null) !== (href.get(c.id) || null)) bad.push(`${at}: ${c.greek}'s Reference link ${c.href} isn't the Vocabulary list's ${href.get(c.id)}`);
+    }
+    const parts = ["noun", "verb", "adj", "other"].map(p => trainer.vocabCards(u, mode, p));
+    const union = parts.flat();
+    if (ids(union) !== ids(deck) || new Set(union.map(c => c.id)).size !== union.length)
+      bad.push(`${at}: Nouns + Verbs + Adjectives + Other (${union.length}) isn't the whole deck (${deck.length})`);
+    for (const [p, cat] of [["noun", "noun"], ["verb", "verb"], ["adj", "adjective"]])
+      if (trainer.vocabCards(u, mode, p).some(c => c.cat !== cat)) bad.push(`${at}: the ${p} filter lets in another part of speech`);
+    const a = trainer.vocabCards(u, mode, "all", "abc123"), b = trainer.vocabCards(u, mode, "all", "abc123");
+    if (a.map(c => c.id).join() !== b.map(c => c.id).join()) bad.push(`${at}: the same seed gives two different orders`);
+    if (ids(a) !== ids(deck)) bad.push(`${at}: shuffling changes which cards are in the deck`);
+    cards += deck.length;
+    if (u <= 5) sizes[`${u}|${mode}`] = deck.length;
+  }
+  return { bad, sizes, cards };
+}
+
 // Check 18: the unit verb's display-only table equals the Reference page's ⚙ built copy for that verb.
 function unitVerbAudit(trainer) {
   const bad = [], seen = new Set(), ref = trainer.refTables(Infinity);
@@ -1056,6 +1090,7 @@ const quiz = quizAudit(trainer);
 const combos = combosAudit(trainer);
 const ppMap = ppMapAudit(trainer);
 const quizFocus = quizFocusAudit(trainer);
+const vocabCards = vocabCardsAudit(trainer);
 const docText = doc(rows, onlyTables, onlyDrill, sounds, verbs, parts, glossary, formation, quiz);
 
 if (WRITE) {
@@ -1104,6 +1139,7 @@ for (const b of quiz.bad) failures.push(b);
 for (const b of combos.bad) failures.push(b);
 for (const b of ppMap.bad) failures.push(b);
 for (const b of quizFocus.bad) failures.push(b);
+for (const b of vocabCards.bad) failures.push(b);
 const live = loadTrainerCoverage(trainer.html);
 if (!WRITE && JSON.stringify(live) !== JSON.stringify(block))
   failures.push("index.html's TRAINER_COVERAGE is out of date: run `node scripts/greek-trainer/coverage.mjs --write`");
@@ -1135,4 +1171,7 @@ console.log(`greek-trainer: Forms at a glance: ${combos.rows} rows checked again
 console.log(`greek-trainer: Forms at a glance PP map: ${ppMap.rows} principal-part rows match the combo rows citing them (Units 1–20, both scopes).`);
 { const f = k => Object.entries(quizFocus.sizes[k]).map(([a, n]) => `${a} ${n}`).join(", ");
   console.log(`greek-trainer: Quiz focus: every focus = its parts of speech, All = the union (Units 1–20, both scopes). Unit 5 only: ${f("5|only")}; Units 1–5: ${f("5|through")}.`); }
+{ const z = vocabCards.sizes;
+  console.log(`greek-trainer: Vocabulary flashcards: every deck = the Vocabulary list's words, both faces non-empty (${vocabCards.cards} cards over every unit, both scopes). `
+    + `Unit only: ${[1, 2, 3, 4, 5].map(u => `U${u} ${z[`${u}|only`]}`).join(", ")}; through: ${[1, 2, 3, 4, 5].map(u => `1–${u} ${z[`${u}|through`]}`).join(", ")}.`); }
 console.log("greek-trainer coverage check passed.");
